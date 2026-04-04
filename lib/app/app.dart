@@ -1,3 +1,4 @@
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_strings.dart';
@@ -20,7 +21,12 @@ class TechnoStaffApp extends StatelessWidget {
       onGenerateRoute: AppRouter.onGenerateRoute,
       locale: context.locale,
       supportedLocales: context.supportedLocales,
-      localizationsDelegates: context.localizationDelegates,
+      localizationsDelegates: [
+        ...context.localizationDelegates,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
