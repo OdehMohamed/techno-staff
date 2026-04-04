@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/app_strings.dart';
 import '../core/routes/app_router.dart';
@@ -17,6 +18,9 @@ class TechnoStaffApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: RouteNames.splash,
       onGenerateRoute: AppRouter.onGenerateRoute,
+      locale: context.locale,
+      supportedLocales: context.supportedLocales,
+      localizationsDelegates: context.localizationDelegates,
     );
   }
 }

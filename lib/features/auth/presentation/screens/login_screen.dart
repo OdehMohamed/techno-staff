@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
@@ -10,18 +11,18 @@ class LoginScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(title: Text('login'.tr())),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome back', style: textTheme.headlineMedium),
+            Text('welcome_back'.tr(), style: textTheme.headlineMedium),
             const SizedBox(height: AppSizes.lg),
-            const TextField(decoration: InputDecoration(labelText: 'Email')),
+            TextField(decoration: InputDecoration(labelText: 'email'.tr())),
             const SizedBox(height: AppSizes.md),
-            const TextField(
-              decoration: InputDecoration(labelText: 'Password'),
+            TextField(
+              decoration: InputDecoration(labelText: 'password'.tr()),
               obscureText: true,
             ),
             const SizedBox(height: AppSizes.lg),
@@ -31,7 +32,7 @@ class LoginScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, RouteNames.dashboard);
                 },
-                child: const Text('Login'),
+                child: Text('login'.tr()),
               ),
             ),
           ],

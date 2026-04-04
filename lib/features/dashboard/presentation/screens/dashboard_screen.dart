@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_sizes.dart';
 
@@ -9,13 +10,13 @@ class DashboardScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
+      appBar: AppBar(title: Text('dashboard'.tr())),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Techno Staff Dashboard', style: textTheme.headlineMedium),
+            Text('dashboard_title'.tr(), style: textTheme.headlineMedium),
             const SizedBox(height: AppSizes.lg),
             Card(
               child: Padding(
@@ -23,9 +24,9 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Overview', style: textTheme.titleLarge),
+                    Text('overview'.tr(), style: textTheme.titleLarge),
                     const SizedBox(height: AppSizes.sm),
-                    const Text('This is the starting dashboard screen.'),
+                    Text('starting_dashboard_message'.tr()),
                   ],
                 ),
               ),
