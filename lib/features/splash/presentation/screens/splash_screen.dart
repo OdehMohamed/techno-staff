@@ -31,11 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.groups_rounded,
-                size: 80,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
+              Image.asset('assets/images/logo.png', width: 100),
               const SizedBox(height: AppSizes.md),
               Text(AppStrings.appName, style: textTheme.headlineMedium),
             ],
