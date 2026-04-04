@@ -1,5 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 
@@ -33,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
             children: [
               Image.asset('assets/images/logo.png', width: 100),
               const SizedBox(height: AppSizes.md),
-              Text(AppStrings.appName, style: textTheme.headlineMedium),
+              Text('app_name'.tr(), style: textTheme.headlineMedium),
             ],
           ),
         ),

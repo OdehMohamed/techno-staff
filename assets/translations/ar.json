@@ -1,0 +1,11 @@
+{
+  "app_name": "Techno Staff",
+  "login": "تسجيل الدخول",
+  "welcome_back": "مرحباً بعودتك",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "dashboard": "لوحة التحكم",
+  "dashboard_title": "لوحة تحكم تيكنو ستاف",
+  "overview": "نظرة عامة",
+  "starting_dashboard_message": "هذه هي الشاشة الأولية للوحة التحكم."
+}

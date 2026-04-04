@@ -1,0 +1,11 @@
+{
+  "app_name": "Techno Staff",
+  "login": "Login",
+  "welcome_back": "Welcome back",
+  "email": "Email",
+  "password": "Password",
+  "dashboard": "Dashboard",
+  "dashboard_title": "Techno Staff Dashboard",
+  "overview": "Overview",
+  "starting_dashboard_message": "This is the starting dashboard screen."
+}
