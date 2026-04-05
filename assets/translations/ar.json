@@ -64,5 +64,11 @@
   "active": "نشط",
   "inactive": "غير نشط",
   "admin": "مدير",
-  "employee": "موظف"
+  "employee": "موظف",
+  "dashboard_admin_subtitle": "نظرة سريعة على الموظفين وأداء المهام",
+  "tasks_overview": "نظرة عامة على المهام",
+  "tasks_overview_subtitle": "تابع توزيع المهام وتقدم إنجازها",
+  "overdue_tasks": "المهام المتأخرة",
+  "failed_to_load_dashboard": "فشل في تحميل لوحة التحكم",
+  "employee_tasks_subtitle": "إليك عرض سريع لآخر المهام المسندة إليك"
 }
