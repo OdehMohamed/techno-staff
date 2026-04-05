@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../features/employees/presentation/screens/add_employee_screen.dart';
+import '../../features/employees/presentation/screens/employees_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/employee/presentation/screens/employee_home_screen.dart';
@@ -40,7 +42,17 @@ class AppRouter {
           builder: (_) => const SettingsScreen(),
           settings: settings,
         );
+      case RouteNames.employees:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeesScreen(),
+          settings: settings,
+        );
 
+      case RouteNames.addEmployee:
+        return MaterialPageRoute(
+          builder: (_) => const AddEmployeeScreen(),
+          settings: settings,
+        );
       default:
         return MaterialPageRoute(
           builder: (_) =>

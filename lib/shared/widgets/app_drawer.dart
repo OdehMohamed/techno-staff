@@ -36,6 +36,15 @@ class AppDrawer extends StatelessWidget {
                   );
                 },
               ),
+            if (user?.role == 'admin')
+              ListTile(
+                leading: const Icon(Icons.group_outlined),
+                title: Text('employees'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, RouteNames.employees);
+                },
+              ),
             if (user?.role == 'employee')
               ListTile(
                 leading: const Icon(Icons.home_outlined),

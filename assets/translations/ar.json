@@ -27,5 +27,13 @@
   "logout": "تسجيل الخروج",
   "total_tasks": "إجمالي المهام",
   "completed_tasks": "المهام المكتملة",
-  "employees": "الموظفون"
+  "employees": "الموظفون",
+  "add_employee": "إضافة موظف",
+  "name": "الاسم",
+  "name_required": "الاسم مطلوب",
+  "save": "حفظ",
+  "failed_to_add_employee": "فشل في إضافة الموظف",
+  "failed_to_load_employees": "فشل في تحميل الموظفين",
+  "no_employees_found": "لا يوجد موظفون",
+  "role": "الدور"
 }

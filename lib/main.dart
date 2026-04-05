@@ -8,6 +8,8 @@ import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/user_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'firebase_options.dart';
+import 'features/employees/data/repositories/employees_repository.dart';
+import 'features/employees/presentation/cubit/employees_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +18,7 @@ Future<void> main() async {
 
   final authRepository = AuthRepository();
   final userRepository = UserRepository();
-
+  final employeesRepository = EmployeesRepository();
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -31,6 +33,10 @@ Future<void> main() async {
               authRepository: authRepository,
               userRepository: userRepository,
             ),
+          ),
+          BlocProvider(
+            create: (_) =>
+                EmployeesCubit(employeesRepository: employeesRepository),
           ),
         ],
         child: const TechnoStaffApp(),
