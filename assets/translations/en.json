@@ -13,5 +13,7 @@
   "appearance": "Appearance",
   "system_default": "System default",
   "light_mode": "Light mode",
-  "dark_mode": "Dark mode"
+  "dark_mode": "Dark mode",
+  "email_required": "Email is required",
+  "password_required": "Password is required"
 }

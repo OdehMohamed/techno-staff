@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
+import 'features/auth/data/repositories/auth_repository.dart';
+import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -11,14 +13,21 @@ Future<void> main() async {
   await EasyLocalization.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  final authRepository = AuthRepository();
+
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
       startLocale: const Locale('en'),
-      child: BlocProvider(
-        create: (_) => ThemeCubit(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => ThemeCubit()),
+          BlocProvider(
+            create: (_) => AuthCubit(authRepository: authRepository),
+          ),
+        ],
         child: const TechnoStaffApp(),
       ),
     ),

@@ -13,5 +13,7 @@
   "appearance": "المظهر",
   "system_default": "افتراضي النظام",
   "light_mode": "الوضع الفاتح",
-  "dark_mode": "الوضع الداكن"
+  "dark_mode": "الوضع الداكن",
+  "email_required": "البريد الإلكتروني مطلوب",
+  "password_required": "كلمة المرور مطلوبة"
 }
