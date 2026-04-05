@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:techno_staff/core/constants/firebase_paths.dart';
 import '../../../auth/domain/models/app_user.dart';
 
 class EmployeesRepository {
@@ -9,8 +10,8 @@ class EmployeesRepository {
 
   Future<List<AppUser>> getEmployees() async {
     final snapshot = await _firestore
-        .collection('users')
-        .orderBy('createdAt', descending: true)
+        .collection(FirebasePaths.users)
+        .orderBy(FirebasePaths.createdAt, descending: true)
         .get();
 
     return snapshot.docs
@@ -19,14 +20,17 @@ class EmployeesRepository {
   }
 
   Future<void> addEmployee(AppUser user) async {
-    await _firestore.collection('users').doc(user.id).set(user.toMap());
+    await _firestore
+        .collection(FirebasePaths.users)
+        .doc(user.id)
+        .set(user.toMap());
   }
 
   Future<void> updateEmployeeStatus({
     required String userId,
     required bool isActive,
   }) async {
-    await _firestore.collection('users').doc(userId).update({
+    await _firestore.collection(FirebasePaths.users).doc(userId).update({
       'isActive': isActive,
     });
   }

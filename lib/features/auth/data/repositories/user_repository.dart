@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:techno_staff/core/constants/firebase_paths.dart';
 import '../../domain/models/app_user.dart';
 
 class UserRepository {
@@ -8,7 +9,7 @@ class UserRepository {
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<AppUser?> getUserById(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
+    final doc = await _firestore.collection(FirebasePaths.users).doc(uid).get();
 
     if (!doc.exists || doc.data() == null) {
       return null;
