@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
+import 'features/auth/data/repositories/user_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'firebase_options.dart';
 
@@ -14,6 +15,7 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final authRepository = AuthRepository();
+  final userRepository = UserRepository();
 
   runApp(
     EasyLocalization(
@@ -25,7 +27,10 @@ Future<void> main() async {
         providers: [
           BlocProvider(create: (_) => ThemeCubit()),
           BlocProvider(
-            create: (_) => AuthCubit(authRepository: authRepository),
+            create: (_) => AuthCubit(
+              authRepository: authRepository,
+              userRepository: userRepository,
+            ),
           ),
         ],
         child: const TechnoStaffApp(),

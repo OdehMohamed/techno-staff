@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (state.status == AuthStatus.error && state.errorMessage != null) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          ).showSnackBar(SnackBar(content: Text(state.errorMessage!.tr())));
         }
       },
       child: Scaffold(

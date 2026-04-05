@@ -15,5 +15,8 @@
   "light_mode": "الوضع الفاتح",
   "dark_mode": "الوضع الداكن",
   "email_required": "البريد الإلكتروني مطلوب",
-  "password_required": "كلمة المرور مطلوبة"
+  "password_required": "كلمة المرور مطلوبة",
+  "not_authorized": "أنت غير مخول للوصول إلى هذا التطبيق",
+  "login_failed": "فشل تسجيل الدخول",
+  "invalid_login_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة"
 }
