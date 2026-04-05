@@ -7,5 +7,8 @@
   "dashboard": "Dashboard",
   "dashboard_title": "Dashboard",
   "overview": "Overview",
-  "starting_dashboard_message": "This is the starting dashboard screen."
+  "starting_dashboard_message": "This is the starting dashboard screen.",
+  "settings": "Settings",
+  "language": "Language",
+  "appearance": "Appearance"
 }

@@ -7,5 +7,8 @@
   "dashboard": "لوحة التحكم",
   "dashboard_title": "لوحة التحكم",
   "overview": "نظرة عامة",
-  "starting_dashboard_message": "هذه هي الشاشة الأولية للوحة التحكم."
+  "starting_dashboard_message": "هذه هي الشاشة الأولية للوحة التحكم.",
+  "settings": "الإعدادات",
+  "language": "اللغة",
+  "appearance": "المظهر"
 }

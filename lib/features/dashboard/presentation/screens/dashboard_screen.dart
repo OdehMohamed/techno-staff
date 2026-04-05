@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -10,7 +11,17 @@ class DashboardScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text('dashboard'.tr())),
+      appBar: AppBar(
+        title: Text('dashboard'.tr()),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.pushNamed(context, RouteNames.settings);
+            },
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: Column(
