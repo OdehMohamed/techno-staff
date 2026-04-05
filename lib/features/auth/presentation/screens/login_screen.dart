@@ -43,7 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
-          Navigator.pushReplacementNamed(context, RouteNames.dashboard);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            RouteNames.dashboard,
+            (route) => false,
+          );
         }
 
         if (state.status == AuthStatus.error && state.errorMessage != null) {

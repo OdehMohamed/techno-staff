@@ -9,8 +9,30 @@ class AuthCubit extends Cubit<AuthState> {
     : _authRepository = authRepository,
       super(const AuthState());
 
+  Future<void> checkAuthStatus() async {
+    final currentUser = _authRepository.getCurrentUser();
+
+    if (currentUser != null) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          user: currentUser,
+          clearErrorMessage: true,
+        ),
+      );
+    } else {
+      emit(
+        state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearUser: true,
+          clearErrorMessage: true,
+        ),
+      );
+    }
+  }
+
   Future<void> signIn({required String email, required String password}) async {
-    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null));
+    emit(state.copyWith(status: AuthStatus.loading, clearErrorMessage: true));
 
     try {
       final user = await _authRepository.signInWithEmailAndPassword(
@@ -22,7 +44,7 @@ class AuthCubit extends Cubit<AuthState> {
         state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
-          errorMessage: null,
+          clearErrorMessage: true,
         ),
       );
     } on Exception catch (e) {
@@ -32,7 +54,15 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  void resetState() {
-    emit(const AuthState(status: AuthStatus.unauthenticated));
+  Future<void> signOut() async {
+    await _authRepository.signOut();
+
+    emit(
+      state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        clearErrorMessage: true,
+      ),
+    );
   }
 }

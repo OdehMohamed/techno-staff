@@ -29,5 +29,11 @@ class AuthRepository {
     await _firebaseAuth.signOut();
   }
 
-  User? get currentFirebaseUser => _firebaseAuth.currentUser;
+  AppUser? getCurrentUser() {
+    final user = _firebaseAuth.currentUser;
+
+    if (user == null) return null;
+
+    return AppUser(id: user.uid, email: user.email);
+  }
 }

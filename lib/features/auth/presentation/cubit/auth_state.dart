@@ -16,12 +16,16 @@ class AuthState {
   AuthState copyWith({
     AuthStatus? status,
     AppUser? user,
+    bool clearUser = false,
     String? errorMessage,
+    bool clearErrorMessage = false,
   }) {
     return AuthState(
       status: status ?? this.status,
-      user: user ?? this.user,
-      errorMessage: errorMessage,
+      user: clearUser ? null : (user ?? this.user),
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
     );
   }
 }
