@@ -4,7 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
+import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/status_badge.dart';
 import '../cubit/employees_cubit.dart';
 import '../cubit/employees_state.dart';
 
@@ -27,7 +31,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('employees'.tr())),
       drawer: const AppDrawer(),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.pushNamed(
             context,
@@ -38,7 +42,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             context.read<EmployeesCubit>().fetchEmployees();
           }
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: Text('add_employee'.tr()),
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -52,8 +57,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                 }
 
                 if (state.status == EmployeesStatus.error) {
-                  return Center(
-                    child: Text((state.errorMessage ?? 'unknown_error').tr()),
+                  return EmptyStateWidget(
+                    icon: Icons.error_outline,
+                    titleKey: state.errorMessage ?? 'unknown_error',
                   );
                 }
 
@@ -64,56 +70,111 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     .toList();
 
                 if (visibleEmployees.isEmpty) {
-                  return Center(child: Text('no_employees_found'.tr()));
+                  return const EmptyStateWidget(
+                    icon: Icons.group_off_outlined,
+                    titleKey: 'no_employees_found',
+                  );
                 }
 
-                return ListView.separated(
-                  itemCount: visibleEmployees.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: AppSizes.md),
-                  itemBuilder: (context, index) {
-                    final employee = visibleEmployees[index];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionHeader(
+                      title: 'employees'.tr(),
+                      subtitle: 'Manage employees and control account access',
+                    ),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: visibleEmployees.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSizes.md),
+                        itemBuilder: (context, index) {
+                          final employee = visibleEmployees[index];
 
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSizes.md),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(child: Icon(Icons.person)),
-                            const SizedBox(width: AppSizes.md),
-                            Expanded(
-                              child: Column(
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeInOut,
+                            child: AppCard(
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    employee.name,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
+                                  CircleAvatar(
+                                    radius: 24,
+                                    child: Text(
+                                      employee.name.isNotEmpty
+                                          ? employee.name[0].toUpperCase()
+                                          : '?',
+                                    ),
                                   ),
-                                  const SizedBox(height: AppSizes.xs),
-                                  Text(employee.email),
-                                  const SizedBox(height: AppSizes.xs),
-                                  Text('${'role'.tr()}: ${employee.role}'),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                employee.name,
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.titleLarge,
+                                              ),
+                                            ),
+                                            StatusBadge(
+                                              status: employee.isActive
+                                                  ? 'active'
+                                                  : 'inactive',
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: AppSizes.sm),
+                                        Text(employee.email),
+                                        const SizedBox(height: AppSizes.xs),
+                                        Text(
+                                          '${'role'.tr()}: ${employee.role.tr()}',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Column(
+                                    children: [
+                                      Switch(
+                                        value: employee.isActive,
+                                        onChanged: (value) {
+                                          context
+                                              .read<EmployeesCubit>()
+                                              .toggleEmployeeStatus(
+                                                userId: employee.id,
+                                                isActive: value,
+                                              );
+                                        },
+                                      ),
+                                      Text(
+                                        employee.isActive
+                                            ? 'active'.tr()
+                                            : 'inactive'.tr(),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium,
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
-                            Switch(
-                              value: employee.isActive,
-                              onChanged: (value) {
-                                context
-                                    .read<EmployeesCubit>()
-                                    .toggleEmployeeStatus(
-                                      userId: employee.id,
-                                      isActive: value,
-                                    );
-                              },
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 );
               },
             ),

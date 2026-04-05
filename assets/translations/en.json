@@ -57,5 +57,12 @@
   "update_status": "Update Status",
   "no_tasks_found": "No tasks found",
   "failed_to_load_tasks": "Failed to load tasks",
-  "failed_to_add_task": "Failed to add task"
+  "failed_to_add_task": "Failed to add task",
+  "Manage and monitor all assigned tasks": "Manage and monitor all assigned tasks",
+  "Track and update your assigned tasks": "Track and update your assigned tasks",
+  "Manage employees and control account access": "Manage employees and control account access",
+  "active": "Active",
+  "inactive": "Inactive",
+  "admin": "Admin",
+  "employee": "Employee"
 }

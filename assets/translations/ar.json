@@ -57,5 +57,12 @@
   "update_status": "تحديث الحالة",
   "no_tasks_found": "لا توجد مهام",
   "failed_to_load_tasks": "فشل في تحميل المهام",
-  "failed_to_add_task": "فشل في إضافة المهمة"
+  "failed_to_add_task": "فشل في إضافة المهمة",
+  "Manage and monitor all assigned tasks": "إدارة ومتابعة جميع المهام المسندة",
+  "Track and update your assigned tasks": "تابع مهامك المسندة وقم بتحديث حالتها",
+  "Manage employees and control account access": "إدارة الموظفين والتحكم في صلاحيات الوصول",
+  "active": "نشط",
+  "inactive": "غير نشط",
+  "admin": "مدير",
+  "employee": "موظف"
 }
