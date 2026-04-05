@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "112459870697",
+    "project_id": "techno-staff",
+    "storage_bucket": "techno-staff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:112459870697:android:2646dfef4438d1c6355b78",
+        "android_client_info": {
+          "package_name": "com.mohamedodeh.technostaff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_-_ABG_KhdOnJVNwHdbrWvv4OuenwoRw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
