@@ -8,7 +8,10 @@ class EmployeesRepository {
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<List<AppUser>> getEmployees() async {
-    final snapshot = await _firestore.collection('users').get();
+    final snapshot = await _firestore
+        .collection('users')
+        .orderBy('createdAt', descending: true)
+        .get();
 
     return snapshot.docs
         .map((doc) => AppUser.fromMap(doc.data(), doc.id))

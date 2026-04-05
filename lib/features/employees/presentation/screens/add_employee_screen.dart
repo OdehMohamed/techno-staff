@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -36,27 +37,22 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     });
 
     try {
-      final id = const Uuid().v4();
+      final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+      final callable = functions.httpsCallable('createEmployeeUser');
 
-      final user = AppUser(
-        id: id,
-        email: _emailController.text.trim(),
-        name: _nameController.text.trim(),
-        role: _roleController.text.trim(),
-        isActive: true,
-      );
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.id)
-          .set(user.toMap());
+      await callable.call({
+        'email': _emailController.text.trim(),
+        'password': '123456',
+        'name': _nameController.text.trim(),
+        'role': _roleController.text.trim(),
+      });
 
       if (!mounted) return;
       Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('failed_to_add_employee'.tr())));
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) {
         setState(() {

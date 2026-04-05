@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_drawer.dart';
@@ -56,16 +57,22 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   );
                 }
 
-                if (state.employees.isEmpty) {
+                final currentUserId = context.read<AuthCubit>().state.user?.id;
+
+                final visibleEmployees = state.employees
+                    .where((employee) => employee.id != currentUserId)
+                    .toList();
+
+                if (visibleEmployees.isEmpty) {
                   return Center(child: Text('no_employees_found'.tr()));
                 }
 
                 return ListView.separated(
-                  itemCount: state.employees.length,
+                  itemCount: visibleEmployees.length,
                   separatorBuilder: (_, __) =>
                       const SizedBox(height: AppSizes.md),
                   itemBuilder: (context, index) {
-                    final employee = state.employees[index];
+                    final employee = visibleEmployees[index];
 
                     return Card(
                       child: Padding(
