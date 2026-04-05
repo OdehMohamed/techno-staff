@@ -18,5 +18,14 @@
   "password_required": "Password is required",
   "not_authorized": "You are not authorized to access this app",
   "login_failed": "Login failed",
-  "invalid_login_credentials": "Invalid email or password"
+  "invalid_login_credentials": "Invalid email or password",
+  "admin_dashboard": "Admin Dashboard",
+  "employee_home": "Employee Home",
+  "home": "Home",
+  "my_tasks": "My Tasks",
+  "no_tasks_yet": "No tasks yet",
+  "logout": "Logout",
+  "total_tasks": "Total Tasks",
+  "completed_tasks": "Completed Tasks",
+  "employees": "Employees"
 }

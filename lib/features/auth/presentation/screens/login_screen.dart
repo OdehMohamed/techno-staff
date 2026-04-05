@@ -42,12 +42,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (state.status == AuthStatus.authenticated) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            RouteNames.dashboard,
-            (route) => false,
-          );
+        if (state.status == AuthStatus.authenticated && state.user != null) {
+          final route = state.user!.role == 'admin'
+              ? RouteNames.adminDashboard
+              : RouteNames.employeeHome;
+
+          Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
         }
 
         if (state.status == AuthStatus.error && state.errorMessage != null) {

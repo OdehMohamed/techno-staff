@@ -30,8 +30,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (state.status == AuthStatus.authenticated) {
-          Navigator.pushReplacementNamed(context, RouteNames.dashboard);
+        if (state.status == AuthStatus.authenticated && state.user != null) {
+          if (state.user!.role == 'admin') {
+            Navigator.pushReplacementNamed(context, RouteNames.adminDashboard);
+          } else {
+            Navigator.pushReplacementNamed(context, RouteNames.employeeHome);
+          }
         } else if (state.status == AuthStatus.unauthenticated) {
           Navigator.pushReplacementNamed(context, RouteNames.login);
         }

@@ -18,5 +18,14 @@
   "password_required": "كلمة المرور مطلوبة",
   "not_authorized": "أنت غير مخول للوصول إلى هذا التطبيق",
   "login_failed": "فشل تسجيل الدخول",
-  "invalid_login_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+  "invalid_login_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+  "admin_dashboard": "لوحة تحكم المدير",
+  "employee_home": "الواجهة الرئيسية للموظف",
+  "home": "الرئيسية",
+  "my_tasks": "مهامي",
+  "no_tasks_yet": "لا توجد مهام بعد",
+  "logout": "تسجيل الخروج",
+  "total_tasks": "إجمالي المهام",
+  "completed_tasks": "المهام المكتملة",
+  "employees": "الموظفون"
 }

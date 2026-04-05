@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:techno_staff/features/settings/presentation/screens/settings_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/employee/presentation/screens/employee_home_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import 'route_names.dart';
 
@@ -22,16 +23,24 @@ class AppRouter {
           settings: settings,
         );
 
-      case RouteNames.dashboard:
+      case RouteNames.adminDashboard:
         return MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
+          builder: (_) => const AdminDashboardScreen(),
           settings: settings,
         );
+
+      case RouteNames.employeeHome:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeeHomeScreen(),
+          settings: settings,
+        );
+
       case RouteNames.settings:
         return MaterialPageRoute(
           builder: (_) => const SettingsScreen(),
           settings: settings,
         );
+
       default:
         return MaterialPageRoute(
           builder: (_) =>
