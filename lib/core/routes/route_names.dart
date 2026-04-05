@@ -8,4 +8,6 @@ class RouteNames {
   static const String settings = '/settings';
   static const String employees = '/employees';
   static const String addEmployee = '/add-employee';
+  static const String tasks = '/tasks';
+  static const String addTask = '/add-task';
 }

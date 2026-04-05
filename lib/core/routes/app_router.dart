@@ -6,6 +6,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/employee/presentation/screens/employee_home_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/tasks/presentation/screens/add_task_screen.dart';
+import '../../features/tasks/presentation/screens/tasks_screen.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -51,6 +53,17 @@ class AppRouter {
       case RouteNames.addEmployee:
         return MaterialPageRoute(
           builder: (_) => const AddEmployeeScreen(),
+          settings: settings,
+        );
+      case RouteNames.tasks:
+        return MaterialPageRoute(
+          builder: (_) => const TasksScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.addTask:
+        return MaterialPageRoute(
+          builder: (_) => const AddTaskScreen(),
           settings: settings,
         );
       default:

@@ -58,6 +58,14 @@ class AppDrawer extends StatelessWidget {
                 },
               ),
             ListTile(
+              leading: const Icon(Icons.task_outlined),
+              title: Text('tasks'.tr()),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, RouteNames.tasks);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: Text('settings'.tr()),
               onTap: () {

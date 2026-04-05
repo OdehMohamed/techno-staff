@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'firebase_options.dart';
 import 'features/employees/data/repositories/employees_repository.dart';
 import 'features/employees/presentation/cubit/employees_cubit.dart';
+import 'features/tasks/data/repositories/tasks_repository.dart';
+import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +22,7 @@ Future<void> main() async {
   final authRepository = AuthRepository();
   final userRepository = UserRepository();
   final employeesRepository = EmployeesRepository();
+  final tasksRepository = TasksRepository(FirebaseFirestore.instance);
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -37,6 +41,9 @@ Future<void> main() async {
           BlocProvider(
             create: (_) =>
                 EmployeesCubit(employeesRepository: employeesRepository),
+          ),
+          BlocProvider(
+            create: (_) => TasksCubit(tasksRepository: tasksRepository),
           ),
         ],
         child: const TechnoStaffApp(),
