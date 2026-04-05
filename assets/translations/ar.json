@@ -10,5 +10,8 @@
   "starting_dashboard_message": "هذه هي الشاشة الأولية للوحة التحكم.",
   "settings": "الإعدادات",
   "language": "اللغة",
-  "appearance": "المظهر"
+  "appearance": "المظهر",
+  "system_default": "افتراضي النظام",
+  "light_mode": "الوضع الفاتح",
+  "dark_mode": "الوضع الداكن"
 }

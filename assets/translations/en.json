@@ -10,5 +10,8 @@
   "starting_dashboard_message": "This is the starting dashboard screen.",
   "settings": "Settings",
   "language": "Language",
-  "appearance": "Appearance"
+  "appearance": "Appearance",
+  "system_default": "System default",
+  "light_mode": "Light mode",
+  "dark_mode": "Dark mode"
 }
