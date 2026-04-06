@@ -70,5 +70,12 @@
   "tasks_overview_subtitle": "Track task distribution and completion progress",
   "overdue_tasks": "Overdue Tasks",
   "failed_to_load_dashboard": "Failed to load dashboard",
-  "employee_tasks_subtitle": "Here is a quick view of your latest assigned tasks"
+  "employee_tasks_subtitle": "Here is a quick view of your latest assigned tasks",
+  "task_details": "Task Details",
+  "edit_task": "Edit Task",
+  "save_changes": "Save Changes",
+  "failed_to_update_task": "Failed to update task",
+  "assigned_to": "Assigned To",
+  "assigned_by": "Assigned By",
+  "failed_to_load_task_details": "Failed to load task details"
 }

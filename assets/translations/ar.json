@@ -70,5 +70,12 @@
   "tasks_overview_subtitle": "تابع توزيع المهام وتقدم إنجازها",
   "overdue_tasks": "المهام المتأخرة",
   "failed_to_load_dashboard": "فشل في تحميل لوحة التحكم",
-  "employee_tasks_subtitle": "إليك عرض سريع لآخر المهام المسندة إليك"
+  "employee_tasks_subtitle": "إليك عرض سريع لآخر المهام المسندة إليك",
+  "task_details": "تفاصيل المهمة",
+  "edit_task": "تعديل المهمة",
+  "save_changes": "حفظ التعديلات",
+  "failed_to_update_task": "فشل في تحديث المهمة",
+  "assigned_to": "مُسندة إلى",
+  "assigned_by": "أُسندت بواسطة",
+  "failed_to_load_task_details": "فشل في تحميل تفاصيل المهمة"
 }

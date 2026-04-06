@@ -42,4 +42,47 @@ class TasksRepository {
       FirebasePaths.status: status,
     });
   }
+
+  Future<TaskModel?> getTaskById(String taskId) async {
+    final doc = await _firestore
+        .collection(FirebasePaths.tasks)
+        .doc(taskId)
+        .get();
+
+    if (!doc.exists || doc.data() == null) {
+      return null;
+    }
+
+    return TaskModel.fromMap(doc.id, doc.data()!);
+  }
+
+  Future<void> updateTask(TaskModel task) async {
+    await _firestore
+        .collection(FirebasePaths.tasks)
+        .doc(task.id)
+        .update(task.toMap());
+  }
+
+  Future<String> getUserNameById(String userId) async {
+    final doc = await _firestore
+        .collection(FirebasePaths.users)
+        .doc(userId)
+        .get();
+
+    if (!doc.exists || doc.data() == null) {
+      return '-';
+    }
+
+    return doc.data()!['name'] as String? ?? '-';
+  }
+
+  Future<Map<String, String>> getTaskUserNames({
+    required String assignedTo,
+    required String assignedBy,
+  }) async {
+    final assignedToName = await getUserNameById(assignedTo);
+    final assignedByName = await getUserNameById(assignedBy);
+
+    return {'assignedToName': assignedToName, 'assignedByName': assignedByName};
+  }
 }

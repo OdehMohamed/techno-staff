@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/tasks/presentation/cubit/task_details_cubit.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
@@ -44,6 +45,9 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => TasksCubit(tasksRepository: tasksRepository),
+          ),
+          BlocProvider(
+            create: (_) => TaskDetailsCubit(tasksRepository: tasksRepository),
           ),
         ],
         child: const TechnoStaffApp(),

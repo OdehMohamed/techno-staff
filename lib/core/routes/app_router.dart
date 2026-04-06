@@ -8,6 +8,9 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/tasks/presentation/screens/add_task_screen.dart';
 import '../../features/tasks/presentation/screens/tasks_screen.dart';
+import '../../features/tasks/data/models/task_model.dart';
+import '../../features/tasks/presentation/screens/edit_task_screen.dart';
+import '../../features/tasks/presentation/screens/task_details_screen.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -44,6 +47,7 @@ class AppRouter {
           builder: (_) => const SettingsScreen(),
           settings: settings,
         );
+
       case RouteNames.employees:
         return MaterialPageRoute(
           builder: (_) => const EmployeesScreen(),
@@ -55,6 +59,7 @@ class AppRouter {
           builder: (_) => const AddEmployeeScreen(),
           settings: settings,
         );
+
       case RouteNames.tasks:
         return MaterialPageRoute(
           builder: (_) => const TasksScreen(),
@@ -66,6 +71,21 @@ class AppRouter {
           builder: (_) => const AddTaskScreen(),
           settings: settings,
         );
+
+      case RouteNames.taskDetails:
+        final task = settings.arguments as TaskModel;
+        return MaterialPageRoute(
+          builder: (_) => TaskDetailsScreen(task: task),
+          settings: settings,
+        );
+
+      case RouteNames.editTask:
+        final task = settings.arguments as TaskModel;
+        return MaterialPageRoute(
+          builder: (_) => EditTaskScreen(task: task),
+          settings: settings,
+        );
+
       default:
         return MaterialPageRoute(
           builder: (_) =>

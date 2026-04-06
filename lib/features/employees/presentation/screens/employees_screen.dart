@@ -81,7 +81,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   children: [
                     SectionHeader(
                       title: 'employees'.tr(),
-                      subtitle: 'Manage employees and control account access',
+                      subtitle: 'Manage employees and control account access'
+                          .tr(),
                     ),
                     Expanded(
                       child: ListView.separated(

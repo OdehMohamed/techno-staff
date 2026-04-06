@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
@@ -98,8 +97,8 @@ class _TasksScreenState extends State<TasksScreen> {
                     SectionHeader(
                       title: 'tasks'.tr(),
                       subtitle: isAdmin
-                          ? 'Manage and monitor all assigned tasks'
-                          : 'Track and update your assigned tasks',
+                          ? 'Manage and monitor all assigned tasks'.tr()
+                          : 'Track and update your assigned tasks'.tr(),
                     ),
                     Expanded(
                       child: ListView.separated(
@@ -112,78 +111,93 @@ class _TasksScreenState extends State<TasksScreen> {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
                             curve: Curves.easeInOut,
-                            child: AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          task.title,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleLarge,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () async {
+                                final result = await Navigator.pushNamed(
+                                  context,
+                                  RouteNames.taskDetails,
+                                  arguments: task,
+                                );
+
+                                if (result == true && mounted) {
+                                  _loadTasks();
+                                }
+                              },
+                              child: AppCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            task.title,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleLarge,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: AppSizes.sm),
-                                      StatusBadge(status: task.status),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppSizes.sm),
-                                  Text(task.description),
-                                  const SizedBox(height: AppSizes.md),
-                                  Wrap(
-                                    spacing: AppSizes.sm,
-                                    runSpacing: AppSizes.sm,
-                                    children: [
-                                      PriorityBadge(priority: task.priority),
-                                      _InfoChip(
-                                        icon: Icons.calendar_today_outlined,
-                                        label:
-                                            '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
-                                      ),
-                                    ],
-                                  ),
-                                  if (!isAdmin) ...[
-                                    const SizedBox(height: AppSizes.lg),
-                                    DropdownButtonFormField<String>(
-                                      initialValue: task.status,
-                                      decoration: InputDecoration(
-                                        labelText: 'update_status'.tr(),
-                                      ),
-                                      items: [
-                                        DropdownMenuItem(
-                                          value: 'pending',
-                                          child: Text('pending'.tr()),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'in_progress',
-                                          child: Text('in_progress'.tr()),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'completed',
-                                          child: Text('completed'.tr()),
+                                        const SizedBox(width: AppSizes.sm),
+                                        StatusBadge(status: task.status),
+                                      ],
+                                    ),
+                                    const SizedBox(height: AppSizes.sm),
+                                    Text(task.description),
+                                    const SizedBox(height: AppSizes.md),
+                                    Wrap(
+                                      spacing: AppSizes.sm,
+                                      runSpacing: AppSizes.sm,
+                                      children: [
+                                        PriorityBadge(priority: task.priority),
+                                        _InfoChip(
+                                          icon: Icons.calendar_today_outlined,
+                                          label:
+                                              '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
                                         ),
                                       ],
-                                      onChanged: (value) {
-                                        if (value == null || user == null)
-                                          return;
-
-                                        context
-                                            .read<TasksCubit>()
-                                            .updateTaskStatus(
-                                              taskId: task.id,
-                                              status: value,
-                                              isAdmin: false,
-                                              currentUserId: user.id,
-                                            );
-                                      },
                                     ),
+                                    if (!isAdmin) ...[
+                                      const SizedBox(height: AppSizes.lg),
+                                      DropdownButtonFormField<String>(
+                                        initialValue: task.status,
+                                        decoration: InputDecoration(
+                                          labelText: 'update_status'.tr(),
+                                        ),
+                                        items: [
+                                          DropdownMenuItem(
+                                            value: 'pending',
+                                            child: Text('pending'.tr()),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'in_progress',
+                                            child: Text('in_progress'.tr()),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'completed',
+                                            child: Text('completed'.tr()),
+                                          ),
+                                        ],
+                                        onChanged: (value) {
+                                          if (value == null || user == null) {
+                                            return;
+                                          }
+
+                                          context
+                                              .read<TasksCubit>()
+                                              .updateTaskStatus(
+                                                taskId: task.id,
+                                                status: value,
+                                                isAdmin: false,
+                                                currentUserId: user.id,
+                                              );
+                                        },
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           );

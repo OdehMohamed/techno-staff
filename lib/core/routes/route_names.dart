@@ -10,4 +10,6 @@ class RouteNames {
   static const String addEmployee = '/add-employee';
   static const String tasks = '/tasks';
   static const String addTask = '/add-task';
+  static const String taskDetails = '/task-details';
+  static const String editTask = '/edit-task';
 }
