@@ -3,6 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/dashboard/data/repositories/dashboard_repository.dart';
+import 'package:techno_staff/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:techno_staff/features/tasks/presentation/cubit/task_details_cubit.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
@@ -24,6 +26,7 @@ Future<void> main() async {
   final userRepository = UserRepository();
   final employeesRepository = EmployeesRepository();
   final tasksRepository = TasksRepository(FirebaseFirestore.instance);
+  final dashboardRepository = DashboardRepository();
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -48,6 +51,10 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => TaskDetailsCubit(tasksRepository: tasksRepository),
+          ),
+          BlocProvider(
+            create: (_) =>
+                DashboardCubit(dashboardRepository: dashboardRepository),
           ),
         ],
         child: const TechnoStaffApp(),

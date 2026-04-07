@@ -77,5 +77,8 @@
   "failed_to_update_task": "فشل في تحديث المهمة",
   "assigned_to": "مُسندة إلى",
   "assigned_by": "أُسندت بواسطة",
-  "failed_to_load_task_details": "فشل في تحميل تفاصيل المهمة"
+  "failed_to_load_task_details": "فشل في تحميل تفاصيل المهمة",
+  "performance_overview": "نظرة عامة على الأداء",
+  "performance_overview_subtitle": "تابع نسبة الإنجاز والإنتاجية العامة",
+  "completion_rate": "نسبة الإنجاز"
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
+import '../../../../features/dashboard/presentation/cubit/dashboard_state.dart';
 import '../../../../features/tasks/presentation/cubit/tasks_cubit.dart';
 import '../../../../features/tasks/presentation/cubit/tasks_state.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -28,6 +30,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
         context.read<TasksCubit>().fetchTasksForUser(user.id);
+        context.read<DashboardCubit>().loadEmployeeStats(user.id);
       }
     });
   }
@@ -44,157 +47,180 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),
-            child: BlocBuilder<TasksCubit, TasksState>(
-              builder: (context, state) {
-                if (state.status == TasksStatus.loading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            child: BlocBuilder<DashboardCubit, DashboardState>(
+              builder: (context, dashboardState) {
+                return BlocBuilder<TasksCubit, TasksState>(
+                  builder: (context, tasksState) {
+                    if (dashboardState.status == DashboardStatus.loading ||
+                        tasksState.status == TasksStatus.loading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                if (state.status == TasksStatus.error) {
-                  return const EmptyStateWidget(
-                    icon: Icons.error_outline,
-                    titleKey: 'failed_to_load_tasks',
-                  );
-                }
+                    if (dashboardState.status == DashboardStatus.error ||
+                        tasksState.status == TasksStatus.error) {
+                      return const EmptyStateWidget(
+                        icon: Icons.error_outline,
+                        titleKey: 'failed_to_load_dashboard',
+                      );
+                    }
 
-                final tasks = state.tasks;
-                final completedTasks = tasks
-                    .where((task) => task.status == 'completed')
-                    .length;
-                final pendingTasks = tasks
-                    .where((task) => task.status == 'pending')
-                    .length;
-                final inProgressTasks = tasks
-                    .where((task) => task.status == 'in_progress')
-                    .length;
+                    final stats = dashboardState.stats;
+                    final tasks = tasksState.tasks;
 
-                return SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionHeader(
-                        title: 'employee_home'.tr(),
-                        subtitle: user == null
-                            ? null
-                            : '${'welcome_back'.tr()}, ${user.name}',
-                      ),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 700;
+                    final totalTasks = stats['totalTasks'] ?? 0;
+                    final completedTasks = stats['completedTasks'] ?? 0;
+                    final inProgressTasks = stats['inProgressTasks'] ?? 0;
+                    final pendingTasks = stats['pendingTasks'] ?? 0;
+                    final completionRate = totalTasks == 0
+                        ? 0
+                        : ((completedTasks / totalTasks) * 100).round();
 
-                          if (isWide) {
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: _EmployeeStatCard(
+                    return SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader(
+                            title: 'employee_home'.tr(),
+                            subtitle: user == null
+                                ? null
+                                : '${'welcome_back'.tr()}, ${user.name}',
+                          ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 700;
+
+                              if (isWide) {
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: _EmployeeStatCard(
+                                        title: 'my_tasks'.tr(),
+                                        value: totalTasks.toString(),
+                                        icon: Icons.task_alt_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _EmployeeStatCard(
+                                        title: 'completed'.tr(),
+                                        value: completedTasks.toString(),
+                                        icon: Icons.check_circle_outline,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _EmployeeStatCard(
+                                        title: 'in_progress'.tr(),
+                                        value: inProgressTasks.toString(),
+                                        icon: Icons.pending_actions_outlined,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _EmployeeStatCard(
                                     title: 'my_tasks'.tr(),
-                                    value: tasks.length.toString(),
+                                    value: totalTasks.toString(),
                                     icon: Icons.task_alt_outlined,
                                   ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _EmployeeStatCard(
+                                  const SizedBox(height: AppSizes.md),
+                                  _EmployeeStatCard(
                                     title: 'completed'.tr(),
                                     value: completedTasks.toString(),
                                     icon: Icons.check_circle_outline,
                                   ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _EmployeeStatCard(
+                                  const SizedBox(height: AppSizes.md),
+                                  _EmployeeStatCard(
                                     title: 'in_progress'.tr(),
                                     value: inProgressTasks.toString(),
                                     icon: Icons.pending_actions_outlined,
                                   ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: AppSizes.xl),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${'completion_rate'.tr()}: $completionRate%',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: AppSizes.sm),
+                                Text(
+                                  '${'pending'.tr()}: $pendingTasks',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: LinearProgressIndicator(
+                                    minHeight: 10,
+                                    value: totalTasks == 0
+                                        ? 0
+                                        : completedTasks / totalTasks,
+                                  ),
                                 ),
                               ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              _EmployeeStatCard(
-                                title: 'my_tasks'.tr(),
-                                value: tasks.length.toString(),
-                                icon: Icons.task_alt_outlined,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _EmployeeStatCard(
-                                title: 'completed'.tr(),
-                                value: completedTasks.toString(),
-                                icon: Icons.check_circle_outline,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _EmployeeStatCard(
-                                title: 'in_progress'.tr(),
-                                value: inProgressTasks.toString(),
-                                icon: Icons.pending_actions_outlined,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'my_tasks'.tr(),
-                        subtitle: 'employee_tasks_subtitle'.tr(),
-                      ),
-                      if (tasks.isEmpty)
-                        const EmptyStateWidget(
-                          icon: Icons.task_alt_outlined,
-                          titleKey: 'no_tasks_yet',
-                        )
-                      else
-                        Column(
-                          children: tasks.take(3).map((task) {
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSizes.md,
-                              ),
-                              child: AppCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                            ),
+                          ),
+                          const SizedBox(height: AppSizes.xl),
+                          SectionHeader(
+                            title: 'my_tasks'.tr(),
+                            subtitle: 'employee_tasks_subtitle'.tr(),
+                          ),
+                          if (tasks.isEmpty)
+                            const EmptyStateWidget(
+                              icon: Icons.task_alt_outlined,
+                              titleKey: 'no_tasks_yet',
+                            )
+                          else
+                            Column(
+                              children: tasks.take(3).map((task) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSizes.md,
+                                  ),
+                                  child: AppCard(
+                                    child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            task.title,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.titleLarge,
-                                          ),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                task.title,
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.titleLarge,
+                                              ),
+                                            ),
+                                            const SizedBox(width: AppSizes.sm),
+                                            StatusBadge(status: task.status),
+                                          ],
                                         ),
-                                        const SizedBox(width: AppSizes.sm),
-                                        StatusBadge(status: task.status),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppSizes.sm),
-                                    Text(task.description),
-                                    const SizedBox(height: AppSizes.md),
-                                    Wrap(
-                                      spacing: AppSizes.sm,
-                                      runSpacing: AppSizes.sm,
-                                      children: [
+                                        const SizedBox(height: AppSizes.sm),
+                                        Text(task.description),
+                                        const SizedBox(height: AppSizes.md),
                                         PriorityBadge(priority: task.priority),
-                                        _EmployeeInfoChip(
-                                          icon: Icons.circle,
-                                          label: pendingTasks.toString(),
-                                          useSmallIcon: true,
-                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                    ],
-                  ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -242,37 +268,6 @@ class _EmployeeStatCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmployeeInfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool useSmallIcon;
-
-  const _EmployeeInfoChip({
-    required this.icon,
-    required this.label,
-    this.useSmallIcon = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: useSmallIcon ? 10 : 16),
-          const SizedBox(width: 6),
-          Text(label),
         ],
       ),
     );

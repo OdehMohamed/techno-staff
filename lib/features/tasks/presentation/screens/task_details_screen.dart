@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
+import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -36,25 +36,30 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-
+    final currentUser = context.read<AuthCubit>().state.user;
+    final canEditTask =
+        currentUser != null &&
+        (currentUser.role == 'admin' || task.assignedBy == currentUser.id);
     return Scaffold(
       appBar: AppBar(
         title: Text('task_details'.tr()),
-        actions: [
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.pushNamed(
-                context,
-                RouteNames.editTask,
-                arguments: task,
-              );
 
-              if (context.mounted && result == true) {
-                Navigator.pop(context, true);
-              }
-            },
-            icon: const Icon(Icons.edit_outlined),
-          ),
+        actions: [
+          if (canEditTask)
+            IconButton(
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                  context,
+                  RouteNames.editTask,
+                  arguments: task,
+                );
+
+                if (context.mounted && result == true) {
+                  Navigator.pop(context, true);
+                }
+              },
+              icon: const Icon(Icons.edit_outlined),
+            ),
         ],
       ),
       body: Padding(

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
@@ -111,7 +112,19 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth > 700 ? 550.0 : double.infinity;
-
+    final currentUser = context.read<AuthCubit>().state.user;
+    final canEditTask =
+        currentUser != null &&
+        (currentUser.role == 'admin' ||
+            widget.task.assignedBy == currentUser.id);
+    if (!canEditTask) {
+      return Scaffold(
+        appBar: AppBar(title: Text('edit_task'.tr())),
+        body: const Center(
+          child: Text('You are not allowed to edit this task'),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text('edit_task'.tr())),
       body: Center(
