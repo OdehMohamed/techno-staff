@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function currentUserDoc() {
+      return get(currentUserPath());
+    }
+
+    function currentUserData() {
+      return currentUserDoc().data;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(currentUserPath()) &&
+        currentUserData().role == 'admin';
+    }
+
+    function isCurrentUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function taskCreator() {
+      return resource.data.assignedBy == request.auth.uid;
+    }
+
+    function taskAssignee() {
+      return resource.data.assignedTo == request.auth.uid;
+    }
+
+    function creatingOwnTask() {
+      return request.resource.data.assignedBy == request.auth.uid;
+    }
+
+    function onlyStatusChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || isCurrentUser(userId);
+      allow create: if isAdmin() || isCurrentUser(userId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAdmin() || taskCreator() || taskAssignee();
+
+      allow create: if signedIn() && (
+        isAdmin() || creatingOwnTask()
+      );
+
+      allow update: if isAdmin()
+        || taskCreator()
+        || (taskAssignee() && onlyStatusChanged());
+
+      allow delete: if isAdmin();
+    }
+  }
+}
