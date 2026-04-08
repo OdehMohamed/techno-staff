@@ -23,6 +23,10 @@ class PdfReportService {
       await rootBundle.load('assets/fonts/Cairo-Bold.ttf'),
     );
 
+    final logo = pw.MemoryImage(
+      (await rootBundle.load('assets/images/logo.png')).buffer.asUint8List(),
+    );
+
     final completedTasks = tasks
         .where((task) => task.status == 'completed')
         .length;
@@ -47,81 +51,127 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         theme: pw.ThemeData.withFont(base: regularFont, bold: boldFont),
+        footer: (context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(top: 10),
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(
+              'Generated at: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}',
+              style: pw.TextStyle(
+                font: regularFont,
+                fontSize: 10,
+                color: PdfColors.grey700,
+              ),
+            ),
+          );
+        },
         build: (context) => [
-          pw.Text(
-            'Employee Monthly Report',
-            style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Image(logo, width: 60, height: 60),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Text(
+                    'Techno Staff',
+                    style: pw.TextStyle(font: boldFont, fontSize: 22),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'Employee Monthly Report',
+                    style: pw.TextStyle(
+                      font: regularFont,
+                      fontSize: 12,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          pw.SizedBox(height: 12),
-          pw.Text('Employee: ${employee.name}'),
-          pw.Text('Email: ${employee.email}'),
-          pw.Text('Month: ${DateFormat('yyyy-MM').format(month)}'),
+          pw.SizedBox(height: 10),
+          pw.Divider(color: PdfColors.grey400),
           pw.SizedBox(height: 20),
-          pw.Text(
-            'Summary',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 8),
+
           pw.Container(
-            padding: const pw.EdgeInsets.all(12),
+            padding: const pw.EdgeInsets.all(14),
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey400),
-              borderRadius: pw.BorderRadius.circular(8),
+              color: PdfColors.grey100,
+              borderRadius: pw.BorderRadius.circular(10),
             ),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Total Tasks: $totalTasks'),
-                pw.Text('Completed Tasks: $completedTasks'),
-                pw.Text('In Progress Tasks: $inProgressTasks'),
-                pw.Text('Pending Tasks: $pendingTasks'),
-                pw.Text('Overdue Tasks: $overdueTasks'),
-                pw.Text('Completion Rate: $completionRate%'),
+                pw.Text(
+                  'Employee Information',
+                  style: pw.TextStyle(font: boldFont, fontSize: 14),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Employee: ${employee.name}',
+                  style: pw.TextStyle(font: regularFont),
+                ),
+                pw.Text(
+                  'Email: ${employee.email}',
+                  style: pw.TextStyle(font: regularFont),
+                ),
+                pw.Text(
+                  'Month: ${DateFormat('yyyy-MM').format(month)}',
+                  style: pw.TextStyle(font: regularFont),
+                ),
               ],
             ),
           ),
+
           pw.SizedBox(height: 20),
+
+          pw.Text('Summary', style: pw.TextStyle(font: boldFont, fontSize: 18)),
+          pw.SizedBox(height: 10),
+
+          pw.Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildStatBox('Total', totalTasks, regularFont, boldFont),
+              _buildStatBox('Completed', completedTasks, regularFont, boldFont),
+              _buildStatBox(
+                'In Progress',
+                inProgressTasks,
+                regularFont,
+                boldFont,
+              ),
+              _buildStatBox('Pending', pendingTasks, regularFont, boldFont),
+              _buildStatBox('Overdue', overdueTasks, regularFont, boldFont),
+              _buildStatBox(
+                'Rate',
+                completionRate,
+                regularFont,
+                boldFont,
+                suffix: '%',
+              ),
+            ],
+          ),
+
+          pw.SizedBox(height: 24),
+
           pw.Text(
             'Tasks Details',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            style: pw.TextStyle(font: boldFont, fontSize: 18),
           ),
-          pw.SizedBox(height: 8),
+          pw.SizedBox(height: 10),
+
           if (tasks.isEmpty)
-            pw.Text('No tasks found for this month.')
+            pw.Text(
+              'No tasks found for this month.',
+              style: pw.TextStyle(font: regularFont),
+            )
           else
-            pw.TableHelper.fromTextArray(
-              headers: const ['Title', 'Priority', 'Status', 'Due Date'],
-              data: tasks.map((task) {
-                return [
-                  pw.Directionality(
-                    textDirection: pw.TextDirection.rtl,
-                    child: pw.Text(
-                      task.title,
-                      textDirection: pw.TextDirection.rtl,
-                      style: pw.TextStyle(font: regularFont),
-                    ),
-                  ),
-                  pw.Text(
-                    task.priority,
-                    style: pw.TextStyle(font: regularFont),
-                  ),
-                  pw.Text(task.status, style: pw.TextStyle(font: regularFont)),
-                  pw.Text(
-                    DateFormat('yyyy-MM-dd').format(task.dueDate),
-                    style: pw.TextStyle(font: regularFont),
-                  ),
-                ];
-              }).toList(),
-              border: pw.TableBorder.all(color: PdfColors.grey400),
-              headerStyle: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                font: boldFont,
-              ),
-              cellStyle: pw.TextStyle(font: regularFont),
-              headerDecoration: const pw.BoxDecoration(
-                color: PdfColors.grey200,
-              ),
-              cellPadding: const pw.EdgeInsets.all(8),
+            _buildTasksTable(
+              tasks: tasks,
+              regularFont: regularFont,
+              boldFont: boldFont,
             ),
         ],
       ),
@@ -134,5 +184,116 @@ class PdfReportService {
 
     await file.writeAsBytes(await pdf.save());
     return file;
+  }
+
+  pw.Widget _buildStatBox(
+    String title,
+    int value,
+    pw.Font regularFont,
+    pw.Font boldFont, {
+    String suffix = '',
+  }) {
+    return pw.Container(
+      width: 95,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey400),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              font: regularFont,
+              fontSize: 10,
+              color: PdfColors.grey700,
+            ),
+            textAlign: pw.TextAlign.center,
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            '$value$suffix',
+            style: pw.TextStyle(font: boldFont, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildTasksTable({
+    required List<TaskModel> tasks,
+    required pw.Font regularFont,
+    required pw.Font boldFont,
+  }) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey400),
+      columnWidths: {
+        0: const pw.FlexColumnWidth(3.0),
+        1: const pw.FlexColumnWidth(1.4),
+        2: const pw.FlexColumnWidth(1.6),
+        3: const pw.FlexColumnWidth(1.6),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          children: [
+            _buildHeaderCell('Title', boldFont),
+            _buildHeaderCell('Priority', boldFont),
+            _buildHeaderCell('Status', boldFont),
+            _buildHeaderCell('Due Date', boldFont),
+          ],
+        ),
+        ...tasks.map(
+          (task) => pw.TableRow(
+            children: [
+              _buildArabicCell(task.title, regularFont),
+              _buildBodyCell(task.priority, regularFont),
+              _buildBodyCell(task.status, regularFont),
+              _buildBodyCell(
+                DateFormat('yyyy-MM-dd').format(task.dueDate),
+                regularFont,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildHeaderCell(String text, pw.Font boldFont) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(font: boldFont, fontSize: 11),
+        textAlign: pw.TextAlign.center,
+      ),
+    );
+  }
+
+  pw.Widget _buildBodyCell(String text, pw.Font regularFont) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(font: regularFont, fontSize: 10),
+        textAlign: pw.TextAlign.center,
+      ),
+    );
+  }
+
+  pw.Widget _buildArabicCell(String text, pw.Font regularFont) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Directionality(
+        textDirection: pw.TextDirection.rtl,
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(font: regularFont, fontSize: 10),
+          textAlign: pw.TextAlign.right,
+        ),
+      ),
+    );
   }
 }
