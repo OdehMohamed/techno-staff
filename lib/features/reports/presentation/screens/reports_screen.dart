@@ -144,302 +144,335 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
-            child: BlocBuilder<ReportsCubit, ReportsState>(
-              builder: (context, state) {
-                final completedTasks = state.tasks
-                    .where((task) => task.status == 'completed')
-                    .length;
-                final inProgressTasks = state.tasks
-                    .where((task) => task.status == 'in_progress')
-                    .length;
-                final pendingTasks = state.tasks
-                    .where((task) => task.status == 'pending')
-                    .length;
-                final overdueTasks = state.tasks
-                    .where(
-                      (task) =>
-                          task.status != 'completed' &&
-                          task.dueDate.isBefore(DateTime.now()),
-                    )
-                    .length;
+            child: BlocListener<ReportsCubit, ReportsState>(
+              listener: (context, state) {
+                if (state.status == ReportsStatus.error &&
+                    state.errorMessage != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(state.errorMessage!.tr())),
+                  );
+                }
+              },
+              child: BlocBuilder<ReportsCubit, ReportsState>(
+                builder: (context, state) {
+                  final completedTasks = state.tasks
+                      .where((task) => task.status == 'completed')
+                      .length;
+                  final inProgressTasks = state.tasks
+                      .where((task) => task.status == 'in_progress')
+                      .length;
+                  final pendingTasks = state.tasks
+                      .where((task) => task.status == 'pending')
+                      .length;
+                  final overdueTasks = state.tasks
+                      .where(
+                        (task) =>
+                            task.status != 'completed' &&
+                            task.dueDate.isBefore(DateTime.now()),
+                      )
+                      .length;
 
-                final totalTasks = state.tasks.length;
-                final completionRate = totalTasks == 0
-                    ? 0
-                    : ((completedTasks / totalTasks) * 100).round();
+                  final totalTasks = state.tasks.length;
+                  final completionRate = totalTasks == 0
+                      ? 0
+                      : ((completedTasks / totalTasks) * 100).round();
 
-                return SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionHeader(
-                        title: 'reports'.tr(),
-                        subtitle: 'reports_subtitle'.tr(),
-                      ),
-                      AppCard(
-                        child: Column(
-                          children: [
-                            DropdownButtonFormField<AppUser>(
-                              initialValue: _selectedEmployee,
-                              decoration: InputDecoration(
-                                labelText: 'select_employee'.tr(),
-                              ),
-                              items: state.employees
-                                  .map(
-                                    (employee) => DropdownMenuItem(
-                                      value: employee,
-                                      child: Text(employee.name),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedEmployee = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: AppSizes.md),
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                '${'selected_month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
-                              ),
-                              trailing: const Icon(Icons.calendar_month),
-                              onTap: _pickMonth,
-                            ),
-                            const SizedBox(height: AppSizes.md),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: state.status == ReportsStatus.loading
-                                    ? null
-                                    : _generateReport,
-                                child: state.status == ReportsStatus.loading
-                                    ? const CircularProgressIndicator()
-                                    : Text('generate_report'.tr()),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      if (state.selectedEmployee != null) ...[
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         SectionHeader(
-                          title:
-                              '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
-                          subtitle:
-                              '${'month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                          title: 'reports'.tr(),
+                          subtitle: 'reports_subtitle'.tr(),
                         ),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 900;
-                            final isMedium = constraints.maxWidth >= 600;
-
-                            if (isWide) {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: _ReportStatCard(
-                                      title: 'total_tasks'.tr(),
-                                      value: totalTasks.toString(),
-                                      icon: Icons.task_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _ReportStatCard(
-                                      title: 'completed'.tr(),
-                                      value: completedTasks.toString(),
-                                      icon: Icons.check_circle_outline,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _ReportStatCard(
-                                      title: 'in_progress'.tr(),
-                                      value: inProgressTasks.toString(),
-                                      icon: Icons.pending_actions_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _ReportStatCard(
-                                      title: 'overdue_tasks'.tr(),
-                                      value: overdueTasks.toString(),
-                                      icon: Icons.warning_amber_rounded,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
-
-                            if (isMedium) {
-                              return Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ReportStatCard(
-                                          title: 'total_tasks'.tr(),
-                                          value: totalTasks.toString(),
-                                          icon: Icons.task_outlined,
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppSizes.md),
-                                      Expanded(
-                                        child: _ReportStatCard(
-                                          title: 'completed'.tr(),
-                                          value: completedTasks.toString(),
-                                          icon: Icons.check_circle_outline,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppSizes.md),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ReportStatCard(
-                                          title: 'in_progress'.tr(),
-                                          value: inProgressTasks.toString(),
-                                          icon: Icons.pending_actions_outlined,
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppSizes.md),
-                                      Expanded(
-                                        child: _ReportStatCard(
-                                          title: 'overdue_tasks'.tr(),
-                                          value: overdueTasks.toString(),
-                                          icon: Icons.warning_amber_rounded,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            }
-
-                            return Column(
-                              children: [
-                                _ReportStatCard(
-                                  title: 'total_tasks'.tr(),
-                                  value: totalTasks.toString(),
-                                  icon: Icons.task_outlined,
-                                ),
-                                const SizedBox(height: AppSizes.md),
-                                _ReportStatCard(
-                                  title: 'completed'.tr(),
-                                  value: completedTasks.toString(),
-                                  icon: Icons.check_circle_outline,
-                                ),
-                                const SizedBox(height: AppSizes.md),
-                                _ReportStatCard(
-                                  title: 'in_progress'.tr(),
-                                  value: inProgressTasks.toString(),
-                                  icon: Icons.pending_actions_outlined,
-                                ),
-                                const SizedBox(height: AppSizes.md),
-                                _ReportStatCard(
-                                  title: 'overdue_tasks'.tr(),
-                                  value: overdueTasks.toString(),
-                                  icon: Icons.warning_amber_rounded,
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppSizes.lg),
                         AppCard(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '${'completion_rate'.tr()}: $completionRate%',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: AppSizes.sm),
-                              Text(
-                                '${'pending'.tr()}: $pendingTasks',
-                                style: Theme.of(context).textTheme.bodyMedium,
+                              DropdownButtonFormField<AppUser>(
+                                initialValue: _selectedEmployee,
+                                decoration: InputDecoration(
+                                  labelText: 'select_employee'.tr(),
+                                ),
+                                items: state.employees
+                                    .map(
+                                      (employee) => DropdownMenuItem(
+                                        value: employee,
+                                        child: Text(employee.name),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedEmployee = value;
+                                  });
+                                },
                               ),
                               const SizedBox(height: AppSizes.md),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(999),
-                                child: LinearProgressIndicator(
-                                  minHeight: 10,
-                                  value: totalTasks == 0
-                                      ? 0
-                                      : completedTasks / totalTasks,
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  '${'selected_month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                                ),
+                                trailing: const Icon(Icons.calendar_month),
+                                onTap: _pickMonth,
+                              ),
+                              const SizedBox(height: AppSizes.md),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      state.status == ReportsStatus.loading
+                                      ? null
+                                      : _generateReport,
+                                  child: state.status == ReportsStatus.loading
+                                      ? const CircularProgressIndicator()
+                                      : Text('generate_report'.tr()),
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: AppSizes.xl),
-                        SectionHeader(
-                          title: 'tasks'.tr(),
-                          subtitle: 'monthly_tasks_subtitle'.tr(),
-                        ),
-                        if (state.tasks.isEmpty)
-                          const EmptyStateWidget(
-                            icon: Icons.assignment_outlined,
-                            titleKey: 'no_tasks_found_for_month',
-                          )
-                        else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: state.tasks.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: AppSizes.md),
-                            itemBuilder: (context, index) {
-                              final task = state.tasks[index];
+                        if (state.selectedEmployee != null) ...[
+                          SectionHeader(
+                            title:
+                                '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
+                            subtitle:
+                                '${'month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                          ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 900;
+                              final isMedium = constraints.maxWidth >= 600;
 
-                              return AppCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              if (isWide) {
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'total_tasks'.tr(),
+                                        value: totalTasks.toString(),
+                                        icon: Icons.task_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'completed'.tr(),
+                                        value: completedTasks.toString(),
+                                        icon: Icons.check_circle_outline,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'in_progress'.tr(),
+                                        value: inProgressTasks.toString(),
+                                        icon: Icons.pending_actions_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'overdue_tasks'.tr(),
+                                        value: overdueTasks.toString(),
+                                        icon: Icons.warning_amber_rounded,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              if (isMedium) {
+                                return Column(
                                   children: [
                                     Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
                                       children: [
                                         Expanded(
-                                          child: Text(
-                                            task.title,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.titleLarge,
+                                          child: _ReportStatCard(
+                                            title: 'total_tasks'.tr(),
+                                            value: totalTasks.toString(),
+                                            icon: Icons.task_outlined,
                                           ),
                                         ),
-                                        const SizedBox(width: AppSizes.sm),
-                                        StatusBadge(status: task.status),
+                                        const SizedBox(width: AppSizes.md),
+                                        Expanded(
+                                          child: _ReportStatCard(
+                                            title: 'completed'.tr(),
+                                            value: completedTasks.toString(),
+                                            icon: Icons.check_circle_outline,
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                    const SizedBox(height: AppSizes.sm),
-                                    Text(task.description),
                                     const SizedBox(height: AppSizes.md),
-                                    Wrap(
-                                      spacing: AppSizes.sm,
-                                      runSpacing: AppSizes.sm,
+                                    Row(
                                       children: [
-                                        PriorityBadge(priority: task.priority),
-                                        _InfoChip(
-                                          icon: Icons.calendar_today_outlined,
-                                          label:
-                                              '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                        Expanded(
+                                          child: _ReportStatCard(
+                                            title: 'in_progress'.tr(),
+                                            value: inProgressTasks.toString(),
+                                            icon:
+                                                Icons.pending_actions_outlined,
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSizes.md),
+                                        Expanded(
+                                          child: _ReportStatCard(
+                                            title: 'overdue_tasks'.tr(),
+                                            value: overdueTasks.toString(),
+                                            icon: Icons.warning_amber_rounded,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ],
-                                ),
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _ReportStatCard(
+                                    title: 'total_tasks'.tr(),
+                                    value: totalTasks.toString(),
+                                    icon: Icons.task_outlined,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  _ReportStatCard(
+                                    title: 'completed'.tr(),
+                                    value: completedTasks.toString(),
+                                    icon: Icons.check_circle_outline,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  _ReportStatCard(
+                                    title: 'in_progress'.tr(),
+                                    value: inProgressTasks.toString(),
+                                    icon: Icons.pending_actions_outlined,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  _ReportStatCard(
+                                    title: 'overdue_tasks'.tr(),
+                                    value: overdueTasks.toString(),
+                                    icon: Icons.warning_amber_rounded,
+                                  ),
+                                ],
                               );
                             },
                           ),
+                          const SizedBox(height: AppSizes.lg),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${'completion_rate'.tr()}: $completionRate%',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: AppSizes.sm),
+                                Text(
+                                  '${'pending'.tr()}: $pendingTasks',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: LinearProgressIndicator(
+                                    minHeight: 10,
+                                    value: totalTasks == 0
+                                        ? 0
+                                        : completedTasks / totalTasks,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSizes.lg),
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  state.status == ReportsStatus.exportingPdf
+                                  ? null
+                                  : () {
+                                      context.read<ReportsCubit>().exportPdf();
+                                    },
+                              icon: const Icon(Icons.picture_as_pdf_outlined),
+                              label: Text(
+                                state.status == ReportsStatus.exportingPdf
+                                    ? 'exporting_pdf'.tr()
+                                    : 'export_pdf'.tr(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSizes.xl),
+                          SectionHeader(
+                            title: 'tasks'.tr(),
+                            subtitle: 'monthly_tasks_subtitle'.tr(),
+                          ),
+                          if (state.tasks.isEmpty)
+                            const EmptyStateWidget(
+                              icon: Icons.assignment_outlined,
+                              titleKey: 'no_tasks_found_for_month',
+                            )
+                          else
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: state.tasks.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: AppSizes.md),
+                              itemBuilder: (context, index) {
+                                final task = state.tasks[index];
+
+                                return AppCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              task.title,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.titleLarge,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppSizes.sm),
+                                          StatusBadge(status: task.status),
+                                        ],
+                                      ),
+                                      const SizedBox(height: AppSizes.sm),
+                                      Text(task.description),
+                                      const SizedBox(height: AppSizes.md),
+                                      Wrap(
+                                        spacing: AppSizes.sm,
+                                        runSpacing: AppSizes.sm,
+                                        children: [
+                                          PriorityBadge(
+                                            priority: task.priority,
+                                          ),
+                                          _InfoChip(
+                                            icon: Icons.calendar_today_outlined,
+                                            label:
+                                                '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
                       ],
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),

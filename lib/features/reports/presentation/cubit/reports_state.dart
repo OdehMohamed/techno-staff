@@ -1,7 +1,14 @@
 import '../../../auth/domain/models/app_user.dart';
 import '../../../tasks/data/models/task_model.dart';
 
-enum ReportsStatus { initial, loading, loaded, error }
+enum ReportsStatus {
+  initial,
+  loading,
+  loaded,
+  exportingPdf,
+  pdfExported,
+  error,
+}
 
 class ReportsState {
   final ReportsStatus status;
