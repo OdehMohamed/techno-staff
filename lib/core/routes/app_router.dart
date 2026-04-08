@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/features/reports/presentation/screens/reports_screen.dart';
 import '../../features/employees/presentation/screens/add_employee_screen.dart';
 import '../../features/employees/presentation/screens/employees_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -85,7 +86,11 @@ class AppRouter {
           builder: (_) => EditTaskScreen(task: task),
           settings: settings,
         );
-
+      case RouteNames.reports:
+        return MaterialPageRoute(
+          builder: (_) => const ReportsScreen(),
+          settings: settings,
+        );
       default:
         return MaterialPageRoute(
           builder: (_) =>

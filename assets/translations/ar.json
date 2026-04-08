@@ -80,5 +80,17 @@
   "failed_to_load_task_details": "فشل في تحميل تفاصيل المهمة",
   "performance_overview": "نظرة عامة على الأداء",
   "performance_overview_subtitle": "تابع نسبة الإنجاز والإنتاجية العامة",
-  "completion_rate": "نسبة الإنجاز"
+  "completion_rate": "نسبة الإنجاز",
+  "reports": "التقارير",
+  "reports_subtitle": "أنشئ تقارير شهرية لأداء الموظفين",
+  "select_employee": "اختر الموظف",
+  "selected_month": "الشهر المحدد",
+  "select_month": "اختر الشهر",
+  "generate_report": "إنشاء التقرير",
+  "employee_report": "تقرير الموظف",
+  "month": "الشهر",
+  "monthly_tasks_subtitle": "المهام المسندة والمنجزة خلال الشهر المحدد",
+  "no_tasks_found_for_month": "لا توجد مهام لهذا الشهر",
+  "failed_to_load_reports": "فشل في تحميل التقارير",
+  "year": "السنة"
 }

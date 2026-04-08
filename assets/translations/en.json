@@ -80,5 +80,17 @@
   "failed_to_load_task_details": "Failed to load task details",
   "performance_overview": "Performance Overview",
   "performance_overview_subtitle": "Track completion rate and overall productivity",
-  "completion_rate": "Completion Rate"
+  "completion_rate": "Completion Rate",
+  "reports": "Reports",
+  "reports_subtitle": "Generate monthly performance reports for employees",
+  "select_employee": "Select Employee",
+  "selected_month": "Selected Month",
+  "select_month": "Select Month",
+  "generate_report": "Generate Report",
+  "employee_report": "Employee Report",
+  "month": "Month",
+  "monthly_tasks_subtitle": "Tasks completed and assigned during the selected month",
+  "no_tasks_found_for_month": "No tasks found for this month",
+  "failed_to_load_reports": "Failed to load reports",
+  "year": "Year"
 }
