@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:techno_staff/shared/widgets/app_pie_chart.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
@@ -240,6 +241,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             subtitle:
                                 '${'month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
                           ),
+                          const SizedBox(height: AppSizes.md),
+
+                          /// 🔥 PIE CHART
+                          AppPieChart(
+                            completed: completedTasks,
+                            inProgress: inProgressTasks,
+                            pending: pendingTasks,
+                          ),
+                          const SizedBox(height: AppSizes.sm),
+
+                          /// 🔥 LEGEND
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: const [
+                              _LegendItem(
+                                color: Colors.green,
+                                label: 'Completed',
+                              ),
+                              _LegendItem(
+                                color: Colors.orange,
+                                label: 'In Progress',
+                              ),
+                              _LegendItem(color: Colors.grey, label: 'Pending'),
+                            ],
+                          ),
+
+                          const SizedBox(height: AppSizes.lg),
                           LayoutBuilder(
                             builder: (context, constraints) {
                               final isWide = constraints.maxWidth >= 900;
@@ -542,6 +570,28 @@ class _InfoChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [Icon(icon, size: 16), const SizedBox(width: 6), Text(label)],
       ),
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendItem({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
     );
   }
 }
