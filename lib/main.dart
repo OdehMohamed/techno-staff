@@ -37,7 +37,10 @@ Future<void> main() async {
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {
-      AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
+      AppNavigator.navigatorKey.currentState?.pushNamed(
+        RouteNames.taskDetails,
+        arguments: payload,
+      );
     },
   );
 
@@ -46,15 +49,31 @@ Future<void> main() async {
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
+    final taskId = message.data['taskId'];
+
+    if (taskId != null) {
+      AppNavigator.navigatorKey.currentState?.pushNamed(
+        RouteNames.taskDetails,
+        arguments: taskId,
+      );
+    }
   });
+
   final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
   if (initialMessage != null) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
-    });
+    final taskId = initialMessage.data['taskId'];
+
+    if (taskId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.taskDetails,
+          arguments: taskId,
+        );
+      });
+    }
   }
+
   final authRepository = AuthRepository();
   final userRepository = UserRepository();
   final employeesRepository = EmployeesRepository();

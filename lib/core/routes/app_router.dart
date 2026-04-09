@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:techno_staff/features/reports/presentation/screens/reports_screen.dart';
+import 'package:techno_staff/features/tasks/presentation/screens/task_details_loader_screen.dart';
 import '../../features/employees/presentation/screens/add_employee_screen.dart';
 import '../../features/employees/presentation/screens/employees_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -74,9 +75,26 @@ class AppRouter {
         );
 
       case RouteNames.taskDetails:
-        final task = settings.arguments as TaskModel;
+        final argument = settings.arguments;
+
+        if (argument is String) {
+          return MaterialPageRoute(
+            builder: (_) => TaskDetailsLoaderScreen(taskId: argument),
+            settings: settings,
+          );
+        }
+
+        if (argument is TaskModel) {
+          return MaterialPageRoute(
+            builder: (_) => TaskDetailsScreen(task: argument),
+            settings: settings,
+          );
+        }
+
         return MaterialPageRoute(
-          builder: (_) => TaskDetailsScreen(task: task),
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Invalid task details argument')),
+          ),
           settings: settings,
         );
 
