@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
@@ -49,6 +52,7 @@ class AuthCubit extends Cubit<AuthState> {
         clearErrorMessage: true,
       ),
     );
+    await _setupFCM(firebaseUser.uid);
   }
 
   Future<void> signIn({required String email, required String password}) async {
@@ -93,6 +97,7 @@ class AuthCubit extends Cubit<AuthState> {
           clearErrorMessage: true,
         ),
       );
+      await _setupFCM(firebaseUser.uid);
     } catch (_) {
       emit(
         state.copyWith(
@@ -113,5 +118,21 @@ class AuthCubit extends Cubit<AuthState> {
         clearErrorMessage: true,
       ),
     );
+  }
+
+  Future<void> _setupFCM(String userId) async {
+    final messaging = FirebaseMessaging.instance;
+
+    await messaging.requestPermission();
+
+    final token = await messaging.getToken();
+
+    debugPrint("🔥 FCM TOKEN: $token");
+
+    if (token != null) {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'fcmToken': token,
+      });
+    }
   }
 }

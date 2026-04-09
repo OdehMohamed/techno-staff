@@ -1,5 +1,6 @@
 /* eslint-disable */
 const { onCall, HttpsError } = require("firebase-functions/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -72,3 +73,83 @@ exports.createEmployeeUser = onCall(async (request) => {
     throw new HttpsError("internal", error.message || "Something went wrong");
   }
 });
+
+exports.sendTaskAssignedNotification = onDocumentCreated(
+  "tasks/{taskId}",
+  async (event) => {
+    try {
+      const snapshot = event.data;
+
+      if (!snapshot) {
+        console.log("No task data found.");
+        return;
+      }
+
+      const task = snapshot.data();
+      const db = admin.firestore();
+
+      const assignedTo = task.assignedTo;
+      const assignedBy = task.assignedBy;
+      const taskTitle = task.title || "New Task";
+
+      if (!assignedTo) {
+        console.log("No assignedTo found in task.");
+        return;
+      }
+
+      const assignedUserDoc = await db
+        .collection("users")
+        .doc(assignedTo)
+        .get();
+
+      if (!assignedUserDoc.exists) {
+        console.log("Assigned user not found.");
+        return;
+      }
+
+      const assignedUserData = assignedUserDoc.data() || {};
+      const fcmToken = assignedUserData && assignedUserData.fcmToken;
+
+      if (!fcmToken) {
+        console.log("Assigned user has no FCM token.");
+        return;
+      }
+
+      let assignedByName = "Someone";
+      if (assignedBy) {
+        const assignedByDoc = await db
+          .collection("users")
+          .doc(assignedBy)
+          .get();
+        if (assignedByDoc.exists) {
+          const assignedByData = assignedByDoc.data();
+          assignedByName = (assignedByData && assignedByData.name) || "Someone";
+        }
+      }
+
+      const message = {
+        token: fcmToken,
+        notification: {
+          title: "New Task Assigned",
+          body: assignedByName + " assigned you: " + taskTitle,
+        },
+        data: {
+          taskId: event.params.taskId,
+          type: "task_assigned",
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "task_notifications",
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log("Successfully sent notification:", response);
+    } catch (error) {
+      console.error("Error sending task notification:", error);
+    }
+  },
+);

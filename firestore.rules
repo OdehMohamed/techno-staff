@@ -47,7 +47,10 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAdmin() || isCurrentUser(userId);
       allow create: if isAdmin() || isCurrentUser(userId);
-      allow update: if isAdmin();
+      allow update: if isAdmin() || (
+        isCurrentUser(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken'])
+      );
       allow delete: if isAdmin();
     }
 

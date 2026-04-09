@@ -254,16 +254,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           /// 🔥 LEGEND
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: const [
+                            children: [
                               _LegendItem(
                                 color: Colors.green,
-                                label: 'Completed',
+                                label: 'completed'.tr(),
                               ),
                               _LegendItem(
                                 color: Colors.orange,
-                                label: 'In Progress',
+                                label: 'in_progress'.tr(),
                               ),
-                              _LegendItem(color: Colors.grey, label: 'Pending'),
+                              _LegendItem(
+                                color: Colors.grey,
+                                label: 'pending'.tr(),
+                              ),
                             ],
                           ),
 
