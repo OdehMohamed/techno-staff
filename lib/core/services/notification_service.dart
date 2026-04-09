@@ -14,7 +14,11 @@ class NotificationService {
     importance: Importance.high,
   );
 
-  static Future<void> initialize() async {
+  static String? initialPayload;
+
+  static Future<void> initialize({
+    void Function(String payload)? onNotificationTap,
+  }) async {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -23,7 +27,15 @@ class NotificationService {
       android: androidSettings,
     );
 
-    await _localNotifications.initialize(settings: initializationSettings);
+    await _localNotifications.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null && onNotificationTap != null) {
+          onNotificationTap(payload);
+        }
+      },
+    );
 
     await _localNotifications
         .resolvePlatformSpecificImplementation<
@@ -36,6 +48,8 @@ class NotificationService {
     final notification = message.notification;
 
     if (notification == null) return;
+
+    final taskId = message.data['taskId'];
 
     await _localNotifications.show(
       id: notification.hashCode,
@@ -50,6 +64,7 @@ class NotificationService {
           priority: Priority.high,
         ),
       ),
+      payload: taskId,
     );
   }
 }

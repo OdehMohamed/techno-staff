@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/core/routes/app_navigator.dart';
+import 'package:techno_staff/core/routes/route_names.dart';
 import 'package:techno_staff/core/services/notification_service.dart';
 import 'package:techno_staff/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:techno_staff/features/dashboard/presentation/cubit/dashboard_cubit.dart';
@@ -32,11 +34,27 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await NotificationService.initialize();
+
+  await NotificationService.initialize(
+    onNotificationTap: (payload) {
+      AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
+    },
+  );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     NotificationService.showForegroundNotification(message);
   });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
+  });
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+
+  if (initialMessage != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppNavigator.navigatorKey.currentState?.pushNamed(RouteNames.tasks);
+    });
+  }
   final authRepository = AuthRepository();
   final userRepository = UserRepository();
   final employeesRepository = EmployeesRepository();
