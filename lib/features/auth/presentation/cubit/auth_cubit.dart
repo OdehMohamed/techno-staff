@@ -123,7 +123,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> _setupFCM(String userId) async {
     final messaging = FirebaseMessaging.instance;
 
-    await messaging.requestPermission();
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     final token = await messaging.getToken();
 

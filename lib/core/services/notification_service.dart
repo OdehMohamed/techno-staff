@@ -14,8 +14,6 @@ class NotificationService {
     importance: Importance.high,
   );
 
-  static String? initialPayload;
-
   static Future<void> initialize({
     void Function(String payload)? onNotificationTap,
   }) async {
@@ -23,8 +21,11 @@ class NotificationService {
       '@mipmap/ic_launcher',
     );
 
+    const iosSettings = DarwinInitializationSettings();
+
     const initializationSettings = InitializationSettings(
       android: androidSettings,
+      iOS: iosSettings,
     );
 
     await _localNotifications.initialize(
@@ -63,6 +64,7 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
         ),
+        iOS: const DarwinNotificationDetails(),
       ),
       payload: taskId,
     );
