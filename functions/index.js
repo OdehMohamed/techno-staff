@@ -153,3 +153,64 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
     }
   },
 );
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+
+exports.sendTaskStatusNotification = onDocumentUpdated(
+  "tasks/{taskId}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+
+    // ❗ إذا ما تغير status → لا تعمل شيء
+    if (before.status === after.status) return;
+
+    const db = admin.firestore();
+
+    // 🔥 إذا المهمة اكتملت
+    if (after.status === "completed") {
+      const assignedById = after.assignedBy;
+      const currentUserId = after.updatedBy;
+
+      // 1️⃣ جلب جميع الأدمنز
+      const adminsSnapshot = await db
+        .collection("users")
+        .where("role", "==", "admin")
+        .get();
+
+      const tokens = [];
+
+      adminsSnapshot.forEach((doc) => {
+        const data = doc.data();
+
+        if (data.fcmToken) {
+          tokens.push(data.fcmToken);
+        }
+      });
+
+      // 2️⃣ جلب منشئ المهمة
+      if (assignedById && assignedById !== currentUserId) {
+        const creatorDoc = await db.collection("users").doc(assignedById).get();
+
+        const creatorData = creatorDoc.data();
+
+        if (creatorData && creatorData.fcmToken) {
+          tokens.push(creatorData.fcmToken);
+        }
+      }
+
+      if (tokens.length === 0) return;
+
+      // 🔥 إرسال الإشعار
+      await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: "Task Completed ✅",
+          body: after.title,
+        },
+        data: {
+          taskId: event.params.taskId,
+        },
+      });
+    }
+  },
+);
