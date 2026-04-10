@@ -14,6 +14,8 @@ class TaskModel {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? completedAt;
+  final String? updatedBy;
+  final String? updatedByName;
 
   TaskModel({
     required this.id,
@@ -29,6 +31,8 @@ class TaskModel {
     required this.createdAt,
     this.updatedAt,
     this.completedAt,
+    this.updatedBy,
+    this.updatedByName,
   });
 
   factory TaskModel.fromMap(String id, Map<String, dynamic> data) {
@@ -50,6 +54,8 @@ class TaskModel {
       completedAt: data['completedAt'] != null
           ? (data['completedAt'] as Timestamp).toDate()
           : null,
+      updatedBy: data['updatedBy'],
+      updatedByName: data['updatedByName'],
     );
   }
 
@@ -69,6 +75,8 @@ class TaskModel {
       'completedAt': completedAt != null
           ? Timestamp.fromDate(completedAt!)
           : null,
+      'updatedBy': updatedBy,
+      'updatedByName': updatedByName,
     };
   }
 
@@ -87,6 +95,8 @@ class TaskModel {
     DateTime? updatedAt,
     DateTime? completedAt,
     bool clearCompletedAt = false,
+    String? updatedBy,
+    String? updatedByName,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -102,6 +112,8 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
+      updatedBy: updatedBy ?? this.updatedBy,
+      updatedByName: updatedByName ?? this.updatedByName,
     );
   }
 }

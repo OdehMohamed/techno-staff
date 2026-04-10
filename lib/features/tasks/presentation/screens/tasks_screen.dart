@@ -192,6 +192,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                 status: value,
                                                 isAdmin: false,
                                                 currentUserId: user.id,
+                                                currentUserName: user.name,
                                               );
                                         },
                                       ),

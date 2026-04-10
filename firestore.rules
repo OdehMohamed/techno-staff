@@ -44,7 +44,23 @@ service cloud.firestore {
       return request.resource.data
         .diff(resource.data)
         .affectedKeys()
-        .hasOnly(['status', 'updatedAt', 'completedAt']);
+        .hasOnly([
+          'status',
+          'updatedAt',
+          'completedAt',
+          'updatedBy',
+          'updatedByName',
+        ]);
+    }
+
+    function relatedTask(taskId) {
+      return get(/databases/$(database)/documents/tasks/$(taskId));
+    }
+
+    function canReadTaskLog(taskId) {
+      return isAdmin() ||
+        relatedTask(taskId).data.assignedBy == request.auth.uid ||
+        relatedTask(taskId).data.assignedTo == request.auth.uid;
     }
 
     match /users/{userId} {
@@ -72,6 +88,11 @@ service cloud.firestore {
         || (taskAssignee() && onlyAllowedTaskStatusFieldsChanged());
 
       allow delete: if isAdmin();
+    }
+
+    match /task_logs/{logId} {
+      allow read: if signedIn() && canReadTaskLog(resource.data.taskId);
+      allow write: if false;
     }
   }
 }

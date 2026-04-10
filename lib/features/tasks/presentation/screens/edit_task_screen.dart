@@ -82,6 +82,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       final selectedEmployee = employees.firstWhere(
         (user) => user.id == _selectedEmployeeId,
       );
+      final currentUser = context.read<AuthCubit>().state.user;
+      if (currentUser == null) return;
       final updatedTask = TaskModel(
         id: widget.task.id,
         title: _titleController.text.trim(),
@@ -95,6 +97,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         dueDate: _selectedDueDate!,
         createdAt: widget.task.createdAt,
         updatedAt: DateTime.now(),
+        updatedBy: currentUser.id,
+        updatedByName: currentUser.name,
         completedAt: _selectedStatus == 'completed'
             ? (widget.task.completedAt ?? DateTime.now())
             : null,

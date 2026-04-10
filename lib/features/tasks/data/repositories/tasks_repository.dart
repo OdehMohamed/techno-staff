@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:techno_staff/core/constants/firebase_paths.dart';
+import 'package:techno_staff/features/tasks/data/models/task_log_model.dart';
 import '../models/task_model.dart';
 
 class TasksRepository {
@@ -37,12 +38,16 @@ class TasksRepository {
   Future<void> updateTaskStatus({
     required String taskId,
     required String status,
+    required String currentUserId,
+    required String currentUserName,
   }) async {
     final now = Timestamp.now();
 
     final updateData = <String, dynamic>{
       FirebasePaths.status: status,
       'updatedAt': now,
+      'updatedBy': currentUserId,
+      'updatedByName': currentUserName,
     };
 
     if (status == 'completed') {
@@ -98,5 +103,17 @@ class TasksRepository {
     final assignedByName = await getUserNameById(assignedBy);
 
     return {'assignedToName': assignedToName, 'assignedByName': assignedByName};
+  }
+
+  Future<List<TaskLogModel>> getTaskLogs(String taskId) async {
+    final snapshot = await _firestore
+        .collection('task_logs')
+        .where('taskId', isEqualTo: taskId)
+        .orderBy('performedAt', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => TaskLogModel.fromMap(doc.id, doc.data()))
+        .toList();
   }
 }

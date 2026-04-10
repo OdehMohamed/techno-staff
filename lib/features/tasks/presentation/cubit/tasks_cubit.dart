@@ -66,8 +66,14 @@ class TasksCubit extends Cubit<TasksState> {
     required String status,
     required bool isAdmin,
     required String currentUserId,
+    required String currentUserName,
   }) async {
-    await _tasksRepository.updateTaskStatus(taskId: taskId, status: status);
+    await _tasksRepository.updateTaskStatus(
+      taskId: taskId,
+      status: status,
+      currentUserId: currentUserId,
+      currentUserName: currentUserName,
+    );
 
     if (isAdmin) {
       await fetchAllTasks();

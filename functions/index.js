@@ -150,6 +150,15 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
 
       const response = await admin.messaging().send(message);
       console.log("Successfully sent notification:", response);
+
+      await db.collection("task_logs").add({
+        taskId: event.params.taskId,
+        action: "created",
+        newStatus: task.status || "pending",
+        performedBy: assignedBy || null,
+        performedByName: assignedByName,
+        performedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
     } catch (error) {
       console.error("Error sending task notification:", error);
     }
@@ -161,6 +170,13 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
   async (event) => {
     const before = event.data.before.data();
     const after = event.data.after.data();
+
+    const currentUserId = after.updatedBy || null;
+    const currentUserName = after.updatedByName || "Unknown";
+
+    console.log("Task status update trigger fired");
+    console.log("Before status:", before.status);
+    console.log("After status:", after.status);
 
     // ❗ إذا ما تغير status → لا تعمل شيء
     if (before.status === after.status) return;
@@ -213,6 +229,20 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         },
       });
     }
+
+    console.log("Writing task log for task:", event.params.taskId);
+
+    await db.collection("task_logs").add({
+      taskId: event.params.taskId,
+      action: "status_changed",
+      previousStatus: before.status || null,
+      newStatus: after.status || null,
+      performedBy: currentUserId,
+      performedByName: currentUserName,
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log("Task log written successfully");
   },
 );
 exports.sendTaskDeadlineReminders = onSchedule(

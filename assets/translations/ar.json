@@ -97,5 +97,15 @@
   "delivery_performance_subtitle": "تابع إنجاز المهام في وقتها والمهام المتأخرة",
   "completed_on_time": "مكتملة في الوقت",
   "completed_late": "مكتملة متأخرة",
-  "open_overdue": "مهام مفتوحة متأخرة"
+  "open_overdue": "مهام مفتوحة متأخرة",
+  "activity_log": "سجل النشاط",
+  "activity_log_subtitle": "تابع إنشاء المهمة وتحديثات حالتها",
+  "failed_to_load_task_logs": "فشل في تحميل سجل نشاط المهمة",
+  "no_activity_logs_found": "لا يوجد سجل نشاط لهذه المهمة",
+  "task_created": "تم إنشاء المهمة",
+  "task_status_changed": "تم تغيير الحالة",
+  "task_updated": "تم تحديث المهمة",
+  "created_at": "تاريخ الإنشاء",
+  "updated_at": "آخر تحديث",
+  "completed_at": "تاريخ الإكمال"
 }

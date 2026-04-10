@@ -97,5 +97,15 @@
   "delivery_performance_subtitle": "Track task completion timing and overdue work",
   "completed_on_time": "Completed On Time",
   "completed_late": "Completed Late",
-  "open_overdue": "Open Overdue Tasks"
+  "open_overdue": "Open Overdue Tasks",
+  "activity_log": "Activity Log",
+  "activity_log_subtitle": "Track task creation and status updates",
+  "failed_to_load_task_logs": "Failed to load task activity log",
+  "no_activity_logs_found": "No activity logs found for this task",
+  "task_created": "Task Created",
+  "task_status_changed": "Status Changed",
+  "task_updated": "Task Updated",
+  "created_at": "Created At",
+  "updated_at": "Updated At",
+  "completed_at": "Completed At"
 }

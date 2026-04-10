@@ -13,6 +13,7 @@ import 'package:techno_staff/features/reports/data/repositories/reports_reposito
 import 'package:techno_staff/features/reports/data/services/pdf_report_service.dart';
 import 'package:techno_staff/features/reports/presentation/cubit/reports_cubit.dart';
 import 'package:techno_staff/features/tasks/presentation/cubit/task_details_cubit.dart';
+import 'package:techno_staff/features/tasks/presentation/cubit/task_logs_cubit.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
@@ -115,6 +116,9 @@ Future<void> main() async {
               reportsRepository: reportsRepository,
               pdfReportService: pdfReportService,
             ),
+          ),
+          BlocProvider(
+            create: (_) => TaskLogsCubit(tasksRepository: tasksRepository),
           ),
         ],
         child: const TechnoStaffApp(),
