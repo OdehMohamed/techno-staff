@@ -40,17 +40,23 @@ service cloud.firestore {
       return request.resource.data.assignedBy == request.auth.uid;
     }
 
-    function onlyStatusChanged() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+    function onlyAllowedTaskStatusFieldsChanged() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly(['status', 'updatedAt', 'completedAt']);
     }
 
     match /users/{userId} {
       allow read: if isAdmin() || isCurrentUser(userId);
+
       allow create: if isAdmin() || isCurrentUser(userId);
+
       allow update: if isAdmin() || (
         isCurrentUser(userId) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken'])
       );
+
       allow delete: if isAdmin();
     }
 
@@ -63,7 +69,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || taskCreator()
-        || (taskAssignee() && onlyStatusChanged());
+        || (taskAssignee() && onlyAllowedTaskStatusFieldsChanged());
 
       allow delete: if isAdmin();
     }

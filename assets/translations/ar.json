@@ -92,5 +92,10 @@
   "monthly_tasks_subtitle": "المهام المسندة والمنجزة خلال الشهر المحدد",
   "no_tasks_found_for_month": "لا توجد مهام لهذا الشهر",
   "failed_to_load_reports": "فشل في تحميل التقارير",
-  "year": "السنة"
+  "year": "السنة",
+  "delivery_performance": "أداء التسليم",
+  "delivery_performance_subtitle": "تابع إنجاز المهام في وقتها والمهام المتأخرة",
+  "completed_on_time": "مكتملة في الوقت",
+  "completed_late": "مكتملة متأخرة",
+  "open_overdue": "مهام مفتوحة متأخرة"
 }

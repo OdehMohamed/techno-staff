@@ -92,5 +92,10 @@
   "monthly_tasks_subtitle": "Tasks completed and assigned during the selected month",
   "no_tasks_found_for_month": "No tasks found for this month",
   "failed_to_load_reports": "Failed to load reports",
-  "year": "Year"
+  "year": "Year",
+  "delivery_performance": "Delivery Performance",
+  "delivery_performance_subtitle": "Track task completion timing and overdue work",
+  "completed_on_time": "Completed On Time",
+  "completed_late": "Completed Late",
+  "open_overdue": "Open Overdue Tasks"
 }

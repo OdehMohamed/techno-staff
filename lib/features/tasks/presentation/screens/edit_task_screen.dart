@@ -78,17 +78,26 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
     try {
       final repository = TasksRepository(FirebaseFirestore.instance);
-
+      final employees = context.read<EmployeesCubit>().state.employees;
+      final selectedEmployee = employees.firstWhere(
+        (user) => user.id == _selectedEmployeeId,
+      );
       final updatedTask = TaskModel(
         id: widget.task.id,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         assignedTo: _selectedEmployeeId!,
+        assignedToName: selectedEmployee.name,
         assignedBy: widget.task.assignedBy,
+        assignedByName: widget.task.assignedByName,
         priority: _selectedPriority,
         status: _selectedStatus,
         dueDate: _selectedDueDate!,
         createdAt: widget.task.createdAt,
+        updatedAt: DateTime.now(),
+        completedAt: _selectedStatus == 'completed'
+            ? (widget.task.completedAt ?? DateTime.now())
+            : null,
       );
 
       await repository.updateTask(updatedTask);

@@ -38,9 +38,23 @@ class TasksRepository {
     required String taskId,
     required String status,
   }) async {
-    await _firestore.collection(FirebasePaths.tasks).doc(taskId).update({
+    final now = Timestamp.now();
+
+    final updateData = <String, dynamic>{
       FirebasePaths.status: status,
-    });
+      'updatedAt': now,
+    };
+
+    if (status == 'completed') {
+      updateData['completedAt'] = now;
+    } else {
+      updateData['completedAt'] = null;
+    }
+
+    await _firestore
+        .collection(FirebasePaths.tasks)
+        .doc(taskId)
+        .update(updateData);
   }
 
   Future<TaskModel?> getTaskById(String taskId) async {

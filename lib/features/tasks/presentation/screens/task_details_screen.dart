@@ -96,12 +96,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         const SizedBox(height: AppSizes.xl),
                         _DetailsRow(
                           label: 'assigned_to'.tr(),
-                          value: state.assignedToName,
+                          value: task.assignedToName,
                         ),
                         const SizedBox(height: AppSizes.sm),
                         _DetailsRow(
                           label: 'assigned_by'.tr(),
-                          value: state.assignedByName,
+                          value: task.assignedByName,
                         ),
                         const SizedBox(height: AppSizes.sm),
                         _DetailsRow(

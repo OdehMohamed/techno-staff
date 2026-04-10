@@ -70,17 +70,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
     try {
       final repository = TasksRepository(FirebaseFirestore.instance);
-
+      final employees = context.read<EmployeesCubit>().state.employees;
+      final selectedEmployee = employees.firstWhere(
+        (user) => user.id == _selectedEmployeeId,
+      );
       final task = TaskModel(
         id: '',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         assignedTo: _selectedEmployeeId!,
+        assignedToName: selectedEmployee.name,
         assignedBy: currentUser.id,
+        assignedByName: currentUser.name,
         priority: _selectedPriority,
         status: 'pending',
         dueDate: _selectedDueDate!,
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        completedAt: null,
       );
       debugPrint('CREATING TASK FOR EMPLOYEE ID: $_selectedEmployeeId');
       debugPrint('ASSIGNED BY USER ID: ${currentUser.id}');

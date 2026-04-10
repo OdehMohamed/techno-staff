@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:techno_staff/shared/widgets/app_pie_chart.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -24,6 +23,9 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   AppUser? _selectedEmployee;
   DateTime _selectedMonth = DateTime.now();
+  DateTime _endOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+  }
 
   @override
   void initState() {
@@ -165,14 +167,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   final pendingTasks = state.tasks
                       .where((task) => task.status == 'pending')
                       .length;
-                  final overdueTasks = state.tasks
-                      .where(
-                        (task) =>
-                            task.status != 'completed' &&
-                            task.dueDate.isBefore(DateTime.now()),
-                      )
-                      .length;
+                  final completedOnTime = state.tasks.where((task) {
+                    return task.status == 'completed' &&
+                        task.completedAt != null &&
+                        !task.completedAt!.isAfter(_endOfDay(task.dueDate));
+                  }).length;
 
+                  final completedLate = state.tasks.where((task) {
+                    return task.status == 'completed' &&
+                        task.completedAt != null &&
+                        task.completedAt!.isAfter(_endOfDay(task.dueDate));
+                  }).length;
+
+                  final openOverdueTasks = state.tasks.where((task) {
+                    return task.status != 'completed' &&
+                        DateTime.now().isAfter(_endOfDay(task.dueDate));
+                  }).length;
                   final totalTasks = state.tasks.length;
                   final completionRate = totalTasks == 0
                       ? 0
@@ -302,60 +312,35 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         icon: Icons.pending_actions_outlined,
                                       ),
                                     ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'overdue_tasks'.tr(),
-                                        value: overdueTasks.toString(),
-                                        icon: Icons.warning_amber_rounded,
-                                      ),
-                                    ),
                                   ],
                                 );
                               }
 
                               if (isMedium) {
-                                return Column(
+                                return Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _ReportStatCard(
-                                            title: 'total_tasks'.tr(),
-                                            value: totalTasks.toString(),
-                                            icon: Icons.task_outlined,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSizes.md),
-                                        Expanded(
-                                          child: _ReportStatCard(
-                                            title: 'completed'.tr(),
-                                            value: completedTasks.toString(),
-                                            icon: Icons.check_circle_outline,
-                                          ),
-                                        ),
-                                      ],
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'total_tasks'.tr(),
+                                        value: totalTasks.toString(),
+                                        icon: Icons.task_outlined,
+                                      ),
                                     ),
-                                    const SizedBox(height: AppSizes.md),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _ReportStatCard(
-                                            title: 'in_progress'.tr(),
-                                            value: inProgressTasks.toString(),
-                                            icon:
-                                                Icons.pending_actions_outlined,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSizes.md),
-                                        Expanded(
-                                          child: _ReportStatCard(
-                                            title: 'overdue_tasks'.tr(),
-                                            value: overdueTasks.toString(),
-                                            icon: Icons.warning_amber_rounded,
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'completed'.tr(),
+                                        value: completedTasks.toString(),
+                                        icon: Icons.check_circle_outline,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'in_progress'.tr(),
+                                        value: inProgressTasks.toString(),
+                                        icon: Icons.pending_actions_outlined,
+                                      ),
                                     ),
                                   ],
                                 );
@@ -379,12 +364,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     title: 'in_progress'.tr(),
                                     value: inProgressTasks.toString(),
                                     icon: Icons.pending_actions_outlined,
-                                  ),
-                                  const SizedBox(height: AppSizes.md),
-                                  _ReportStatCard(
-                                    title: 'overdue_tasks'.tr(),
-                                    value: overdueTasks.toString(),
-                                    icon: Icons.warning_amber_rounded,
                                   ),
                                 ],
                               );
@@ -416,6 +395,68 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(height: AppSizes.xl),
+                          SectionHeader(
+                            title: 'delivery_performance'.tr(),
+                            subtitle: 'delivery_performance_subtitle'.tr(),
+                          ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 700;
+
+                              if (isWide) {
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'completed_on_time'.tr(),
+                                        value: completedOnTime.toString(),
+                                        icon: Icons.timer_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'completed_late'.tr(),
+                                        value: completedLate.toString(),
+                                        icon: Icons.event_busy_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: _ReportStatCard(
+                                        title: 'open_overdue'.tr(),
+                                        value: openOverdueTasks.toString(),
+                                        icon: Icons.warning_amber_outlined,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _ReportStatCard(
+                                    title: 'completed_on_time'.tr(),
+                                    value: completedOnTime.toString(),
+                                    icon: Icons.timer_outlined,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  _ReportStatCard(
+                                    title: 'completed_late'.tr(),
+                                    value: completedLate.toString(),
+                                    icon: Icons.event_busy_outlined,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  _ReportStatCard(
+                                    title: 'open_overdue'.tr(),
+                                    value: openOverdueTasks.toString(),
+                                    icon: Icons.warning_amber_outlined,
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           const SizedBox(height: AppSizes.lg),
                           Align(
