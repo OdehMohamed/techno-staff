@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -475,6 +476,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     : 'export_pdf'.tr(),
                               ),
                             ),
+                          ),
+                          const SizedBox(height: AppSizes.md),
+
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final callable = FirebaseFunctions.instance
+                                    .httpsCallable('testTaskDeadlineReminders');
+
+                                final result = await callable.call();
+
+                                debugPrint(
+                                  'REMINDER TEST RESULT: ${result.data}',
+                                );
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Reminder sent: ${result.data}',
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                debugPrint('REMINDER ERROR: $e');
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error sending reminder'),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.notifications_active),
+                            label: const Text('Test Reminder'),
                           ),
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(

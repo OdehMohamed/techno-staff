@@ -1,6 +1,8 @@
 /* eslint-disable */
 const { onCall, HttpsError } = require("firebase-functions/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -153,7 +155,6 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
     }
   },
 );
-const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 
 exports.sendTaskStatusNotification = onDocumentUpdated(
   "tasks/{taskId}",
@@ -214,3 +215,219 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
     }
   },
 );
+exports.sendTaskDeadlineReminders = onSchedule(
+  {
+    schedule: "0 9 * * *",
+    timeZone: "Asia/Jerusalem",
+  },
+  async () => {
+    try {
+      const db = admin.firestore();
+
+      const now = new Date();
+      const tomorrowStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        0,
+        0,
+      );
+      const tomorrowEnd = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 2,
+        0,
+        0,
+        0,
+        0,
+      );
+
+      const tasksSnapshot = await db
+        .collection("tasks")
+        .where("status", "!=", "completed")
+        .where(
+          "dueDate",
+          ">=",
+          admin.firestore.Timestamp.fromDate(tomorrowStart),
+        )
+        .where("dueDate", "<", admin.firestore.Timestamp.fromDate(tomorrowEnd))
+        .get();
+
+      if (tasksSnapshot.empty) {
+        console.log("No tasks due tomorrow.");
+        return;
+      }
+
+      for (const doc of tasksSnapshot.docs) {
+        const task = doc.data();
+        const assignedTo = task.assignedTo;
+        const taskTitle = task.title || "Task";
+
+        if (!assignedTo) continue;
+
+        const userDoc = await db.collection("users").doc(assignedTo).get();
+        if (!userDoc.exists) continue;
+
+        const userData = userDoc.data() || {};
+        const fcmToken = userData.fcmToken;
+
+        if (!fcmToken) continue;
+
+        await admin.messaging().send({
+          token: fcmToken,
+          notification: {
+            title: "Task Reminder ⏰",
+            body: "Your task is due tomorrow: " + taskTitle,
+          },
+          data: {
+            taskId: doc.id,
+            type: "task_deadline_reminder",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "task_notifications",
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+              },
+            },
+          },
+        });
+
+        console.log("Reminder sent for task:", doc.id);
+      }
+    } catch (error) {
+      console.error("Error sending deadline reminders:", error);
+    }
+  },
+);
+exports.testTaskDeadlineReminders = onCall(async (request) => {
+  try {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be logged in");
+    }
+
+    const db = admin.firestore();
+
+    const currentUserDoc = await db
+      .collection("users")
+      .doc(request.auth.uid)
+      .get();
+
+    if (!currentUserDoc.exists) {
+      throw new HttpsError(
+        "permission-denied",
+        "Current user record not found",
+      );
+    }
+
+    const currentUserData = currentUserDoc.data();
+
+    if (!currentUserData || currentUserData.role !== "admin") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can test reminders",
+      );
+    }
+
+    const now = new Date();
+    const start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      0,
+      0,
+    );
+
+    const tasksSnapshot = await db
+      .collection("tasks")
+      .where("status", "!=", "completed")
+      .where("dueDate", ">=", admin.firestore.Timestamp.fromDate(start))
+      .where("dueDate", "<", admin.firestore.Timestamp.fromDate(end))
+      .get();
+
+    if (tasksSnapshot.empty) {
+      return {
+        success: true,
+        message: "No tasks due today.",
+        sentCount: 0,
+      };
+    }
+
+    let sentCount = 0;
+
+    for (const doc of tasksSnapshot.docs) {
+      const task = doc.data();
+      const assignedTo = task.assignedTo;
+      const taskTitle = task.title || "Task";
+
+      if (!assignedTo) continue;
+
+      const userDoc = await db.collection("users").doc(assignedTo).get();
+      if (!userDoc.exists) continue;
+
+      const userData = userDoc.data() || {};
+      const fcmToken = userData.fcmToken;
+
+      if (!fcmToken) continue;
+
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {
+          title: "Task Reminder ⏰",
+          body: "Your task is due today: " + taskTitle,
+        },
+        data: {
+          taskId: doc.id,
+          type: "task_deadline_reminder",
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "task_notifications",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+            },
+          },
+        },
+      });
+
+      sentCount++;
+    }
+
+    return {
+      success: true,
+      message: "Reminder test completed.",
+      sentCount,
+    };
+  } catch (error) {
+    console.error("Error testing deadline reminders:", error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "Something went wrong");
+  }
+});
