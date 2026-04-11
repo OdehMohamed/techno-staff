@@ -14,12 +14,12 @@ class DashboardCubit extends Cubit<DashboardState> {
 
     try {
       final stats = await _dashboardRepository.getAdminStats();
-
+      final topData = await _dashboardRepository.getTopPerformer();
       emit(
         state.copyWith(
           status: DashboardStatus.loaded,
           stats: stats,
-          clearError: true,
+          extraStats: topData,
         ),
       );
     } catch (_) {

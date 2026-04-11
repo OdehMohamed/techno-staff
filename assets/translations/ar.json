@@ -107,5 +107,10 @@
   "task_updated": "تم تحديث المهمة",
   "created_at": "تاريخ الإنشاء",
   "updated_at": "آخر تحديث",
-  "completed_at": "تاريخ الإكمال"
+  "completed_at": "تاريخ الإكمال",
+  "team_insights": "إحصائيات الفريق",
+  "team_insights_subtitle": "تعرف على أفضل الموظفين وأكثرهم نشاطًا",
+  "top_performer": "أفضل أداء",
+  "most_active": "الأكثر نشاطًا",
+  "active_tasks": "مهام نشطة"
 }

@@ -239,6 +239,80 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           );
                         },
                       ),
+                      const SizedBox(height: AppSizes.xl),
+
+                      SectionHeader(
+                        title: 'team_insights'.tr(),
+                        subtitle: 'team_insights_subtitle'.tr(),
+                      ),
+
+                      const SizedBox(height: AppSizes.md),
+
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 700;
+
+                          if (isWide) {
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _TeamInsightCard(
+                                    title: 'top_performer'.tr(),
+                                    name:
+                                        (state.extraStats['topPerformer'] ??
+                                                '-')
+                                            .toString(),
+                                    count:
+                                        (state.extraStats['topCompleted'] ?? 0)
+                                            as int,
+                                    icon: Icons.emoji_events_outlined,
+                                    countLabel: 'completed_tasks', // ✅
+                                  ),
+                                ),
+                                const SizedBox(width: AppSizes.md),
+                                Expanded(
+                                  child: _TeamInsightCard(
+                                    title: 'most_active'.tr(),
+                                    name:
+                                        (state.extraStats['mostActive'] ?? '-')
+                                            .toString(),
+                                    count:
+                                        (state.extraStats['topActive'] ?? 0)
+                                            as int,
+                                    icon: Icons.local_fire_department_outlined,
+                                    countLabel: 'active_tasks', // ✅
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Column(
+                            children: [
+                              _TeamInsightCard(
+                                title: 'top_performer'.tr(),
+                                name: (state.extraStats['topPerformer'] ?? '-')
+                                    .toString(),
+                                count:
+                                    (state.extraStats['topCompleted'] ?? 0)
+                                        as int,
+                                icon: Icons.emoji_events_outlined,
+                                countLabel: 'completed_tasks', // ✅
+                              ),
+                              const SizedBox(height: AppSizes.md),
+                              _TeamInsightCard(
+                                title: 'most_active'.tr(),
+                                name: (state.extraStats['mostActive'] ?? '-')
+                                    .toString(),
+                                count:
+                                    (state.extraStats['topActive'] ?? 0) as int,
+                                icon: Icons.local_fire_department_outlined,
+                                countLabel: 'active_tasks', // ✅
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                   ),
                 );
@@ -285,6 +359,115 @@ class _DashboardStatCard extends StatelessWidget {
                 Text(title, style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: AppSizes.xs),
                 Text(value, style: Theme.of(context).textTheme.headlineMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamInsightCard extends StatelessWidget {
+  final String title;
+  final String name;
+  final int count;
+  final IconData icon;
+  final String countLabel;
+
+  const _TeamInsightCard({
+    required this.title,
+    required this.name,
+    required this.count,
+    required this.icon,
+    required this.countLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final isTopPerformer = icon == Icons.emoji_events_outlined;
+
+    final accentColor = isTopPerformer
+        ? Colors.amber.shade700
+        : Colors.deepOrange.shade400;
+
+    final avatarText = name.trim().isNotEmpty && name.trim() != '-'
+        ? name.trim()[0].toUpperCase()
+        : '?';
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: accentColor.withValues(alpha: 0.14),
+                child: Text(
+                  avatarText,
+                  style: textTheme.titleLarge?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSizes.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.xs),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: accentColor, size: 28),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.lg),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bar_chart_rounded, size: 18, color: accentColor),
+                const SizedBox(width: 8),
+                Text(
+                  '$count - ${countLabel.tr()}',
+                  style: textTheme.titleSmall?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),

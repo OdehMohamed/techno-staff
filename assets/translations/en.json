@@ -107,5 +107,10 @@
   "task_updated": "Task Updated",
   "created_at": "Created At",
   "updated_at": "Updated At",
-  "completed_at": "Completed At"
+  "completed_at": "Completed At",
+  "team_insights": "Team Insights",
+  "team_insights_subtitle": "Identify top performers and active employees",
+  "top_performer": "Top Performer",
+  "most_active": "Most Active",
+  "active_tasks": "active tasks"
 }

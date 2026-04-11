@@ -105,4 +105,59 @@ class DashboardRepository {
       'pendingTasks': pendingTasks,
     };
   }
+
+  Future<Map<String, dynamic>> getTopPerformer() async {
+    final tasksSnapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .get();
+
+    final Map<String, int> completedCount = {};
+    final Map<String, int> activeCount = {};
+
+    for (final doc in tasksSnapshot.docs) {
+      final data = doc.data();
+
+      final userId = data['assignedTo'];
+      final userName = data['assignedToName'];
+
+      if (userId == null || userName == null) continue;
+
+      // Completed tasks
+      if (data['status'] == 'completed') {
+        completedCount[userName] = (completedCount[userName] ?? 0) + 1;
+      }
+
+      // Active tasks
+      if (data['status'] == 'pending' || data['status'] == 'in_progress') {
+        activeCount[userName] = (activeCount[userName] ?? 0) + 1;
+      }
+    }
+
+    String? topPerformer;
+    int topCompleted = 0;
+
+    completedCount.forEach((name, count) {
+      if (count > topCompleted) {
+        topCompleted = count;
+        topPerformer = name;
+      }
+    });
+
+    String? mostActive;
+    int topActive = 0;
+
+    activeCount.forEach((name, count) {
+      if (count > topActive) {
+        topActive = count;
+        mostActive = name;
+      }
+    });
+
+    return {
+      'topPerformer': topPerformer ?? '-',
+      'topCompleted': topCompleted,
+      'mostActive': mostActive ?? '-',
+      'topActive': topActive,
+    };
+  }
 }
