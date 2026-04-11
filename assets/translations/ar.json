@@ -112,5 +112,13 @@
   "team_insights_subtitle": "تعرف على أفضل الموظفين وأكثرهم نشاطًا",
   "top_performer": "أفضل أداء",
   "most_active": "الأكثر نشاطًا",
-  "active_tasks": "مهام نشطة"
+  "active_tasks": "مهام نشطة",
+  "recent_activity": "آخر النشاطات",
+  "recent_activity_subtitle": "أحدث العمليات في النظام",
+  "no_recent_activity": "لا يوجد نشاطات حديثة",
+  "created_task": "أنشأ مهمة",
+  "updated_task_status": "قام بتحديث حالة المهمة",
+  "changed_status": "غيّر حالة",
+  "to": "إلى",
+  "overdue_task_escalation": "تصعيد تأخير للمهمة"
 }

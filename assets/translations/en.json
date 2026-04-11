@@ -112,5 +112,13 @@
   "team_insights_subtitle": "Identify top performers and active employees",
   "top_performer": "Top Performer",
   "most_active": "Most Active",
-  "active_tasks": "active tasks"
+  "active_tasks": "active tasks",
+  "recent_activity": "Recent Activity",
+  "recent_activity_subtitle": "Latest actions in the system",
+  "no_recent_activity": "No recent activity",
+  "created_task": "created task",
+  "updated_task_status": "updated task status",
+  "changed_status": "changed status of",
+  "to": "to",
+  "overdue_task_escalation": "Overdue escalation for task"
 }

@@ -153,6 +153,7 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
 
       await db.collection("task_logs").add({
         taskId: event.params.taskId,
+        taskTitle: task.title || "",
         action: "created",
         newStatus: task.status || "pending",
         performedBy: assignedBy || null,
@@ -215,7 +216,18 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         }
       }
 
-      if (tokens.length === 0) return;
+      if (tokens.length > 0) {
+        await admin.messaging().sendEachForMulticast({
+          tokens,
+          notification: {
+            title: "Task Completed ✅",
+            body: after.title,
+          },
+          data: {
+            taskId: event.params.taskId,
+          },
+        });
+      }
 
       // 🔥 إرسال الإشعار
       await admin.messaging().sendEachForMulticast({
@@ -234,6 +246,7 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
 
     await db.collection("task_logs").add({
       taskId: event.params.taskId,
+      taskTitle: after.title || "",
       action: "status_changed",
       previousStatus: before.status || null,
       newStatus: after.status || null,
@@ -603,6 +616,7 @@ exports.sendOverdueTaskEscalations = onSchedule(
 
           await db.collection("task_logs").add({
             taskId: taskId,
+            taskTitle: task.title || "",
             action: "overdue_escalation",
             previousStatus: task.status || null,
             newStatus: task.status || null,
@@ -745,6 +759,7 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
 
       await db.collection("task_logs").add({
         taskId: taskId,
+        taskTitle: task.title || "",
         action: "overdue_escalation",
         previousStatus: task.status || null,
         newStatus: task.status || null,

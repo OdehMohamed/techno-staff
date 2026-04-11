@@ -160,4 +160,24 @@ class DashboardRepository {
       'topActive': topActive,
     };
   }
+
+  Future<List<Map<String, dynamic>>> getRecentActivities() async {
+    final snapshot = await _firestore
+        .collection('task_logs')
+        .orderBy('performedAt', descending: true)
+        .limit(10)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'action': data['action'] ?? '',
+        'taskTitle': data['taskTitle'] ?? '',
+        'performedByName': data['performedByName'] ?? '',
+        'performedAt': data['performedAt'],
+        'previousStatus': data['previousStatus'],
+        'newStatus': data['newStatus'],
+      };
+    }).toList();
+  }
 }

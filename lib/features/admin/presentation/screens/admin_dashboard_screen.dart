@@ -313,6 +313,111 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           );
                         },
                       ),
+                      const SizedBox(height: AppSizes.xl),
+
+                      SectionHeader(
+                        title: 'recent_activity'.tr(),
+                        subtitle: 'recent_activity_subtitle'.tr(),
+                      ),
+
+                      const SizedBox(height: AppSizes.md),
+
+                      if (state.activities.isEmpty)
+                        const EmptyStateWidget(
+                          icon: Icons.history,
+                          titleKey: 'no_recent_activity',
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: state.activities.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSizes.sm),
+                          itemBuilder: (context, index) {
+                            final activity = state.activities[index];
+
+                            final action = activity['action'];
+                            final name = activity['performedByName'] ?? '';
+                            final task = activity['taskTitle'] ?? '';
+                            final oldStatus =
+                                activity['oldStatus'] ??
+                                activity['previousStatus'] ??
+                                '';
+                            final newStatus = activity['newStatus'] ?? '';
+                            final performedAt = activity['performedAt'];
+
+                            DateTime? activityTime;
+                            if (performedAt != null) {
+                              activityTime = performedAt.toDate();
+                            }
+
+                            String text;
+
+                            if (action == 'created') {
+                              text = '$name ${'created_task'.tr()} "$task"';
+                            } else if (action == 'status_changed') {
+                              text =
+                                  '$name ${'changed_status'.tr()} "$task" ${'to'.tr()} ${newStatus.toString().tr()}';
+                            } else if (action == 'overdue_escalation') {
+                              text =
+                                  '${'overdue_task_escalation'.tr()} "$task"';
+                            } else {
+                              text = '$name $action "$task"';
+                            }
+
+                            return AppCard(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.history),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          text,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyLarge,
+                                        ),
+                                        if (activityTime != null) ...[
+                                          const SizedBox(height: AppSizes.xs),
+                                          Text(
+                                            DateFormat(
+                                              'yyyy-MM-dd • HH:mm',
+                                            ).format(activityTime),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 );
