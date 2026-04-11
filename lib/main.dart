@@ -9,6 +9,8 @@ import 'package:techno_staff/core/routes/route_names.dart';
 import 'package:techno_staff/core/services/notification_service.dart';
 import 'package:techno_staff/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:techno_staff/features/dashboard/presentation/cubit/dashboard_cubit.dart';
+import 'package:techno_staff/features/notifications/data/repositories/notifications_repository.dart';
+import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/reports/data/repositories/reports_repository.dart';
 import 'package:techno_staff/features/reports/data/services/pdf_report_service.dart';
 import 'package:techno_staff/features/reports/presentation/cubit/reports_cubit.dart';
@@ -119,6 +121,9 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => TaskLogsCubit(tasksRepository: tasksRepository),
+          ),
+          BlocProvider(
+            create: (_) => NotificationsCubit(NotificationsRepository()),
           ),
         ],
         child: const TechnoStaffApp(),

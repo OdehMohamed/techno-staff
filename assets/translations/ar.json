@@ -120,5 +120,17 @@
   "updated_task_status": "قام بتحديث حالة المهمة",
   "changed_status": "غيّر حالة",
   "to": "إلى",
-  "overdue_task_escalation": "تصعيد تأخير للمهمة"
+  "overdue_task_escalation": "تصعيد تأخير للمهمة",
+  "notifications": "الإشعارات",
+  "no_notifications_found": "لا توجد إشعارات",
+  "new_task_assigned": "تم إسناد مهمة جديدة",
+  "task_completed_notification": "تم إكمال المهمة",
+  "task_deadline_reminder_title": "تذكير بالمهمة",
+  "task_overdue_reminder_title": "مهمة متأخرة",
+  "task_overdue_escalation_title": "تصعيد مهمة متأخرة",
+  "task_assigned_body": "{name} أسند لك المهمة: {task}",
+  "task_completed_body": "{name} أكمل المهمة: {task}",
+  "task_deadline_reminder_body": "مهمتك موعدها غدًا: {task}",
+  "task_overdue_reminder_body": "مهمتك متأخرة: {task}",
+  "task_overdue_escalation_body": "هناك مهمة متأخرة مسندة إلى {employee}: {task}"
 }

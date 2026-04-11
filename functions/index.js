@@ -160,6 +160,16 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
         performedByName: assignedByName,
         performedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      await createInAppNotification({
+        userId: assignedTo,
+        type: "task_assigned",
+        taskId: event.params.taskId,
+        data: {
+          taskTitle: taskTitle,
+          assignedByName: assignedByName,
+        },
+      });
     } catch (error) {
       console.error("Error sending task notification:", error);
     }
@@ -196,9 +206,12 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         .get();
 
       const tokens = [];
+      const adminUserIds = [];
 
       adminsSnapshot.forEach((doc) => {
         const data = doc.data();
+
+        adminUserIds.push(doc.id);
 
         if (data.fcmToken) {
           tokens.push(data.fcmToken);
@@ -214,6 +227,16 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         if (creatorData && creatorData.fcmToken) {
           tokens.push(creatorData.fcmToken);
         }
+
+        await createInAppNotification({
+          userId: assignedById,
+          type: "task_completed",
+          taskId: event.params.taskId,
+          data: {
+            taskTitle: after.title || "",
+            performedByName: currentUserName,
+          },
+        });
       }
 
       if (tokens.length > 0) {
@@ -240,6 +263,18 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
           taskId: event.params.taskId,
         },
       });
+
+      for (const adminUserId of adminUserIds) {
+        await createInAppNotification({
+          userId: adminUserId,
+          type: "task_completed",
+          taskId: event.params.taskId,
+          data: {
+            taskTitle: after.title || "",
+            performedByName: currentUserName,
+          },
+        });
+      }
     }
 
     console.log("Writing task log for task:", event.params.taskId);
@@ -343,6 +378,14 @@ exports.sendTaskDeadlineReminders = onSchedule(
           },
         });
 
+        await createInAppNotification({
+          userId: assignedTo,
+          type: "task_deadline_reminder",
+          taskId: doc.id,
+          data: {
+            taskTitle: taskTitle,
+          },
+        });
         console.log("Reminder sent for task:", doc.id);
       }
     } catch (error) {
@@ -581,6 +624,15 @@ exports.sendOverdueTaskEscalations = onSchedule(
           }
         }
 
+        await createInAppNotification({
+          userId: assignedTo,
+          type: "task_overdue_reminder",
+          taskId: taskId,
+          data: {
+            taskTitle: taskTitle,
+          },
+        });
+
         // 2) Notify admins
         if (adminTokens.length > 0 && !sameDayEscalation) {
           await admin.messaging().sendEachForMulticast({
@@ -597,6 +649,18 @@ exports.sendOverdueTaskEscalations = onSchedule(
           });
 
           adminsNotified = true;
+        }
+
+        for (const adminDoc of adminsSnapshot.docs) {
+          await createInAppNotification({
+            userId: adminDoc.id,
+            type: "task_overdue_escalation",
+            taskId: taskId,
+            data: {
+              taskTitle: taskTitle,
+              assignedToName: assignedToName,
+            },
+          });
         }
 
         const updateData = {};
@@ -784,3 +848,19 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
     throw new HttpsError("internal", error.message || "Something went wrong");
   }
 });
+
+async function createInAppNotification({ userId, type, taskId, data }) {
+  if (!userId) return;
+
+  await admin
+    .firestore()
+    .collection("notifications")
+    .add({
+      userId,
+      type,
+      taskId: taskId || null,
+      data: data || {},
+      isRead: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+}

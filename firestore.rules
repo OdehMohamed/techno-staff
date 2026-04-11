@@ -94,5 +94,13 @@ service cloud.firestore {
       allow read: if signedIn() && canReadTaskLog(resource.data.taskId);
       allow write: if false;
     }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow create, delete: if false;
+    }
   }
 }

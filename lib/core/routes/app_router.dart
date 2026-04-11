@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:techno_staff/features/reports/presentation/screens/reports_screen.dart';
 import 'package:techno_staff/features/tasks/presentation/screens/task_details_loader_screen.dart';
 import '../../features/employees/presentation/screens/add_employee_screen.dart';
@@ -107,6 +108,11 @@ class AppRouter {
       case RouteNames.reports:
         return MaterialPageRoute(
           builder: (_) => const ReportsScreen(),
+          settings: settings,
+        );
+      case RouteNames.notifications:
+        return MaterialPageRoute(
+          builder: (_) => const NotificationsScreen(),
           settings: settings,
         );
       default:

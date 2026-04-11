@@ -1,13 +1,31 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthCubit>().state.user;
+      if (user != null) {
+        context.read<NotificationsCubit>().loadNotifications(user.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +57,7 @@ class DashboardScreen extends StatelessWidget {
               },
               icon: const Icon(Icons.logout),
             ),
+            const NotificationsBellButton(),
           ],
         ),
         body: Padding(

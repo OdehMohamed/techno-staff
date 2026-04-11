@@ -120,5 +120,17 @@
   "updated_task_status": "updated task status",
   "changed_status": "changed status of",
   "to": "to",
-  "overdue_task_escalation": "Overdue escalation for task"
+  "overdue_task_escalation": "Overdue escalation for task",
+  "notifications": "Notifications",
+  "no_notifications_found": "No notifications found",
+  "new_task_assigned": "New Task Assigned",
+  "task_completed_notification": "Task Completed",
+  "task_deadline_reminder_title": "Task Reminder",
+  "task_overdue_reminder_title": "Overdue Task",
+  "task_overdue_escalation_title": "Overdue Task Escalation",
+  "task_assigned_body": "{name} assigned you: {task}",
+  "task_completed_body": "{name} completed: {task}",
+  "task_deadline_reminder_body": "Your task is due tomorrow: {task}",
+  "task_overdue_reminder_body": "Your task is overdue: {task}",
+  "task_overdue_escalation_body": "Overdue task assigned to {employee}: {task}"
 }

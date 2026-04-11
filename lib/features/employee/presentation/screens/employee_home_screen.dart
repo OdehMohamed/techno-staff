@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
@@ -33,6 +35,13 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         context.read<DashboardCubit>().loadEmployeeStats(user.id);
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthCubit>().state.user;
+      if (user != null) {
+        context.read<NotificationsCubit>().loadNotifications(user.id);
+      }
+    });
   }
 
   @override
@@ -40,7 +49,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     final user = context.read<AuthCubit>().state.user;
 
     return Scaffold(
-      appBar: AppBar(title: Text('home'.tr())),
+      appBar: AppBar(
+        title: Text('home'.tr()),
+        actions: const [NotificationsBellButton()],
+      ),
       drawer: const AppDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
