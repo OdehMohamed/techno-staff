@@ -7,6 +7,10 @@ class DashboardRepository {
   DashboardRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  DateTime _endOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+  }
+
   Future<Map<String, int>> getAdminStats() async {
     final usersSnapshot = await _firestore
         .collection(FirebasePaths.users)
@@ -26,22 +30,51 @@ class DashboardRepository {
         .where((doc) => doc.data()['status'] == 'completed')
         .length;
 
-    final overdueTasks = tasksSnapshot.docs.where((doc) {
+    final completedOnTime = tasksSnapshot.docs.where((doc) {
       final data = doc.data();
-      final status = data['status'];
-      final dueDate = data['dueDate'];
+      if (data['status'] != 'completed' ||
+          data['completedAt'] == null ||
+          data['dueDate'] == null) {
+        return false;
+      }
 
-      if (status == 'completed' || dueDate == null) return false;
+      final completedAt = (data['completedAt'] as Timestamp).toDate();
+      final dueDate = (data['dueDate'] as Timestamp).toDate();
 
-      final due = (dueDate as Timestamp).toDate();
-      return due.isBefore(DateTime.now());
+      return !completedAt.isAfter(_endOfDay(dueDate));
+    }).length;
+
+    final completedLate = tasksSnapshot.docs.where((doc) {
+      final data = doc.data();
+      if (data['status'] != 'completed' ||
+          data['completedAt'] == null ||
+          data['dueDate'] == null) {
+        return false;
+      }
+
+      final completedAt = (data['completedAt'] as Timestamp).toDate();
+      final dueDate = (data['dueDate'] as Timestamp).toDate();
+
+      return completedAt.isAfter(_endOfDay(dueDate));
+    }).length;
+
+    final overdueOpenTasks = tasksSnapshot.docs.where((doc) {
+      final data = doc.data();
+      if (data['status'] == 'completed' || data['dueDate'] == null) {
+        return false;
+      }
+
+      final dueDate = (data['dueDate'] as Timestamp).toDate();
+      return DateTime.now().isAfter(_endOfDay(dueDate));
     }).length;
 
     return {
       'employeesCount': employeesCount,
       'totalTasks': totalTasks,
       'completedTasks': completedTasks,
-      'overdueTasks': overdueTasks,
+      'completedOnTime': completedOnTime,
+      'completedLate': completedLate,
+      'overdueOpenTasks': overdueOpenTasks,
     };
   }
 

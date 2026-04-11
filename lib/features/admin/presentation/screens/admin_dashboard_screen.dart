@@ -52,7 +52,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 final employeesCount = state.stats['employeesCount'] ?? 0;
                 final totalTasks = state.stats['totalTasks'] ?? 0;
                 final completedTasks = state.stats['completedTasks'] ?? 0;
-                final overdueTasks = state.stats['overdueTasks'] ?? 0;
+                final completedOnTime = state.stats['completedOnTime'] ?? 0;
+                final completedLate = state.stats['completedLate'] ?? 0;
+                final overdueOpenTasks = state.stats['overdueOpenTasks'] ?? 0;
                 final completionRate = totalTasks == 0
                     ? 0
                     : ((completedTasks / totalTasks) * 100).round();
@@ -96,59 +98,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     icon: Icons.check_circle_outline,
                                   ),
                                 ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'overdue_tasks'.tr(),
-                                    value: overdueTasks.toString(),
-                                    icon: Icons.warning_amber_rounded,
-                                  ),
-                                ),
                               ],
                             );
                           }
 
                           if (isMedium) {
-                            return Column(
+                            return Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _DashboardStatCard(
-                                        title: 'employees'.tr(),
-                                        value: employeesCount.toString(),
-                                        icon: Icons.group_outlined,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _DashboardStatCard(
-                                        title: 'total_tasks'.tr(),
-                                        value: totalTasks.toString(),
-                                        icon: Icons.task_outlined,
-                                      ),
-                                    ),
-                                  ],
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'employees'.tr(),
+                                    value: employeesCount.toString(),
+                                    icon: Icons.group_outlined,
+                                  ),
                                 ),
-                                const SizedBox(height: AppSizes.md),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _DashboardStatCard(
-                                        title: 'completed_tasks'.tr(),
-                                        value: completedTasks.toString(),
-                                        icon: Icons.check_circle_outline,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _DashboardStatCard(
-                                        title: 'overdue_tasks'.tr(),
-                                        value: overdueTasks.toString(),
-                                        icon: Icons.warning_amber_rounded,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: AppSizes.md),
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'total_tasks'.tr(),
+                                    value: totalTasks.toString(),
+                                    icon: Icons.task_outlined,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSizes.md),
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'completed_tasks'.tr(),
+                                    value: completedTasks.toString(),
+                                    icon: Icons.check_circle_outline,
+                                  ),
                                 ),
                               ],
                             );
@@ -173,21 +151,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 value: completedTasks.toString(),
                                 icon: Icons.check_circle_outline,
                               ),
-                              const SizedBox(height: AppSizes.md),
-                              _DashboardStatCard(
-                                title: 'overdue_tasks'.tr(),
-                                value: overdueTasks.toString(),
-                                icon: Icons.warning_amber_rounded,
-                              ),
                             ],
                           );
                         },
                       ),
                       const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'performance_overview'.tr(),
-                        subtitle: 'performance_overview_subtitle'.tr(),
-                      ),
                       AppCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,6 +176,68 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: AppSizes.xl),
+                      SectionHeader(
+                        title: 'delivery_performance'.tr(),
+                        subtitle: 'delivery_performance_subtitle'.tr(),
+                      ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 700;
+
+                          if (isWide) {
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'completed_on_time'.tr(),
+                                    value: completedOnTime.toString(),
+                                    icon: Icons.timer_outlined,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSizes.md),
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'completed_late'.tr(),
+                                    value: completedLate.toString(),
+                                    icon: Icons.event_busy_outlined,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSizes.md),
+                                Expanded(
+                                  child: _DashboardStatCard(
+                                    title: 'open_overdue'.tr(),
+                                    value: overdueOpenTasks.toString(),
+                                    icon: Icons.warning_amber_outlined,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Column(
+                            children: [
+                              _DashboardStatCard(
+                                title: 'completed_on_time'.tr(),
+                                value: completedOnTime.toString(),
+                                icon: Icons.timer_outlined,
+                              ),
+                              const SizedBox(height: AppSizes.md),
+                              _DashboardStatCard(
+                                title: 'completed_late'.tr(),
+                                value: completedLate.toString(),
+                                icon: Icons.event_busy_outlined,
+                              ),
+                              const SizedBox(height: AppSizes.md),
+                              _DashboardStatCard(
+                                title: 'open_overdue'.tr(),
+                                value: overdueOpenTasks.toString(),
+                                icon: Icons.warning_amber_outlined,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
