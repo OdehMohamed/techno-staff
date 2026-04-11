@@ -35,4 +35,18 @@ class NotificationsRepository {
       'isRead': true,
     });
   }
+
+  Stream<List<InAppNotificationModel>> streamNotifications(String userId) {
+    return _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(30)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => InAppNotificationModel.fromMap(doc.id, doc.data()))
+              .toList();
+        });
+  }
 }

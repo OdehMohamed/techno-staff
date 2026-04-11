@@ -39,7 +39,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
-        context.read<NotificationsCubit>().loadNotifications(user.id);
+        context.read<NotificationsCubit>().listenToNotifications(user.id);
       }
     });
   }

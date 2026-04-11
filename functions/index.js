@@ -189,59 +189,47 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
     console.log("Before status:", before.status);
     console.log("After status:", after.status);
 
-    // ❗ إذا ما تغير status → لا تعمل شيء
     if (before.status === after.status) return;
 
     const db = admin.firestore();
 
-    // 🔥 إذا المهمة اكتملت
     if (after.status === "completed") {
       const assignedById = after.assignedBy;
-      const currentUserId = after.updatedBy;
 
-      // 1️⃣ جلب جميع الأدمنز
       const adminsSnapshot = await db
         .collection("users")
         .where("role", "==", "admin")
         .get();
 
-      const tokens = [];
-      const adminUserIds = [];
+      const tokens = new Set();
+      const adminUserIds = new Set();
 
       adminsSnapshot.forEach((doc) => {
         const data = doc.data();
 
-        adminUserIds.push(doc.id);
+        adminUserIds.add(doc.id);
 
         if (data.fcmToken) {
-          tokens.push(data.fcmToken);
+          tokens.add(data.fcmToken);
         }
       });
 
-      // 2️⃣ جلب منشئ المهمة
       if (assignedById && assignedById !== currentUserId) {
         const creatorDoc = await db.collection("users").doc(assignedById).get();
-
         const creatorData = creatorDoc.data();
 
         if (creatorData && creatorData.fcmToken) {
-          tokens.push(creatorData.fcmToken);
+          tokens.add(creatorData.fcmToken);
         }
 
-        await createInAppNotification({
-          userId: assignedById,
-          type: "task_completed",
-          taskId: event.params.taskId,
-          data: {
-            taskTitle: after.title || "",
-            performedByName: currentUserName,
-          },
-        });
+        adminUserIds.add(assignedById);
       }
 
-      if (tokens.length > 0) {
+      const tokensList = Array.from(tokens);
+
+      if (tokensList.length > 0) {
         await admin.messaging().sendEachForMulticast({
-          tokens,
+          tokens: tokensList,
           notification: {
             title: "Task Completed ✅",
             body: after.title,
@@ -252,21 +240,9 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         });
       }
 
-      // 🔥 إرسال الإشعار
-      await admin.messaging().sendEachForMulticast({
-        tokens,
-        notification: {
-          title: "Task Completed ✅",
-          body: after.title,
-        },
-        data: {
-          taskId: event.params.taskId,
-        },
-      });
-
-      for (const adminUserId of adminUserIds) {
+      for (const userId of adminUserIds) {
         await createInAppNotification({
-          userId: adminUserId,
+          userId: userId,
           type: "task_completed",
           taskId: event.params.taskId,
           data: {
@@ -293,6 +269,7 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
     console.log("Task log written successfully");
   },
 );
+
 exports.sendTaskDeadlineReminders = onSchedule(
   {
     schedule: "0 9 * * *",
