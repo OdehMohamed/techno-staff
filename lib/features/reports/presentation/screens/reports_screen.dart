@@ -511,6 +511,42 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             icon: const Icon(Icons.notifications_active),
                             label: const Text('Test Reminder'),
                           ),
+                          const SizedBox(height: AppSizes.md),
+
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final callable = FirebaseFunctions.instance
+                                    .httpsCallable(
+                                      'testOverdueTaskEscalations',
+                                    );
+
+                                final result = await callable.call();
+
+                                debugPrint(
+                                  'ESCALATION TEST RESULT: ${result.data}',
+                                );
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Escalation sent: ${result.data}',
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                debugPrint('ESCALATION ERROR: $e');
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error sending escalation'),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.notifications_active),
+                            label: const Text('Test Escalation'),
+                          ),
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(
                             title: 'tasks'.tr(),
