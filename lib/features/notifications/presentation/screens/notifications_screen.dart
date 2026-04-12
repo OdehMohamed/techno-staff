@@ -194,12 +194,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               );
             }
 
-            if (context.mounted && notification.taskId != null) {
-              Navigator.pushNamed(
-                context,
-                RouteNames.taskDetails,
-                arguments: notification.taskId,
-              );
+            if (!context.mounted) return;
+
+            switch (notification.type) {
+              case 'task_assigned':
+              case 'task_completed':
+              case 'task_deadline_reminder':
+              case 'task_overdue_reminder':
+              case 'task_overdue_escalation':
+                if (notification.taskId != null) {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.taskDetails,
+                    arguments: notification.taskId,
+                  );
+                }
+                break;
+
+              default:
+                break;
             }
           },
           child: Row(
