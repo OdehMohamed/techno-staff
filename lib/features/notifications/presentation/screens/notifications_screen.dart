@@ -35,7 +35,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final user = context.read<AuthCubit>().state.user;
 
     return Scaffold(
-      appBar: AppBar(title: Text('notifications'.tr())),
+      appBar: AppBar(
+        title: Text('notifications'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final user = context.read<AuthCubit>().state.user;
+              if (user == null) return;
+
+              await context.read<NotificationsCubit>().markAllAsRead(user.id);
+            },
+            child: Text('mark_all_as_read'.tr()),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: BlocBuilder<NotificationsCubit, NotificationsState>(

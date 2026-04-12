@@ -73,6 +73,10 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     });
   }
 
+  Future<void> markAllAsRead(String userId) async {
+    await _repository.markAllAsRead(userId);
+  }
+
   @override
   Future<void> close() {
     _subscription?.cancel();

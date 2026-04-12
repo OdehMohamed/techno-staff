@@ -49,4 +49,20 @@ class NotificationsRepository {
               .toList();
         });
   }
+
+  Future<void> markAllAsRead(String userId) async {
+    final snapshot = await _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    final batch = _firestore.batch();
+
+    for (final doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    await batch.commit();
+  }
 }
