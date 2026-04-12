@@ -21,50 +21,59 @@ class DashboardRepository {
         .get();
 
     final employeesCount = usersSnapshot.docs
-        .where((doc) => doc.data()['role'] == 'employee')
+        .where((doc) => doc.data()[FirebasePaths.role] == 'employee')
         .length;
 
     final totalTasks = tasksSnapshot.docs.length;
 
     final completedTasks = tasksSnapshot.docs
-        .where((doc) => doc.data()['status'] == 'completed')
+        .where((doc) => doc.data()[FirebasePaths.status] == 'completed')
+        .length;
+
+    final inProgressTasks = tasksSnapshot.docs
+        .where((doc) => doc.data()[FirebasePaths.status] == 'in_progress')
+        .length;
+
+    final pendingTasks = tasksSnapshot.docs
+        .where((doc) => doc.data()[FirebasePaths.status] == 'pending')
         .length;
 
     final completedOnTime = tasksSnapshot.docs.where((doc) {
       final data = doc.data();
-      if (data['status'] != 'completed' ||
+      if (data[FirebasePaths.status] != 'completed' ||
           data['completedAt'] == null ||
-          data['dueDate'] == null) {
+          data[FirebasePaths.dueDate] == null) {
         return false;
       }
 
       final completedAt = (data['completedAt'] as Timestamp).toDate();
-      final dueDate = (data['dueDate'] as Timestamp).toDate();
+      final dueDate = (data[FirebasePaths.dueDate] as Timestamp).toDate();
 
       return !completedAt.isAfter(_endOfDay(dueDate));
     }).length;
 
     final completedLate = tasksSnapshot.docs.where((doc) {
       final data = doc.data();
-      if (data['status'] != 'completed' ||
+      if (data[FirebasePaths.status] != 'completed' ||
           data['completedAt'] == null ||
-          data['dueDate'] == null) {
+          data[FirebasePaths.dueDate] == null) {
         return false;
       }
 
       final completedAt = (data['completedAt'] as Timestamp).toDate();
-      final dueDate = (data['dueDate'] as Timestamp).toDate();
+      final dueDate = (data[FirebasePaths.dueDate] as Timestamp).toDate();
 
       return completedAt.isAfter(_endOfDay(dueDate));
     }).length;
 
     final overdueOpenTasks = tasksSnapshot.docs.where((doc) {
       final data = doc.data();
-      if (data['status'] == 'completed' || data['dueDate'] == null) {
+      if (data[FirebasePaths.status] == 'completed' ||
+          data[FirebasePaths.dueDate] == null) {
         return false;
       }
 
-      final dueDate = (data['dueDate'] as Timestamp).toDate();
+      final dueDate = (data[FirebasePaths.dueDate] as Timestamp).toDate();
       return DateTime.now().isAfter(_endOfDay(dueDate));
     }).length;
 
@@ -72,6 +81,8 @@ class DashboardRepository {
       'employeesCount': employeesCount,
       'totalTasks': totalTasks,
       'completedTasks': completedTasks,
+      'inProgressTasks': inProgressTasks,
+      'pendingTasks': pendingTasks,
       'completedOnTime': completedOnTime,
       'completedLate': completedLate,
       'overdueOpenTasks': overdueOpenTasks,
@@ -87,15 +98,15 @@ class DashboardRepository {
     final totalTasks = tasksSnapshot.docs.length;
 
     final completedTasks = tasksSnapshot.docs
-        .where((doc) => doc.data()['status'] == 'completed')
+        .where((doc) => doc.data()[FirebasePaths.status] == 'completed')
         .length;
 
     final inProgressTasks = tasksSnapshot.docs
-        .where((doc) => doc.data()['status'] == 'in_progress')
+        .where((doc) => doc.data()[FirebasePaths.status] == 'in_progress')
         .length;
 
     final pendingTasks = tasksSnapshot.docs
-        .where((doc) => doc.data()['status'] == 'pending')
+        .where((doc) => doc.data()[FirebasePaths.status] == 'pending')
         .length;
 
     return {
@@ -117,23 +128,23 @@ class DashboardRepository {
     for (final doc in tasksSnapshot.docs) {
       final data = doc.data();
 
-      final userId = data['assignedTo'];
       final userName = data['assignedToName'];
 
-      if (userId == null || userName == null) continue;
+      if (userName == null || userName.toString().trim().isEmpty) {
+        continue;
+      }
 
-      // Completed tasks
-      if (data['status'] == 'completed') {
+      if (data[FirebasePaths.status] == 'completed') {
         completedCount[userName] = (completedCount[userName] ?? 0) + 1;
       }
 
-      // Active tasks
-      if (data['status'] == 'pending' || data['status'] == 'in_progress') {
+      if (data[FirebasePaths.status] == 'pending' ||
+          data[FirebasePaths.status] == 'in_progress') {
         activeCount[userName] = (activeCount[userName] ?? 0) + 1;
       }
     }
 
-    String? topPerformer;
+    String topPerformer = '-';
     int topCompleted = 0;
 
     completedCount.forEach((name, count) {
@@ -143,7 +154,7 @@ class DashboardRepository {
       }
     });
 
-    String? mostActive;
+    String mostActive = '-';
     int topActive = 0;
 
     activeCount.forEach((name, count) {
@@ -154,9 +165,9 @@ class DashboardRepository {
     });
 
     return {
-      'topPerformer': topPerformer ?? '-',
+      'topPerformer': topPerformer,
       'topCompleted': topCompleted,
-      'mostActive': mostActive ?? '-',
+      'mostActive': mostActive,
       'topActive': topActive,
     };
   }
