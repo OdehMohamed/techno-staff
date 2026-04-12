@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/dashboard/data/services/report_service.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_pie_chart.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
@@ -41,7 +42,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        actions: const [NotificationsBellButton()],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () {
+              final state = context.read<DashboardCubit>().state;
+
+              ReportService.exportDashboardReport(
+                stats: state.stats,
+                extraStats: state.extraStats,
+              );
+            },
+          ),
+          const NotificationsBellButton(),
+        ],
         title: Text('dashboard'.tr()),
       ),
       drawer: const AppDrawer(),
