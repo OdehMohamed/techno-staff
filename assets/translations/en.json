@@ -137,5 +137,7 @@
   "no_notifications_subtitle": "You're all caught up!",
   "today": "Today",
   "yesterday": "Yesterday",
-  "earlier": "Earlier"
+  "earlier": "Earlier",
+  "mark_as_read": "Mark as read",
+  "marked_as_read": "Notification marked as read"
 }

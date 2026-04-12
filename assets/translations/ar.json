@@ -137,5 +137,7 @@
   "no_notifications_subtitle": "لا توجد إشعارات جديدة 🎉",
   "today": "اليوم",
   "yesterday": "أمس",
-  "earlier": "أقدم"
+  "earlier": "أقدم",
+  "mark_as_read": "تعيين كمقروء",
+  "marked_as_read": "تم تعيين الإشعار كمقروء"
 }

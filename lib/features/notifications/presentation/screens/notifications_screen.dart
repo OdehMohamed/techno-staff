@@ -135,91 +135,135 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     required InAppNotificationModel notification,
     required String? userId,
   }) {
-    return AppCard(
-      child: InkWell(
-        splashColor: Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        onTap: () async {
-          if (userId == null) return;
+    return Dismissible(
+      key: ValueKey(notification.id),
+      direction: notification.isRead
+          ? DismissDirection.none
+          : DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        if (userId == null || notification.isRead) return false;
 
-          if (!notification.isRead) {
-            await context.read<NotificationsCubit>().markAsRead(
-              notification.id,
-              userId,
-            );
-          }
+        await context.read<NotificationsCubit>().markAsRead(
+          notification.id,
+          userId,
+        );
 
-          if (context.mounted && notification.taskId != null) {
-            Navigator.pushNamed(
-              context,
-              RouteNames.taskDetails,
-              arguments: notification.taskId,
-            );
-          }
-        },
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('marked_as_read'.tr()),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+
+        return false;
+      },
+      background: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _buildNotificationIcon(notification.type),
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: AppSizes.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _buildNotificationTitle(notification),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      if (!notification.isRead)
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: const BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.xs),
-                  Text(
-                    _buildNotificationBody(notification),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  if (notification.createdAt != null) ...[
-                    const SizedBox(height: AppSizes.sm),
-                    Text(
-                      DateFormat.yMMMd(
-                        context.locale.languageCode,
-                      ).add_jm().format(notification.createdAt!),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
+            const Icon(Icons.check, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              'mark_as_read'.tr(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
+        ),
+      ),
+      child: AppCard(
+        child: InkWell(
+          splashColor: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            if (userId == null) return;
+
+            if (!notification.isRead) {
+              await context.read<NotificationsCubit>().markAsRead(
+                notification.id,
+                userId,
+              );
+            }
+
+            if (context.mounted && notification.taskId != null) {
+              Navigator.pushNamed(
+                context,
+                RouteNames.taskDetails,
+                arguments: notification.taskId,
+              );
+            }
+          },
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _buildNotificationIcon(notification.type),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSizes.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _buildNotificationTitle(notification),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        if (!notification.isRead)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.xs),
+                    Text(
+                      _buildNotificationBody(notification),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    if (notification.createdAt != null) ...[
+                      const SizedBox(height: AppSizes.sm),
+                      Text(
+                        DateFormat.yMMMd(
+                          context.locale.languageCode,
+                        ).add_jm().format(notification.createdAt!),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
