@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_pie_chart.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
@@ -267,7 +268,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         },
                       ),
                       const SizedBox(height: AppSizes.xl),
+                      SectionHeader(
+                        title: 'team_performance'.tr(),
+                        subtitle: 'team_performance_subtitle'.tr(),
+                      ),
 
+                      const SizedBox(height: AppSizes.md),
+
+                      DashboardBarChart(
+                        topCompleted:
+                            (state.extraStats['topCompleted'] ?? 0) as int,
+                        topActive: (state.extraStats['topActive'] ?? 0) as int,
+                      ),
+
+                      const SizedBox(height: AppSizes.xl),
                       SectionHeader(
                         title: 'team_insights'.tr(),
                         subtitle: 'team_insights_subtitle'.tr(),
