@@ -144,5 +144,8 @@
   "team_performance_subtitle": "Comparison between top and most active employees",
   "week": "Week",
   "tasks_trend": "Tasks Trend",
-  "tasks_trend_subtitle": "Created vs completed tasks over time"
+  "tasks_trend_subtitle": "Created vs completed tasks over time",
+  "in_progress_tasks": "In Progress Tasks",
+  "in_pending_tasks": "Pending Tasks",
+  "created_tasks": "Created Tasks"
 }

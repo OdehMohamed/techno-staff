@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -27,9 +28,9 @@ class DashboardBarChart extends StatelessWidget {
                 getTitlesWidget: (value, meta) {
                   switch (value.toInt()) {
                     case 0:
-                      return const Text("Top");
+                      return Text('completed'.tr());
                     case 1:
-                      return const Text("Active");
+                      return Text('active'.tr());
                     default:
                       return const SizedBox();
                   }

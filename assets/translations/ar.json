@@ -144,5 +144,8 @@
   "team_performance_subtitle": "مقارنة بين أفضل الموظفين وأكثرهم نشاطًا",
   "week": "الأسبوع",
   "tasks_trend": "اتجاه المهام",
-  "tasks_trend_subtitle": "عدد المهام المنشأة والمنجزة مع الوقت"
+  "tasks_trend_subtitle": "عدد المهام المنشأة والمنجزة مع الوقت",
+  "in_progress_tasks": "المهام قيد التنفيذ",
+  "pending_tasks": "المهام المعلقة",
+  "created_tasks": "المهام المنشأة"
 }

@@ -1,5 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:techno_staff/shared/widgets/chart_legend.dart';
 
 class DashboardPieChart extends StatelessWidget {
   final int completed;
@@ -21,19 +23,35 @@ class DashboardPieChart extends StatelessWidget {
       return const Center(child: Text("No data"));
     }
 
-    return SizedBox(
-      height: 220,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: 40,
-          sections: [
-            _buildSection(completed, total, Colors.green, "Completed"),
-            _buildSection(inProgress, total, Colors.orange, "In Progress"),
-            _buildSection(pending, total, Colors.grey, "Pending"),
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              sections: [
+                _buildSection(completed, total, Colors.green, "Completed"),
+                _buildSection(inProgress, total, Colors.orange, "In Progress"),
+                _buildSection(pending, total, Colors.grey, "Pending"),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        ChartLegend(
+          items: [
+            ChartLegendItem(color: Colors.green, label: 'completed_tasks'.tr()),
+            ChartLegendItem(
+              color: Colors.orange,
+              label: 'in_progress_tasks'.tr(),
+            ),
+            ChartLegendItem(color: Colors.grey, label: 'pending_tasks'.tr()),
           ],
         ),
-      ),
+      ],
     );
   }
 
