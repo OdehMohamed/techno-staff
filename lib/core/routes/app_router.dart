@@ -1,8 +1,19 @@
-
 import 'package:flutter/material.dart';
+import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:techno_staff/features/reports/presentation/screens/reports_screen.dart';
+import 'package:techno_staff/features/tasks/presentation/screens/task_details_loader_screen.dart';
+import '../../features/employees/presentation/screens/add_employee_screen.dart';
+import '../../features/employees/presentation/screens/employees_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/employee/presentation/screens/employee_home_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/tasks/presentation/screens/add_task_screen.dart';
+import '../../features/tasks/presentation/screens/tasks_screen.dart';
+import '../../features/tasks/data/models/task_model.dart';
+import '../../features/tasks/presentation/screens/edit_task_screen.dart';
+import '../../features/tasks/presentation/screens/task_details_screen.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -22,19 +33,92 @@ class AppRouter {
           settings: settings,
         );
 
-      case RouteNames.dashboard:
+      case RouteNames.adminDashboard:
         return MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
+          builder: (_) => const AdminDashboardScreen(),
           settings: settings,
         );
 
-      default:
+      case RouteNames.employeeHome:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeeHomeScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.settings:
+        return MaterialPageRoute(
+          builder: (_) => const SettingsScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.employees:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeesScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.addEmployee:
+        return MaterialPageRoute(
+          builder: (_) => const AddEmployeeScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.tasks:
+        return MaterialPageRoute(
+          builder: (_) => const TasksScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.addTask:
+        return MaterialPageRoute(
+          builder: (_) => const AddTaskScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.taskDetails:
+        final argument = settings.arguments;
+
+        if (argument is String) {
+          return MaterialPageRoute(
+            builder: (_) => TaskDetailsLoaderScreen(taskId: argument),
+            settings: settings,
+          );
+        }
+
+        if (argument is TaskModel) {
+          return MaterialPageRoute(
+            builder: (_) => TaskDetailsScreen(task: argument),
+            settings: settings,
+          );
+        }
+
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('No route found'),
-            ),
+            body: Center(child: Text('Invalid task details argument')),
           ),
+          settings: settings,
+        );
+
+      case RouteNames.editTask:
+        final task = settings.arguments as TaskModel;
+        return MaterialPageRoute(
+          builder: (_) => EditTaskScreen(task: task),
+          settings: settings,
+        );
+      case RouteNames.reports:
+        return MaterialPageRoute(
+          builder: (_) => const ReportsScreen(),
+          settings: settings,
+        );
+      case RouteNames.notifications:
+        return MaterialPageRoute(
+          builder: (_) => const NotificationsScreen(),
+          settings: settings,
+        );
+      default:
+        return MaterialPageRoute(
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('No route found'))),
         );
     }
   }

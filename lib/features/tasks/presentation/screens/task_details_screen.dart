@@ -1,0 +1,284 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/widgets/priority_badge.dart';
+import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/status_badge.dart';
+import '../cubit/task_logs_cubit.dart';
+import '../cubit/task_logs_state.dart';
+import '../../data/models/task_model.dart';
+
+class TaskDetailsScreen extends StatefulWidget {
+  final TaskModel task;
+
+  const TaskDetailsScreen({super.key, required this.task});
+
+  @override
+  State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
+}
+
+class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TaskLogsCubit>().fetchTaskLogs(widget.task.id);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.task;
+    final currentUser = context.read<AuthCubit>().state.user;
+
+    final canEditTask =
+        currentUser != null &&
+        (currentUser.role == 'admin' || task.assignedBy == currentUser.id);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('task_details'.tr()),
+        actions: [
+          if (canEditTask)
+            IconButton(
+              onPressed: () async {
+                final result = await Navigator.pushNamed(
+                  context,
+                  RouteNames.editTask,
+                  arguments: task,
+                );
+
+                if (context.mounted && result == true) {
+                  Navigator.pop(context, true);
+                }
+              },
+              icon: const Icon(Icons.edit_outlined),
+            ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task.title,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: AppSizes.sm),
+                        Text(
+                          task.description,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: AppSizes.lg),
+                        Wrap(
+                          spacing: AppSizes.sm,
+                          runSpacing: AppSizes.sm,
+                          children: [
+                            StatusBadge(status: task.status),
+                            PriorityBadge(priority: task.priority),
+                          ],
+                        ),
+                        const SizedBox(height: AppSizes.xl),
+                        _DetailsRow(
+                          label: 'assigned_to'.tr(),
+                          value: task.assignedToName,
+                        ),
+                        const SizedBox(height: AppSizes.sm),
+                        _DetailsRow(
+                          label: 'assigned_by'.tr(),
+                          value: task.assignedByName,
+                        ),
+                        const SizedBox(height: AppSizes.sm),
+                        _DetailsRow(
+                          label: 'due_date'.tr(),
+                          value: DateFormat('yyyy-MM-dd').format(task.dueDate),
+                        ),
+                        const SizedBox(height: AppSizes.sm),
+                        _DetailsRow(
+                          label: 'created_at'.tr(),
+                          value: DateFormat(
+                            'yyyy-MM-dd HH:mm',
+                          ).format(task.createdAt),
+                        ),
+                        if (task.updatedAt != null) ...[
+                          const SizedBox(height: AppSizes.sm),
+                          _DetailsRow(
+                            label: 'updated_at'.tr(),
+                            value: DateFormat(
+                              'yyyy-MM-dd HH:mm',
+                            ).format(task.updatedAt!),
+                          ),
+                        ],
+                        if (task.completedAt != null) ...[
+                          const SizedBox(height: AppSizes.sm),
+                          _DetailsRow(
+                            label: 'completed_at'.tr(),
+                            value: DateFormat(
+                              'yyyy-MM-dd HH:mm',
+                            ).format(task.completedAt!),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.xl),
+                  SectionHeader(
+                    title: 'activity_log'.tr(),
+                    subtitle: 'activity_log_subtitle'.tr(),
+                  ),
+                  BlocBuilder<TaskLogsCubit, TaskLogsState>(
+                    builder: (context, state) {
+                      if (state.status == TaskLogsStatus.loading) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(AppSizes.lg),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      if (state.status == TaskLogsStatus.error) {
+                        return const EmptyStateWidget(
+                          icon: Icons.history_toggle_off,
+                          titleKey: 'failed_to_load_task_logs',
+                        );
+                      }
+
+                      if (state.logs.isEmpty) {
+                        return const EmptyStateWidget(
+                          icon: Icons.history,
+                          titleKey: 'no_activity_logs_found',
+                        );
+                      }
+
+                      return Column(
+                        children: state.logs.map((log) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: AppSizes.md),
+                            child: AppCard(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.history),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _buildLogTitle(log.action).tr(),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
+                                        ),
+                                        const SizedBox(height: AppSizes.xs),
+                                        Text(
+                                          _buildLogDescription(
+                                            performedByName:
+                                                log.performedByName,
+                                            previousStatus: log.previousStatus,
+                                            newStatus: log.newStatus,
+                                          ),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium,
+                                        ),
+                                        if (log.performedAt != null) ...[
+                                          const SizedBox(height: AppSizes.xs),
+                                          Text(
+                                            DateFormat(
+                                              'yyyy-MM-dd HH:mm',
+                                            ).format(log.performedAt!),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _buildLogTitle(String action) {
+    switch (action) {
+      case 'created':
+        return 'task_created';
+      case 'status_changed':
+        return 'task_status_changed';
+      default:
+        return 'task_updated';
+    }
+  }
+
+  String _buildLogDescription({
+    required String performedByName,
+    String? previousStatus,
+    String? newStatus,
+  }) {
+    if (previousStatus != null && newStatus != null) {
+      return '$performedByName • $previousStatus → $newStatus';
+    }
+
+    return performedByName;
+  }
+}
+
+class _DetailsRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailsRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        Text('$label:', style: Theme.of(context).textTheme.titleMedium),
+        Text(value, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+}
