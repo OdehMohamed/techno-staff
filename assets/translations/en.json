@@ -133,5 +133,6 @@
   "task_deadline_reminder_body": "Your task is due tomorrow: {task}",
   "task_overdue_reminder_body": "Your task is overdue: {task}",
   "task_overdue_escalation_body": "Overdue task assigned to {employee}: {task}",
-  "mark_all_as_read": "Mark all as read"
+  "mark_all_as_read": "Mark all as read",
+  "no_notifications_subtitle": "You're all caught up!"
 }

@@ -59,108 +59,123 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
             if (state.notifications.isEmpty) {
               return const EmptyStateWidget(
-                icon: Icons.notifications_none_outlined,
+                icon: Icons.notifications_active_outlined,
                 titleKey: 'no_notifications_found',
+                subtitleKey: 'no_notifications_subtitle',
               );
             }
 
-            return ListView.separated(
-              itemCount: state.notifications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSizes.md),
-              itemBuilder: (context, index) {
-                final notification = state.notifications[index];
-
-                return AppCard(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () async {
-                      if (user == null) return;
-
-                      if (!notification.isRead) {
-                        await context.read<NotificationsCubit>().markAsRead(
-                          notification.id,
-                          user.id,
-                        );
-                      }
-
-                      if (context.mounted && notification.taskId != null) {
-                        Navigator.pushNamed(
-                          context,
-                          RouteNames.taskDetails,
-                          arguments: notification.taskId,
-                        );
-                      }
-                    },
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            _buildNotificationIcon(notification.type),
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _buildNotificationTitle(notification),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                  ),
-                                  if (!notification.isRead)
-                                    Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.blue,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSizes.xs),
-                              Text(
-                                _buildNotificationBody(notification),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              if (notification.createdAt != null) ...[
-                                const SizedBox(height: AppSizes.sm),
-                                Text(
-                                  DateFormat(
-                                    'yyyy-MM-dd • HH:mm',
-                                  ).format(notification.createdAt!),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+            return RefreshIndicator(
+              onRefresh: () async {
+                final user = context.read<AuthCubit>().state.user;
+                if (user != null) {
+                  context.read<NotificationsCubit>().listenToNotifications(
+                    user.id,
+                  );
+                }
               },
+              child: ListView.separated(
+                itemCount: state.notifications.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSizes.md),
+                itemBuilder: (context, index) {
+                  final notification = state.notifications[index];
+
+                  return AppCard(
+                    child: InkWell(
+                      splashColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        if (user == null) return;
+
+                        if (!notification.isRead) {
+                          await context.read<NotificationsCubit>().markAsRead(
+                            notification.id,
+                            user.id,
+                          );
+                        }
+
+                        if (context.mounted && notification.taskId != null) {
+                          Navigator.pushNamed(
+                            context,
+                            RouteNames.taskDetails,
+                            arguments: notification.taskId,
+                          );
+                        }
+                      },
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              _buildNotificationIcon(notification.type),
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSizes.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _buildNotificationTitle(notification),
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                    ),
+                                    if (!notification.isRead)
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.blue,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSizes.xs),
+                                Text(
+                                  _buildNotificationBody(notification),
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                if (notification.createdAt != null) ...[
+                                  const SizedBox(height: AppSizes.sm),
+                                  Text(
+                                    DateFormat.yMMMd(
+                                      context.locale.languageCode,
+                                    ).add_jm().format(notification.createdAt!),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             );
           },
         ),
