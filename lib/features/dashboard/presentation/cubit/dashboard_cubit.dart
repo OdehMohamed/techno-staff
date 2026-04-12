@@ -13,7 +13,9 @@ class DashboardCubit extends Cubit<DashboardState> {
     emit(state.copyWith(status: DashboardStatus.loading, clearError: true));
 
     try {
-      final stats = await _dashboardRepository.getAdminStats();
+      final stats = await _dashboardRepository.getAdminStats(
+        filter: state.filter,
+      );
       final topData = await _dashboardRepository.getTopPerformer();
       final activities = await _dashboardRepository.getRecentActivities();
 
@@ -56,5 +58,10 @@ class DashboardCubit extends Cubit<DashboardState> {
         ),
       );
     }
+  }
+
+  Future<void> changeFilter(DashboardFilter filter) async {
+    emit(state.copyWith(filter: filter));
+    await loadAdminStats();
   }
 }

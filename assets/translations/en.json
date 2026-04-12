@@ -141,5 +141,6 @@
   "mark_as_read": "Mark as read",
   "marked_as_read": "Notification marked as read",
   "team_performance": "Team Performance",
-  "team_performance_subtitle": "Comparison between top and most active employees"
+  "team_performance_subtitle": "Comparison between top and most active employees",
+  "week": "Week"
 }

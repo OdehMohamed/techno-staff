@@ -81,6 +81,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         title: 'admin_dashboard'.tr(),
                         subtitle: 'dashboard_admin_subtitle'.tr(),
                       ),
+                      Row(
+                        children: [
+                          _FilterChip(
+                            label: 'today'.tr(),
+                            selected: state.filter == DashboardFilter.today,
+                            onTap: () => context
+                                .read<DashboardCubit>()
+                                .changeFilter(DashboardFilter.today),
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: 'week'.tr(),
+                            selected: state.filter == DashboardFilter.week,
+                            onTap: () => context
+                                .read<DashboardCubit>()
+                                .changeFilter(DashboardFilter.week),
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: 'month'.tr(),
+                            selected: state.filter == DashboardFilter.month,
+                            onTap: () => context
+                                .read<DashboardCubit>()
+                                .changeFilter(DashboardFilter.month),
+                          ),
+                        ],
+                      ),
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final isWide = constraints.maxWidth >= 900;
@@ -619,6 +646,27 @@ class _TeamInsightCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:techno_staff/features/dashboard/presentation/cubit/dashboard_state.dart';
 import '../../../../core/constants/firebase_paths.dart';
 
 class DashboardRepository {
@@ -11,13 +12,34 @@ class DashboardRepository {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
   }
 
-  Future<Map<String, int>> getAdminStats() async {
+  Future<Map<String, int>> getAdminStats({
+    required DashboardFilter filter,
+  }) async {
+    DateTime now = DateTime.now();
+
+    DateTime start;
+
+    switch (filter) {
+      case DashboardFilter.today:
+        start = DateTime(now.year, now.month, now.day);
+        break;
+      case DashboardFilter.week:
+        start = now.subtract(const Duration(days: 7));
+        break;
+      case DashboardFilter.month:
+        start = DateTime(now.year, now.month, 1);
+        break;
+    }
     final usersSnapshot = await _firestore
         .collection(FirebasePaths.users)
         .get();
 
     final tasksSnapshot = await _firestore
         .collection(FirebasePaths.tasks)
+        .where(
+          FirebasePaths.createdAt,
+          isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+        )
         .get();
 
     final employeesCount = usersSnapshot.docs
