@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:techno_staff/features/dashboard/data/services/report_service.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
+import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_line_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_pie_chart.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
@@ -396,7 +397,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         },
                       ),
                       const SizedBox(height: AppSizes.xl),
+                      SectionHeader(
+                        title: 'tasks_trend'.tr(),
+                        subtitle: 'tasks_trend_subtitle'.tr(),
+                      ),
 
+                      const SizedBox(height: AppSizes.md),
+
+                      DashboardLineChart(data: state.trends),
+
+                      const SizedBox(height: AppSizes.xl),
                       SectionHeader(
                         title: 'recent_activity'.tr(),
                         subtitle: 'recent_activity_subtitle'.tr(),

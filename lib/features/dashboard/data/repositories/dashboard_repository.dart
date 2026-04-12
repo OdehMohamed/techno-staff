@@ -213,4 +213,51 @@ class DashboardRepository {
       };
     }).toList();
   }
+
+  Future<List<Map<String, dynamic>>> getTasksTrend() async {
+    final snapshot = await _firestore.collection(FirebasePaths.tasks).get();
+
+    final Map<String, int> createdPerDay = {};
+    final Map<String, int> completedPerDay = {};
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+
+      // Created
+      if (data[FirebasePaths.createdAt] != null) {
+        final createdDate = (data[FirebasePaths.createdAt] as Timestamp)
+            .toDate();
+
+        final key =
+            "${createdDate.year}-${createdDate.month}-${createdDate.day}";
+
+        createdPerDay[key] = (createdPerDay[key] ?? 0) + 1;
+      }
+
+      // Completed
+      if (data['completedAt'] != null) {
+        final completedDate = (data['completedAt'] as Timestamp).toDate();
+
+        final key =
+            "${completedDate.year}-${completedDate.month}-${completedDate.day}";
+
+        completedPerDay[key] = (completedPerDay[key] ?? 0) + 1;
+      }
+    }
+
+    final List<Map<String, dynamic>> result = [];
+
+    final allKeys = {...createdPerDay.keys, ...completedPerDay.keys}.toList()
+      ..sort();
+
+    for (final key in allKeys) {
+      result.add({
+        'date': key,
+        'created': createdPerDay[key] ?? 0,
+        'completed': completedPerDay[key] ?? 0,
+      });
+    }
+
+    return result;
+  }
 }

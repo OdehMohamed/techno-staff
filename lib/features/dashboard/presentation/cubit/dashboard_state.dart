@@ -9,6 +9,8 @@ class DashboardState {
   final Map<String, dynamic> extraStats;
   final List<Map<String, dynamic>> activities;
   final DashboardFilter filter;
+  final List<Map<String, dynamic>> trends;
+
   const DashboardState({
     this.status = DashboardStatus.initial,
     this.stats = const {},
@@ -16,6 +18,7 @@ class DashboardState {
     this.extraStats = const {},
     this.activities = const [],
     this.filter = DashboardFilter.today,
+    this.trends = const [],
   });
 
   DashboardState copyWith({
@@ -26,6 +29,7 @@ class DashboardState {
     Map<String, dynamic>? extraStats,
     List<Map<String, dynamic>>? activities,
     DashboardFilter? filter,
+    List<Map<String, dynamic>>? trends,
   }) {
     return DashboardState(
       status: status ?? this.status,
@@ -34,6 +38,7 @@ class DashboardState {
       extraStats: extraStats ?? this.extraStats,
       activities: activities ?? this.activities,
       filter: filter ?? this.filter,
+      trends: trends ?? this.trends,
     );
   }
 }

@@ -4,6 +4,7 @@ import 'dashboard_state.dart';
 
 class DashboardCubit extends Cubit<DashboardState> {
   final DashboardRepository _dashboardRepository;
+  List<Map<String, dynamic>> trends = [];
 
   DashboardCubit({required DashboardRepository dashboardRepository})
     : _dashboardRepository = dashboardRepository,
@@ -18,13 +19,14 @@ class DashboardCubit extends Cubit<DashboardState> {
       );
       final topData = await _dashboardRepository.getTopPerformer();
       final activities = await _dashboardRepository.getRecentActivities();
-
+      final trends = await _dashboardRepository.getTasksTrend();
       emit(
         state.copyWith(
           status: DashboardStatus.loaded,
           stats: stats,
           extraStats: topData,
           activities: activities,
+          trends: trends,
         ),
       );
     } catch (_) {

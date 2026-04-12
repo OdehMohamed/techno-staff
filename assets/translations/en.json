@@ -142,5 +142,7 @@
   "marked_as_read": "Notification marked as read",
   "team_performance": "Team Performance",
   "team_performance_subtitle": "Comparison between top and most active employees",
-  "week": "Week"
+  "week": "Week",
+  "tasks_trend": "Tasks Trend",
+  "tasks_trend_subtitle": "Created vs completed tasks over time"
 }
