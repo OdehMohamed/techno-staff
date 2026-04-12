@@ -134,5 +134,8 @@
   "task_overdue_reminder_body": "مهمتك متأخرة: {task}",
   "task_overdue_escalation_body": "هناك مهمة متأخرة مسندة إلى {employee}: {task}",
   "mark_all_as_read": "تعيين الكل كمقروء",
-  "no_notifications_subtitle": "لا توجد إشعارات جديدة 🎉"
+  "no_notifications_subtitle": "لا توجد إشعارات جديدة 🎉",
+  "today": "اليوم",
+  "yesterday": "أمس",
+  "earlier": "أقدم"
 }

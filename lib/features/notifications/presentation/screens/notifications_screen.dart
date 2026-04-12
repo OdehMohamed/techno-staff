@@ -65,6 +65,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               );
             }
 
+            final groupedNotifications = _groupNotifications(
+              state.notifications,
+            );
+
             return RefreshIndicator(
               onRefresh: () async {
                 final user = context.read<AuthCubit>().state.user;
@@ -74,107 +78,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   );
                 }
               },
-              child: ListView.separated(
-                itemCount: state.notifications.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSizes.md),
-                itemBuilder: (context, index) {
-                  final notification = state.notifications[index];
-
-                  return AppCard(
-                    child: InkWell(
-                      splashColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () async {
-                        if (user == null) return;
-
-                        if (!notification.isRead) {
-                          await context.read<NotificationsCubit>().markAsRead(
-                            notification.id,
-                            user.id,
-                          );
-                        }
-
-                        if (context.mounted && notification.taskId != null) {
-                          Navigator.pushNamed(
-                            context,
-                            RouteNames.taskDetails,
-                            arguments: notification.taskId,
-                          );
-                        }
-                      },
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              _buildNotificationIcon(notification.type),
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: AppSizes.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _buildNotificationTitle(notification),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium,
-                                      ),
-                                    ),
-                                    if (!notification.isRead)
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.blue,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSizes.xs),
-                                Text(
-                                  _buildNotificationBody(notification),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                                if (notification.createdAt != null) ...[
-                                  const SizedBox(height: AppSizes.sm),
-                                  Text(
-                                    DateFormat.yMMMd(
-                                      context.locale.languageCode,
-                                    ).add_jm().format(notification.createdAt!),
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
+              child: ListView(
+                children: groupedNotifications.entries.map((entry) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSizes.sm,
+                          top: AppSizes.md,
+                        ),
+                        child: Text(
+                          entry.key,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
-                    ),
+                      ...entry.value.map((notification) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSizes.md),
+                          child: _buildNotificationItem(
+                            context: context,
+                            notification: notification,
+                            userId: user?.id,
+                          ),
+                        );
+                      }),
+                    ],
                   );
-                },
+                }).toList(),
               ),
             );
           },
@@ -197,6 +128,101 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       default:
         return Icons.notifications_outlined;
     }
+  }
+
+  Widget _buildNotificationItem({
+    required BuildContext context,
+    required InAppNotificationModel notification,
+    required String? userId,
+  }) {
+    return AppCard(
+      child: InkWell(
+        splashColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          if (userId == null) return;
+
+          if (!notification.isRead) {
+            await context.read<NotificationsCubit>().markAsRead(
+              notification.id,
+              userId,
+            );
+          }
+
+          if (context.mounted && notification.taskId != null) {
+            Navigator.pushNamed(
+              context,
+              RouteNames.taskDetails,
+              arguments: notification.taskId,
+            );
+          }
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _buildNotificationIcon(notification.type),
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: AppSizes.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _buildNotificationTitle(notification),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      if (!notification.isRead)
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.xs),
+                  Text(
+                    _buildNotificationBody(notification),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  if (notification.createdAt != null) ...[
+                    const SizedBox(height: AppSizes.sm),
+                    Text(
+                      DateFormat.yMMMd(
+                        context.locale.languageCode,
+                      ).add_jm().format(notification.createdAt!),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -253,4 +279,39 @@ String _buildNotificationBody(InAppNotificationModel notification) {
     default:
       return '';
   }
+}
+
+Map<String, List<InAppNotificationModel>> _groupNotifications(
+  List<InAppNotificationModel> notifications,
+) {
+  final Map<String, List<InAppNotificationModel>> grouped = {};
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = today.subtract(const Duration(days: 1));
+
+  for (final n in notifications) {
+    if (n.createdAt == null) continue;
+
+    final createdAt = n.createdAt!;
+    final notificationDate = DateTime(
+      createdAt.year,
+      createdAt.month,
+      createdAt.day,
+    );
+
+    String key;
+
+    if (notificationDate == today) {
+      key = 'today'.tr();
+    } else if (notificationDate == yesterday) {
+      key = 'yesterday'.tr();
+    } else {
+      key = 'earlier'.tr();
+    }
+
+    grouped.putIfAbsent(key, () => []).add(n);
+  }
+
+  return grouped;
 }
