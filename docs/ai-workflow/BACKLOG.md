@@ -38,7 +38,25 @@ _None yet._
 
 ## Should-fix
 
-_None yet._
+### Allow employees to create and assign tasks
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.0.0
+- **Added**: 2026-04-24
+- **Description**: Today only admins can create tasks. Extend the model so that any authenticated user (admin or employee) can create a task and assign it to any other user. The creator gains full edit rights on tasks they created, mirroring what admins have on those specific tasks. Admin retains global full access.
+- **Acceptance criteria**:
+  1. Employee shell surfaces a "Create Task" entry point and a "Tasks I created" list separate from "Tasks assigned to me".
+  2. `firestore.rules` permits `create` on `tasks/` for any authenticated user; the `update`/`delete` rule treats `request.auth.uid == resource.data.assignedBy` as an owner, in addition to admin.
+  3. `assignedBy` is immutable after create (rules enforce this).
+  4. `sendTaskAssignedNotification` correctly handles the case where the assigner is an employee (notification payload shows assigner name; admins are still notified when appropriate).
+  5. An employee cannot escalate their own permissions via task creation (cannot set a task's `role`, `isActive`, or anything outside the task document).
+  6. All three quality gates green: `flutter analyze`, `flutter test`, `functions/` ESLint.
+- **Notes**:
+  - Touches `firestore.rules`, `functions/index.js`, `lib/features/tasks/`, and the employee shell.
+  - Security-sensitive — per RULES.md §6 the rule diff must be reviewed and approved before edit.
+  - Before implementing, confirm UI copy keys (en + ar) with the team.
 
 ## Nice-to-have
 
