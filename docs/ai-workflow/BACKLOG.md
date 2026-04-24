@@ -41,10 +41,11 @@ _None yet._
 ### Allow employees to create and assign tasks
 
 - **Priority**: Should-fix
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-24
+- **Planned**: 2026-04-24 (branch `feature/employee-task-creation`)
 - **Description**: Today only admins can create tasks. Extend the model so that any authenticated user (admin or employee) can create a task and assign it to any other user. The creator gains full edit rights on tasks they created, mirroring what admins have on those specific tasks. Admin retains global full access.
 - **Acceptance criteria**:
   1. Employee shell surfaces a "Create Task" entry point and a "Tasks I created" list separate from "Tasks assigned to me".
