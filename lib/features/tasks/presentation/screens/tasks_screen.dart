@@ -47,7 +47,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.read<AuthCubit>().state.user;
+    final user = context.select((AuthCubit cubit) => cubit.state.user);
     final isAdmin = user?.role == 'admin';
 
     return Scaffold(
@@ -134,26 +134,6 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Widget _buildEmployeeTabs(TasksState state, AppUser? user) {
-    final isLoading =
-        state.tasksAssignedToMeStatus == TasksStatus.loading ||
-        state.tasksCreatedByMeStatus == TasksStatus.loading;
-    final assignedError = state.tasksAssignedToMeStatus == TasksStatus.error;
-    final createdError = state.tasksCreatedByMeStatus == TasksStatus.error;
-
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (assignedError || createdError) {
-      return EmptyStateWidget(
-        icon: Icons.error_outline,
-        titleKey:
-            state.tasksAssignedToMeErrorMessage ??
-            state.tasksCreatedByMeErrorMessage ??
-            'unknown_error',
-      );
-    }
-
     return DefaultTabController(
       length: 2,
       child: Column(
@@ -173,12 +153,16 @@ class _TasksScreenState extends State<TasksScreen> {
           Expanded(
             child: TabBarView(
               children: [
-                _buildTasksList(
+                _buildTasksTabContent(
+                  status: state.tasksAssignedToMeStatus,
+                  errorKey: state.tasksAssignedToMeErrorMessage,
                   tasks: state.tasksAssignedToMe,
                   currentUser: user,
                   isAdmin: false,
                 ),
-                _buildTasksList(
+                _buildTasksTabContent(
+                  status: state.tasksCreatedByMeStatus,
+                  errorKey: state.tasksCreatedByMeErrorMessage,
                   tasks: state.tasksCreatedByMe,
                   currentUser: user,
                   isAdmin: false,
@@ -188,6 +172,31 @@ class _TasksScreenState extends State<TasksScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTasksTabContent({
+    required TasksStatus status,
+    required String? errorKey,
+    required List<TaskModel> tasks,
+    required AppUser? currentUser,
+    required bool isAdmin,
+  }) {
+    if (status == TasksStatus.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (status == TasksStatus.error) {
+      return EmptyStateWidget(
+        icon: Icons.error_outline,
+        titleKey: errorKey ?? 'unknown_error',
+      );
+    }
+
+    return _buildTasksList(
+      tasks: tasks,
+      currentUser: currentUser,
+      isAdmin: isAdmin,
     );
   }
 
