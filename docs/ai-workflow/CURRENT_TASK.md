@@ -149,7 +149,7 @@ All other keys (`add_task`, `task_title`, `description`, `assign_to`, etc.) alre
 - [x] `PROJECT_CONTEXT.md` updated.
 - [x] `BACKLOG.md` item moved to `Done`.
 - [x] `SESSION_LOG.md` entry added.
-- [ ] PR opened against `dev` with a summary, test plan, and links to the rule diff.
+- [x] PR opened against `dev` with a summary, test plan, and links to the rule diff.
 
 ## Out of scope
 
