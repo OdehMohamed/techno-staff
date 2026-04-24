@@ -64,7 +64,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAdmin() || isCurrentUser(userId);
+      allow read: if signedIn();
 
       allow create: if isAdmin() || isCurrentUser(userId);
 
@@ -80,14 +80,15 @@ service cloud.firestore {
       allow read: if isAdmin() || taskCreator() || taskAssignee();
 
       allow create: if signedIn() && (
-        isAdmin() || creatingOwnTask()
+        creatingOwnTask()
       );
 
-      allow update: if isAdmin()
-        || taskCreator()
-        || (taskAssignee() && onlyAllowedTaskStatusFieldsChanged());
+      allow update: if (
+        (isAdmin() || taskCreator())
+        && request.resource.data.assignedBy == resource.data.assignedBy
+      ) || (taskAssignee() && onlyAllowedTaskStatusFieldsChanged());
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || taskCreator();
     }
 
     match /task_logs/{logId} {
