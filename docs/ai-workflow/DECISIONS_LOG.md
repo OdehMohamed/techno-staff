@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-24 — Self-assignment is allowed (reversal of earlier scope detail)
+
+- **Decision**: A user may assign a task to themselves. The current user MUST remain visible in the assignee dropdown on the add-task screen.
+- **Reason**: During the initial planning round for the employee-task-creation feature, the scope called for excluding the current user from the assignee dropdown. On review, the team decided self-assignment is a legitimate use case (e.g. a user tracking their own work item as a formal task) and restricting it adds no security or UX value — `assignedBy` and `assignedTo` being the same uid is harmless.
+- **Impact**: `CURRENT_TASK.md §6` and manual smoke test #7 updated to reflect this. Implementation in `add_task_screen.dart` intentionally does NOT filter out the current user. Any future agent reading the old "exclude self" instruction should ignore it.
+- **Owner**: Mohamed Odeh.
+- **Related**: `CURRENT_TASK.md`, PR #6.
+
 ## 2026-04-24 — Allow employee task creation + relax users read rule
 
 - **Decision**: Implement employee task creation with any-to-any assignment by updating `firestore.rules` so any signed-in user can read `users/`, any task creator can create/update/delete their own tasks, and `assignedBy` remains immutable after task creation.

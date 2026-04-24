@@ -105,7 +105,7 @@ static const String assignedBy = 'assignedBy';
 ### 6. `lib/features/tasks/presentation/screens/add_task_screen.dart`
 
 - Line ~127: remove the `where((user) => user.role == 'employee')` filter. The dropdown lists all users from the loaded employees (rename the variable if it helps readability).
-- Exclude the current user from the dropdown (a user should not assign a task to themselves).
+- **Self-assignment is allowed.** The current user MUST remain visible in the assignee dropdown — a user may assign a task to themselves (revised 2026-04-24, see `DECISIONS_LOG.md`).
 - No other behavioral change — `assignedBy: currentUser.id` is already set correctly.
 
 ### 7. `lib/features/employees/` (verify only)
@@ -144,7 +144,7 @@ All other keys (`add_task`, `task_title`, `description`, `assign_to`, etc.) alre
 4. **Creator edit / delete** → creator can edit the task (via tap → edit screen) and can delete it; admin can still edit / delete any task.
 5. **Immutability** → attempting to change `assignedBy` via the Firebase console while signed in as the creator fails (rule blocks it). This is a manual security check.
 6. **Admin view** → admin still sees the full list of tasks without tabs.
-7. **Self-assign prevention** → current user is not in the assignee dropdown.
+7. **Self-assignment allowed** → current user appears in the assignee dropdown and a user can successfully assign a task to themselves (intentional — see `DECISIONS_LOG.md`).
 
 ## Definition of Done
 
@@ -152,7 +152,7 @@ All other keys (`add_task`, `task_title`, `description`, `assign_to`, etc.) alre
 - [x] `firebase_paths.dart` has `assignedBy` constant.
 - [x] Repository + cubit + state support both "assigned to me" and "created by me".
 - [x] Tasks screen has tabs for non-admin users; FAB visible to all users.
-- [x] Add-task screen allows any-to-any assignment; current user excluded.
+- [x] Add-task screen allows any-to-any assignment; current user is visible (self-assignment allowed — see `DECISIONS_LOG.md`).
 - [x] `EmployeesCubit` works for both roles.
 - [x] New translation keys added to `en.json` and `ar.json`.
 - [x] `flutter analyze` clean, `flutter test` green, `functions/` ESLint green.
