@@ -12,10 +12,22 @@ class TasksRepository {
     await _firestore.collection(FirebasePaths.tasks).add(task.toMap());
   }
 
-  Future<List<TaskModel>> getTasksForUser(String userId) async {
+  Future<List<TaskModel>> getTasksAssignedTo(String userId) async {
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedTo, isEqualTo: userId)
+        .orderBy(FirebasePaths.createdAt, descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Future<List<TaskModel>> getTasksCreatedBy(String userId) async {
+    final snapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .where(FirebasePaths.assignedBy, isEqualTo: userId)
         .orderBy(FirebasePaths.createdAt, descending: true)
         .get();
 

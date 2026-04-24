@@ -8,7 +8,6 @@ import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/tasks_repository.dart';
-import 'package:intl/intl.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -113,6 +112,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth > 700 ? 550.0 : double.infinity;
+    final currentUser = context.read<AuthCubit>().state.user;
 
     return Scaffold(
       appBar: AppBar(title: Text('add_task'.tr())),
@@ -123,8 +123,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             constraints: BoxConstraints(maxWidth: contentWidth),
             child: BlocBuilder<EmployeesCubit, EmployeesState>(
               builder: (context, state) {
-                final employees = state.employees
-                    .where((user) => user.role == 'employee')
+                final assignableUsers = state.employees
+                    .where((user) => user.id != currentUser?.id)
                     .toList();
 
                 return Form(
@@ -163,11 +163,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         decoration: InputDecoration(
                           labelText: 'assign_to'.tr(),
                         ),
-                        items: employees
+                        items: assignableUsers
                             .map(
-                              (employee) => DropdownMenuItem(
-                                value: employee.id,
-                                child: Text(employee.name),
+                              (assignee) => DropdownMenuItem(
+                                value: assignee.id,
+                                child: Text(assignee.name),
                               ),
                             )
                             .toList(),
