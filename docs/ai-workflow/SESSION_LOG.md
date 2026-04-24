@@ -21,6 +21,24 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-24 — GitHub Copilot (GPT-5.3-Codex) — Implement employee task creation
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feature/employee-task-creation`
+- **Goal**: Implement the approved scope to allow employees to create and assign tasks without changing architecture decisions.
+- **Outcome**: Applied the approved `firestore.rules` diff, added `assignedBy` constants, extended task repository/cubit/state for assigned-vs-created task lists, added non-admin task tabs and universal task FAB, enabled any-user assignment (excluding self) in add-task flow, added localization keys in en/ar, and added state unit tests. Also resolved existing analyzer infos so quality gates are green.
+- **Files touched**: `firestore.rules`, `lib/core/constants/firebase_paths.dart`, `lib/features/tasks/**`, `lib/features/employee/presentation/screens/employee_home_screen.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, `test/features/tasks/presentation/cubit/tasks_state_test.dart`, plus lint-only fixes in `lib/features/dashboard/**`, `lib/features/employees/**`, `lib/features/notifications/**`, and `lib/features/reports/**`.
+- **Follow-ups**: Manual smoke tests from `CURRENT_TASK.md` still require runtime verification against Firebase users/devices.
+
+## 2026-04-24 — Claude Code (Opus 4.7) — Plan employee task creation
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feature/employee-task-creation`
+- **Goal**: Lock in scope, rules diff, and product decisions for the "Allow employees to create and assign tasks" backlog item, then hand off implementation to a separate agent.
+- **Outcome**: Audited `firestore.rules`, `lib/features/tasks/`, `add_task_screen.dart`, and `functions/index.js`. Found the backend is ~80% already compatible with the feature. Locked in 5 product decisions (any-to-any assignment, relax `users` read, tabs for employee view, creator can delete, `assignedBy` immutable). Rewrote `CURRENT_TASK.md` as a full file-by-file implementation spec including the exact approved rules diff, scope, smoke tests, and DoD. Moved the `BACKLOG.md` item to "In progress". Implementation will be carried out by another agent against this branch.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over from `CURRENT_TASK.md`.
+
 ## 2026-04-24 — Claude Code (Opus 4.7) — Bootstrap AI workflow docs
 
 - **Agent**: Claude Code (Opus 4.7)

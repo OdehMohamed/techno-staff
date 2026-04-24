@@ -20,26 +20,29 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 ## 2. Tech Stack
 
 ### Mobile / Client
-| Concern | Choice |
-|---|---|
-| Framework | Flutter (Dart SDK `^3.9.2`) |
-| State management | `flutter_bloc` `^9.1.1` — Cubit pattern only |
-| Localization | `easy_localization` `^3.0.8` (en, ar) |
-| Charts | `fl_chart` `^1.2.0` |
-| PDF | `pdf` `^3.12.0`, `printing` `^5.14.3` |
-| Local notifications | `flutter_local_notifications` `^20.1.0` |
-| Utilities | `uuid`, `intl`, `path_provider` |
+
+| Concern             | Choice                                       |
+| ------------------- | -------------------------------------------- |
+| Framework           | Flutter (Dart SDK `^3.9.2`)                  |
+| State management    | `flutter_bloc` `^9.1.1` — Cubit pattern only |
+| Localization        | `easy_localization` `^3.0.8` (en, ar)        |
+| Charts              | `fl_chart` `^1.2.0`                          |
+| PDF                 | `pdf` `^3.12.0`, `printing` `^5.14.3`        |
+| Local notifications | `flutter_local_notifications` `^20.1.0`      |
+| Utilities           | `uuid`, `intl`, `path_provider`              |
 
 ### Backend (Firebase)
-| Concern | Choice |
-|---|---|
-| Auth | `firebase_auth` `^6.3.0` |
-| Firestore | `cloud_firestore` `^6.2.0` |
-| Cloud Functions | `cloud_functions` `^6.1.0` (Node 22 runtime) |
-| Push messaging | `firebase_messaging` `^16.1.3` |
-| Firebase project id | `techno-staff` |
+
+| Concern             | Choice                                       |
+| ------------------- | -------------------------------------------- |
+| Auth                | `firebase_auth` `^6.3.0`                     |
+| Firestore           | `cloud_firestore` `^6.2.0`                   |
+| Cloud Functions     | `cloud_functions` `^6.1.0` (Node 22 runtime) |
+| Push messaging      | `firebase_messaging` `^16.1.3`               |
+| Firebase project id | `techno-staff`                               |
 
 ### Quality
+
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 
@@ -67,27 +70,27 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 
 ## 4. Modules
 
-| Feature | Role(s) | Purpose |
-|---|---|---|
-| `splash` | all | Boot + initial auth-state routing |
-| `auth` | all | Login, sign-out, FCM token registration |
-| `admin` | admin | Admin home shell |
-| `employee` | employee | Employee home shell |
-| `employees` | admin | Staff CRUD (creation goes through `createEmployeeUser` callable) |
-| `tasks` | all | Task list, details, create/edit (admin), status updates (assignee) |
-| `dashboard` | admin | Charts, filters (today/week/month), team performance, trend |
-| `reports` | admin | Reporting + PDF export |
-| `notifications` | all | In-app notification feed with swipe-to-read and grouping |
-| `settings` | all | Theme, language, sign out |
+| Feature         | Role(s)  | Purpose                                                                        |
+| --------------- | -------- | ------------------------------------------------------------------------------ |
+| `splash`        | all      | Boot + initial auth-state routing                                              |
+| `auth`          | all      | Login, sign-out, FCM token registration                                        |
+| `admin`         | admin    | Admin home shell                                                               |
+| `employee`      | employee | Employee home shell                                                            |
+| `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)               |
+| `tasks`         | all      | Task list, details, create/edit by creator or admin, status updates (assignee) |
+| `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                    |
+| `reports`       | admin    | Reporting + PDF export                                                         |
+| `notifications` | all      | In-app notification feed with swipe-to-read and grouping                       |
+| `settings`      | all      | Theme, language, sign out                                                      |
 
 ## 5. Firestore Data Model
 
-| Collection | Client write access | Notes |
-|---|---|---|
-| `users/{uid}` | admin: full; employee: own `fcmToken` only | `{ email, name, role, isActive, fcmToken, createdAt }` |
-| `tasks/{taskId}` | creator + admin: full; assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` |
-| `task_logs/{logId}` | **none — server-only** | Audit trail written by Cloud Functions |
-| `notifications/{notificationId}` | server writes; client toggles `isRead` | Per-user in-app feed |
+| Collection                       | Client write access                                                                                                                                              | Notes                                                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `users/{uid}`                    | admin: full; employee: own `fcmToken` only                                                                                                                       | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, createdAt }` |
+| `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability                     |
+| `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions                                                               |
+| `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed                                                                                 |
 
 Field-name constants live in `lib/core/constants/firebase_paths.dart`. String literals for Firestore paths are not allowed in feature code (see `RULES.md`).
 
@@ -95,16 +98,16 @@ Field-name constants live in `lib/core/constants/firebase_paths.dart`. String li
 
 Single file: `functions/index.js` (Node 22).
 
-| Function | Trigger | Purpose |
-|---|---|---|
-| `createEmployeeUser` | callable (admin only) | Create Firebase Auth user + `users/{uid}` doc |
-| `sendTaskAssignedNotification` | Firestore `onCreate` tasks | FCM push + log + in-app notification |
-| `sendTaskStatusNotification` | Firestore `onUpdate` tasks | Notify admins + creator on completion; always log |
-| `sendTaskDeadlineReminders` | cron `0 9 * * *` (Asia/Jerusalem) | 24h-before reminders |
-| `testTaskDeadlineReminders` | admin-triggered callable | Dry-run of the deadline reminder |
-| `sendOverdueTaskEscalations` | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
-| `testOverdueTaskEscalations` | admin-triggered callable | Dry-run of the escalation |
-| `createInAppNotification` | helper | Writes to `notifications` collection |
+| Function                       | Trigger                            | Purpose                                                                             |
+| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `createEmployeeUser`           | callable (admin only)              | Create Firebase Auth user + `users/{uid}` doc                                       |
+| `sendTaskAssignedNotification` | Firestore `onCreate` tasks         | FCM push + log + in-app notification                                                |
+| `sendTaskStatusNotification`   | Firestore `onUpdate` tasks         | Notify admins + creator on completion; always log                                   |
+| `sendTaskDeadlineReminders`    | cron `0 9 * * *` (Asia/Jerusalem)  | 24h-before reminders                                                                |
+| `testTaskDeadlineReminders`    | admin-triggered callable           | Dry-run of the deadline reminder                                                    |
+| `sendOverdueTaskEscalations`   | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
+| `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
+| `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
 
 ## 7. Notifications Pipeline
 

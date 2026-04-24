@@ -37,6 +37,8 @@
   "no_employees_found": "لا يوجد موظفون",
   "role": "الدور",
   "tasks": "المهام",
+  "assigned_to_me": "المهام المسندة لي",
+  "created_by_me": "المهام التي أنشأتها",
   "add_task": "إضافة مهمة",
   "task_title": "عنوان المهمة",
   "task_title_required": "عنوان المهمة مطلوب",

@@ -432,10 +432,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             final action = activity['action'];
                             final name = activity['performedByName'] ?? '';
                             final task = activity['taskTitle'] ?? '';
-                            final oldStatus =
-                                activity['oldStatus'] ??
-                                activity['previousStatus'] ??
-                                '';
                             final newStatus = activity['newStatus'] ?? '';
                             final performedAt = activity['performedAt'];
 

@@ -147,9 +147,11 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
             constraints: BoxConstraints(maxWidth: contentWidth),
             child: BlocBuilder<EmployeesCubit, EmployeesState>(
               builder: (context, state) {
-                final employees = state.employees
-                    .where((user) => user.role == 'employee')
-                    .toList();
+                final employees = state.employees.toList();
+                final selectedEmployeeIdValid =
+                    employees.any((user) => user.id == _selectedEmployeeId)
+                    ? _selectedEmployeeId
+                    : null;
 
                 return Form(
                   key: _formKey,
@@ -183,15 +185,21 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                       ),
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(
-                        initialValue: _selectedEmployeeId,
+                        initialValue: selectedEmployeeIdValid,
                         decoration: InputDecoration(
                           labelText: 'assign_to'.tr(),
+                          isDense: true,
                         ),
+                        isExpanded: true,
                         items: employees
                             .map(
                               (employee) => DropdownMenuItem(
                                 value: employee.id,
-                                child: Text(employee.name),
+                                child: Text(
+                                  employee.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               ),
                             )
                             .toList(),
@@ -210,7 +218,11 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedPriority,
-                        decoration: InputDecoration(labelText: 'priority'.tr()),
+                        decoration: InputDecoration(
+                          labelText: 'priority'.tr(),
+                          isDense: true,
+                        ),
+                        isExpanded: true,
                         items: [
                           DropdownMenuItem(
                             value: 'low',
@@ -234,7 +246,11 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedStatus,
-                        decoration: InputDecoration(labelText: 'status'.tr()),
+                        decoration: InputDecoration(
+                          labelText: 'status'.tr(),
+                          isDense: true,
+                        ),
+                        isExpanded: true,
                         items: [
                           DropdownMenuItem(
                             value: 'pending',

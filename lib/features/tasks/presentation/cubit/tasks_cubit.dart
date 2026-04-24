@@ -10,29 +10,67 @@ class TasksCubit extends Cubit<TasksState> {
     : _tasksRepository = tasksRepository,
       super(const TasksState());
 
-  Future<void> fetchTasksForUser(String userId) async {
-    emit(state.copyWith(status: TasksStatus.loading, clearError: true));
+  Future<void> fetchTasksAssignedTo(String userId) async {
+    emit(
+      state.copyWith(
+        tasksAssignedToMeStatus: TasksStatus.loading,
+        clearTasksAssignedToMeError: true,
+      ),
+    );
 
     try {
-      debugPrint('FETCHING TASKS FOR USER ID: $userId');
+      debugPrint('FETCHING TASKS ASSIGNED TO USER ID: $userId');
 
-      final tasks = await _tasksRepository.getTasksForUser(userId);
+      final tasks = await _tasksRepository.getTasksAssignedTo(userId);
 
-      debugPrint('TASKS COUNT FOR USER: ${tasks.length}');
+      debugPrint('TASKS COUNT ASSIGNED TO USER: ${tasks.length}');
 
       emit(
         state.copyWith(
-          status: TasksStatus.loaded,
-          tasks: tasks,
-          clearError: true,
+          tasksAssignedToMeStatus: TasksStatus.loaded,
+          tasksAssignedToMe: tasks,
+          clearTasksAssignedToMeError: true,
         ),
       );
     } catch (e) {
-      debugPrint('FETCH TASKS ERROR: $e');
+      debugPrint('FETCH ASSIGNED TASKS ERROR: $e');
       emit(
         state.copyWith(
-          status: TasksStatus.error,
-          errorMessage: 'failed_to_load_tasks',
+          tasksAssignedToMeStatus: TasksStatus.error,
+          tasksAssignedToMeErrorMessage: 'failed_to_load_tasks',
+        ),
+      );
+    }
+  }
+
+  Future<void> fetchTasksCreatedBy(String userId) async {
+    emit(
+      state.copyWith(
+        tasksCreatedByMeStatus: TasksStatus.loading,
+        clearTasksCreatedByMeError: true,
+      ),
+    );
+
+    try {
+      debugPrint('FETCHING TASKS CREATED BY USER ID: $userId');
+
+      final tasks = await _tasksRepository.getTasksCreatedBy(userId);
+
+      debugPrint('TASKS COUNT CREATED BY USER: ${tasks.length}');
+
+      emit(
+        state.copyWith(
+          tasksCreatedByMeStatus: TasksStatus.loaded,
+          tasksCreatedByMe: tasks,
+          clearTasksCreatedByMeError: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('FETCH CREATED TASKS ERROR: $e');
+      emit(
+        state.copyWith(
+          tasksCreatedByMeStatus: TasksStatus.error,
+          tasksCreatedByMeErrorMessage: 'failed_to_load_tasks',
         ),
       );
     }
@@ -78,7 +116,8 @@ class TasksCubit extends Cubit<TasksState> {
     if (isAdmin) {
       await fetchAllTasks();
     } else {
-      await fetchTasksForUser(currentUserId);
+      await fetchTasksAssignedTo(currentUserId);
+      await fetchTasksCreatedBy(currentUserId);
     }
   }
 }

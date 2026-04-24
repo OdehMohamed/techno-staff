@@ -38,7 +38,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             RouteNames.addEmployee,
           );
 
-          if (result == true && mounted) {
+          if (!context.mounted) return;
+
+          if (result == true) {
             context.read<EmployeesCubit>().fetchEmployees();
           }
         },

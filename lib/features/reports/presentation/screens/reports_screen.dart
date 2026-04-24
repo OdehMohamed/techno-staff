@@ -491,6 +491,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   'REMINDER TEST RESULT: ${result.data}',
                                 );
 
+                                if (!context.mounted) return;
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -500,6 +502,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               } catch (e) {
                                 debugPrint('REMINDER ERROR: $e');
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -527,6 +531,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   'ESCALATION TEST RESULT: ${result.data}',
                                 );
 
+                                if (!context.mounted) return;
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -536,6 +542,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               } catch (e) {
                                 debugPrint('ESCALATION ERROR: $e');
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

@@ -37,6 +37,8 @@
   "no_employees_found": "No employees found",
   "role": "Role",
   "tasks": "Tasks",
+  "assigned_to_me": "Assigned to me",
+  "created_by_me": "Created by me",
   "add_task": "Add Task",
   "task_title": "Task Title",
   "task_title_required": "Task title is required",
