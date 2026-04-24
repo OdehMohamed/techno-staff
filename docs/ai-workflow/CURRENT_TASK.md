@@ -136,19 +136,19 @@ All other keys (`add_task`, `task_title`, `description`, `assign_to`, etc.) alre
 
 ## Definition of Done
 
-- [ ] Firestore rules diff applied exactly as written.
-- [ ] `firebase_paths.dart` has `assignedBy` constant.
-- [ ] Repository + cubit + state support both "assigned to me" and "created by me".
-- [ ] Tasks screen has tabs for non-admin users; FAB visible to all users.
-- [ ] Add-task screen allows any-to-any assignment; current user excluded.
-- [ ] `EmployeesCubit` works for both roles.
-- [ ] New translation keys added to `en.json` and `ar.json`.
-- [ ] `flutter analyze` clean, `flutter test` green, `functions/` ESLint green.
+- [x] Firestore rules diff applied exactly as written.
+- [x] `firebase_paths.dart` has `assignedBy` constant.
+- [x] Repository + cubit + state support both "assigned to me" and "created by me".
+- [x] Tasks screen has tabs for non-admin users; FAB visible to all users.
+- [x] Add-task screen allows any-to-any assignment; current user excluded.
+- [x] `EmployeesCubit` works for both roles.
+- [x] New translation keys added to `en.json` and `ar.json`.
+- [x] `flutter analyze` clean, `flutter test` green, `functions/` ESLint green.
 - [ ] All manual smoke tests pass.
-- [ ] `DECISIONS_LOG.md` has an entry for the rule changes.
-- [ ] `PROJECT_CONTEXT.md` updated.
-- [ ] `BACKLOG.md` item moved to `Done`.
-- [ ] `SESSION_LOG.md` entry added.
+- [x] `DECISIONS_LOG.md` has an entry for the rule changes.
+- [x] `PROJECT_CONTEXT.md` updated.
+- [x] `BACKLOG.md` item moved to `Done`.
+- [x] `SESSION_LOG.md` entry added.
 - [ ] PR opened against `dev` with a summary, test plan, and links to the rule diff.
 
 ## Out of scope

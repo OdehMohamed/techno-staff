@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-24 — Allow employee task creation + relax users read rule
+
+- **Decision**: Implement employee task creation with any-to-any assignment by updating `firestore.rules` so any signed-in user can read `users/`, any task creator can create/update/delete their own tasks, and `assignedBy` remains immutable after task creation.
+- **Reason**: Employees must be able to choose any assignee (employee or admin), view assignee choices in-app, and manage tasks they originated without requiring admin-only task creation.
+- **Impact**: Non-admin task screens now show split views (`assigned_to_me` and `created_by_me`), task creation is available to all users, and security rules enforce ownership boundaries while preserving assignee status-only edits.
+- **Owner**: Mohamed Odeh.
+- **Related**: `CURRENT_TASK.md`, backlog item "Allow employees to create and assign tasks".
+
 ## 2026-04-24 — Adopt `/docs/ai-workflow/` as the single shared source of truth
 
 - **Decision**: All cross-session project context, rules, decisions, backlog, and forward-looking ideas live under `/docs/ai-workflow/` as plain markdown. Every AI agent and human developer reads these files before starting a task and updates them after finishing.

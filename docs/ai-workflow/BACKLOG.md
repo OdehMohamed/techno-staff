@@ -38,10 +38,18 @@ _None yet._
 
 ## Should-fix
 
+_None yet._
+
+## Nice-to-have
+
+_None yet._
+
+## Done
+
 ### Allow employees to create and assign tasks
 
 - **Priority**: Should-fix
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Status**: Done (completed 2026-04-24)
 - **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-24
@@ -55,14 +63,5 @@ _None yet._
   5. An employee cannot escalate their own permissions via task creation (cannot set a task's `role`, `isActive`, or anything outside the task document).
   6. All three quality gates green: `flutter analyze`, `flutter test`, `functions/` ESLint.
 - **Notes**:
-  - Touches `firestore.rules`, `functions/index.js`, `lib/features/tasks/`, and the employee shell.
-  - Security-sensitive — per RULES.md §6 the rule diff must be reviewed and approved before edit.
-  - Before implementing, confirm UI copy keys (en + ar) with the team.
-
-## Nice-to-have
-
-_None yet._
-
-## Done
-
-_None yet._
+  - Touches `firestore.rules`, `lib/features/tasks/`, `lib/features/employees/`, and localization files.
+  - Rules change followed the approved diff in `CURRENT_TASK.md`.

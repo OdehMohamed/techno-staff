@@ -74,7 +74,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `admin` | admin | Admin home shell |
 | `employee` | employee | Employee home shell |
 | `employees` | admin | Staff CRUD (creation goes through `createEmployeeUser` callable) |
-| `tasks` | all | Task list, details, create/edit (admin), status updates (assignee) |
+| `tasks` | all | Task list, details, create/edit by creator or admin, status updates (assignee) |
 | `dashboard` | admin | Charts, filters (today/week/month), team performance, trend |
 | `reports` | admin | Reporting + PDF export |
 | `notifications` | all | In-app notification feed with swipe-to-read and grouping |
@@ -84,8 +84,8 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 
 | Collection | Client write access | Notes |
 |---|---|---|
-| `users/{uid}` | admin: full; employee: own `fcmToken` only | `{ email, name, role, isActive, fcmToken, createdAt }` |
-| `tasks/{taskId}` | creator + admin: full; assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` |
+| `users/{uid}` | admin: full; employee: own `fcmToken` only | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, createdAt }` |
+| `tasks/{taskId}` | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability |
 | `task_logs/{logId}` | **none — server-only** | Audit trail written by Cloud Functions |
 | `notifications/{notificationId}` | server writes; client toggles `isRead` | Per-user in-app feed |
 
