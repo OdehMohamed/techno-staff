@@ -55,10 +55,7 @@ class _TasksScreenState extends State<TasksScreen> {
       drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final result = await Navigator.pushNamed(
-            context,
-            RouteNames.addTask,
-          );
+          final result = await Navigator.pushNamed(context, RouteNames.addTask);
 
           if (result == true && mounted) {
             _loadTasks();
@@ -266,7 +263,8 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                     ],
                   ),
-                  if (currentUser != null && task.assignedTo == currentUser.id) ...[
+                  if (currentUser != null &&
+                      task.assignedTo == currentUser.id) ...[
                     const SizedBox(height: AppSizes.lg),
                     DropdownButtonFormField<String>(
                       initialValue: task.status,

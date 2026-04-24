@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/employees_repository.dart';
 import 'employees_state.dart';
@@ -10,10 +11,12 @@ class EmployeesCubit extends Cubit<EmployeesState> {
       super(const EmployeesState());
 
   Future<void> fetchEmployees() async {
+    debugPrint('EmployeesCubit: fetching employees...');
     emit(state.copyWith(status: EmployeesStatus.loading, clearError: true));
 
     try {
       final employees = await _employeesRepository.getEmployees();
+      debugPrint('EmployeesCubit: fetched ${employees.length} employees');
 
       emit(
         state.copyWith(
@@ -22,7 +25,8 @@ class EmployeesCubit extends Cubit<EmployeesState> {
           clearError: true,
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('EmployeesCubit: error fetching employees: $e');
       emit(
         state.copyWith(
           status: EmployeesStatus.error,

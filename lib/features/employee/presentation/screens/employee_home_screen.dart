@@ -64,20 +64,25 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 return BlocBuilder<TasksCubit, TasksState>(
                   builder: (context, tasksState) {
                     if (user != null &&
-                        tasksState.tasksAssignedToMeStatus == TasksStatus.initial) {
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.initial) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (!mounted) return;
-                        context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
+                        context.read<TasksCubit>().fetchTasksAssignedTo(
+                          user.id,
+                        );
                       });
                     }
 
                     if (dashboardState.status == DashboardStatus.loading ||
-                        tasksState.tasksAssignedToMeStatus == TasksStatus.loading) {
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.loading) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
                     if (dashboardState.status == DashboardStatus.error ||
-                        tasksState.tasksAssignedToMeStatus == TasksStatus.error) {
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.error) {
                       return const EmptyStateWidget(
                         icon: Icons.error_outline,
                         titleKey: 'failed_to_load_dashboard',

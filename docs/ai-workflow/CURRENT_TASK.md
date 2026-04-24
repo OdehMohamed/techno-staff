@@ -65,53 +65,65 @@ And relax the `users` read rule:
 ```
 
 Notes:
+
 - `creatingOwnTask()` already covers admins (their uid === `assignedBy` on admin-created tasks), so the explicit `isAdmin()` on `create` is redundant.
 - `request.resource.data.assignedBy == resource.data.assignedBy` locks `assignedBy` immutable on update for both admin and creator paths. Assignee-status-only updates remain constrained by `onlyAllowedTaskStatusFieldsChanged()`.
 
 ## Scope — file-by-file
 
 ### 1. `firestore.rules`
+
 Apply the two diffs above. Nothing else.
 
 ### 2. `lib/core/constants/firebase_paths.dart`
+
 Add:
+
 ```dart
 static const String assignedBy = 'assignedBy';
 ```
 
 ### 3. `lib/features/tasks/data/repositories/tasks_repository.dart`
+
 - Rename `getTasksForUser(userId)` → `getTasksAssignedTo(userId)` (keep the existing query; just rename for clarity).
 - Add `getTasksCreatedBy(String userId)` — same shape, but `where(FirebasePaths.assignedBy, isEqualTo: userId)`.
 - Update all callers of `getTasksForUser` to use `getTasksAssignedTo`.
 
 ### 4. `lib/features/tasks/presentation/cubit/tasks_cubit.dart` and `tasks_state.dart`
+
 - Replace `fetchTasksForUser(userId)` with `fetchTasksAssignedTo(userId)` and add `fetchTasksCreatedBy(userId)`.
 - State holds two additional fields: `tasksAssignedToMe` and `tasksCreatedByMe`, each with its own status/error. Admin keeps using `tasks` (all tasks) and `fetchAllTasks()` as today.
 - Follow the immutable-state + `copyWith` + `clear*` flag pattern described in `RULES.md §2 Principle II`.
 
 ### 5. `lib/features/tasks/presentation/screens/tasks_screen.dart`
+
 - Remove the `isAdmin` gate on the FAB (line ~53). The FAB shows for all users.
 - For non-admin users, wrap the body in a `DefaultTabController` with two tabs: `assigned_to_me` and `created_by_me`. Each tab renders the current list UI backed by the appropriate state field.
 - Status-update dropdown condition — change from `if (!isAdmin)` to `if (task.assignedTo == currentUser.id)`. This keeps the dropdown only on tasks the user is the assignee of, regardless of role. Admin view loses the inline dropdown for tasks they are not assigned to (admin edits via tap, unchanged).
 - Admin view (single list of all tasks) stays as today.
 
 ### 6. `lib/features/tasks/presentation/screens/add_task_screen.dart`
+
 - Line ~127: remove the `where((user) => user.role == 'employee')` filter. The dropdown lists all users from the loaded employees (rename the variable if it helps readability).
 - Exclude the current user from the dropdown (a user should not assign a task to themselves).
 - No other behavioral change — `assignedBy: currentUser.id` is already set correctly.
 
 ### 7. `lib/features/employees/` (verify only)
+
 - After the `users` read rule is relaxed, `EmployeesCubit.fetchEmployees` should succeed for employees too. Verify the cubit is already provided at the top-level `MultiBlocProvider` in `lib/app/app.dart`. If it is employee-gated anywhere, remove the gate.
 - If `EmployeesCubit.fetchEmployees` filters by `role == 'employee'` on the repository side, update it to fetch all users (admins + employees) for the picker. Keep any existing admin-specific list untouched if it is used elsewhere — prefer adding a new method (e.g. `fetchAllUsers()`) rather than widening the existing one.
 
 ### 8. Translations (`assets/translations/en.json` + `ar.json`)
+
 Add keys:
+
 - `assigned_to_me` → "Assigned to me" / "المهام المسندة لي"
 - `created_by_me` → "Created by me" / "المهام التي أنشأتها"
 
 All other keys (`add_task`, `task_title`, `description`, `assign_to`, etc.) already exist.
 
 ### 9. Workflow docs (after implementation)
+
 - `docs/ai-workflow/DECISIONS_LOG.md` — append an entry titled "Allow employee task creation + relax users read rule" explaining the rule changes and the trade-off on the users collection read surface.
 - `docs/ai-workflow/PROJECT_CONTEXT.md` — update the Firestore Data Model table to reflect "creator can update/delete", "any authed user can create", and the new `users` read rule.
 - `docs/ai-workflow/BACKLOG.md` — move the item "Allow employees to create and assign tasks" to the `Done` section with completion date.
