@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Start here: AI workflow docs
+
+Before any task, read the shared workflow docs under [docs/ai-workflow/](docs/ai-workflow/). They are the source of truth for project state, rules, and current work — if anything here conflicts with those files, the workflow docs win.
+
+- [docs/ai-workflow/PROJECT_CONTEXT.md](docs/ai-workflow/PROJECT_CONTEXT.md) — current project snapshot.
+- [docs/ai-workflow/CURRENT_TASK.md](docs/ai-workflow/CURRENT_TASK.md) — active task.
+- [docs/ai-workflow/BACKLOG.md](docs/ai-workflow/BACKLOG.md) — prioritized queue.
+- [docs/ai-workflow/DECISIONS_LOG.md](docs/ai-workflow/DECISIONS_LOG.md) — why we decided what.
+- [docs/ai-workflow/RULES.md](docs/ai-workflow/RULES.md) — coding rules, git conventions, agent rules.
+- [docs/ai-workflow/NEXT_STEPS.md](docs/ai-workflow/NEXT_STEPS.md) — forward-looking ideas.
+- [docs/ai-workflow/SESSION_LOG.md](docs/ai-workflow/SESSION_LOG.md) — history of AI sessions.
+
+After finishing a task, update whichever of those files are affected.
+
 ## Commands
 
 Flutter app (run from repo root):
