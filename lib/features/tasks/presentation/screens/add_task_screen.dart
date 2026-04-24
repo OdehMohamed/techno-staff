@@ -88,9 +88,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         updatedAt: DateTime.now(),
         completedAt: null,
       );
-      debugPrint('CREATING TASK FOR EMPLOYEE ID: $_selectedEmployeeId');
-      debugPrint('ASSIGNED BY USER ID: ${currentUser.id}');
-      debugPrint('TASK TITLE: ${_titleController.text.trim()}');
       await repository.createTask(task);
 
       if (!mounted) return;
@@ -112,7 +109,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth > 700 ? 550.0 : double.infinity;
-    final currentUser = context.read<AuthCubit>().state.user;
 
     return Scaffold(
       appBar: AppBar(title: Text('add_task'.tr())),
@@ -123,16 +119,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             constraints: BoxConstraints(maxWidth: contentWidth),
             child: BlocBuilder<EmployeesCubit, EmployeesState>(
               builder: (context, state) {
-                debugPrint(
-                  'AddTaskScreen: EmployeesState = status:${state.status}, count:${state.employees.length}, error:${state.errorMessage}',
-                );
                 final assignableUsers = state.employees.toList();
-                debugPrint(
-                  'AddTaskScreen: assignableUsers = ${assignableUsers.length}, currentUser = ${currentUser?.id}',
-                );
-                for (final user in assignableUsers) {
-                  debugPrint('  - ${user.name} (${user.id})');
-                }
                 final selectedAssignableUserId =
                     assignableUsers.any(
                       (user) => user.id == _selectedEmployeeId,
@@ -208,9 +195,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         onChanged: assignableUsers.isEmpty
                             ? null
                             : (value) {
-                                debugPrint(
-                                  'AddTaskScreen: selected employee = $value',
-                                );
                                 setState(() {
                                   _selectedEmployeeId = value;
                                 });
