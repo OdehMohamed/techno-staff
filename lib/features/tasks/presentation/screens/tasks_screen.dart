@@ -74,6 +74,22 @@ class _TasksScreenState extends State<TasksScreen> {
             constraints: const BoxConstraints(maxWidth: 1100),
             child: BlocBuilder<TasksCubit, TasksState>(
               builder: (context, state) {
+                if (user != null) {
+                  final shouldLoadAdmin =
+                      isAdmin && state.status == TasksStatus.initial;
+                  final shouldLoadEmployee =
+                      !isAdmin &&
+                      state.tasksAssignedToMeStatus == TasksStatus.initial &&
+                      state.tasksCreatedByMeStatus == TasksStatus.initial;
+
+                  if (shouldLoadAdmin || shouldLoadEmployee) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      _loadTasks();
+                    });
+                  }
+                }
+
                 if (isAdmin) {
                   return _buildAdminTasks(state, user);
                 }
