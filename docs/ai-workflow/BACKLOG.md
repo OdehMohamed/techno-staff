@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-04-26
+> Last updated: 2026-04-27
 > We start with an empty backlog on purpose. Items are added as we discover them through real work — no speculative lists.
 
 ---
@@ -38,27 +38,6 @@ _None yet._
 
 ## Should-fix
 
-### Add task delete UI for admins and creators
-
-- **Priority**: Should-fix
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
-- **Target release**: 1.0.0
-- **Added**: 2026-04-25
-- **Planned**: 2026-04-26 (branch `feature/task-delete-ui`)
-- **Description**: `firestore.rules` already permits task deletion for admins and task creators (PR #6, 2026-04-24), but no UI surfaces this action — neither admins nor creators can currently delete a task from the app. Add a delete affordance on the task details / edit screen, visible only when the current user is an admin or the task's creator.
-- **Acceptance criteria**:
-  1. A delete action is visible on the task details (or edit) screen if and only if `currentUser.role == 'admin' || task.assignedBy == currentUser.id`.
-  2. Tapping the delete action shows a confirmation dialog before any destructive call.
-  3. On confirm, the task document is deleted from Firestore via the existing `TasksRepository`; on success the user navigates back and the relevant tab (admin "All tasks", or employee "Created by me") is refreshed.
-  4. Failure shows a localized error snackbar; the task remains in the list.
-  5. Translation keys (`delete`, `delete_task_confirm_title`, `delete_task_confirm_message`, `task_deleted`, `failed_to_delete_task`) added to both `en.json` and `ar.json`.
-  6. All three quality gates green: `flutter analyze`, `flutter test`, `cd functions && npm run lint`.
-- **Notes**:
-  - Touches `lib/features/tasks/data/repositories/tasks_repository.dart` (add `deleteTask`), `lib/features/tasks/presentation/cubit/tasks_cubit.dart`, and likely `task_details_screen.dart` (or `edit_task_screen.dart`).
-  - No `firestore.rules` change required — the rule was already updated in PR #6.
-  - Consider whether a deleted task should also delete related `task_logs/` entries. Current rules forbid client writes to `task_logs/` (server-only), so any cleanup must happen server-side or be deferred. Flag for the planning round.
-
 ### Add task search and filtering
 
 - **Priority**: Should-fix
@@ -86,6 +65,27 @@ _None yet._
 _None yet._
 
 ## Done
+
+### Add task delete UI for admins and creators
+
+- **Priority**: Should-fix
+- **Status**: Done (completed 2026-04-27)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.0
+- **Added**: 2026-04-25
+- **Planned**: 2026-04-26 (branch `feature/task-delete-ui`)
+- **Description**: Added a task delete affordance for admins and task creators in the task details AppBar with confirmation, localized feedback, and role-specific list refresh via the cubit.
+- **Acceptance criteria**:
+  1. Delete action visible only for admins and creators.
+  2. Confirmation dialog required before destructive call.
+  3. Success returns to list and refreshes role-relevant tabs.
+  4. Failure shows localized snackbar without navigating away.
+  5. Locale keys added in both `en.json` and `ar.json`.
+  6. All three quality gates green.
+- **Notes**:
+  - Implemented in `tasks_repository.dart`, `tasks_cubit.dart`, and `task_details_screen.dart`.
+  - Intentionally no `firestore.rules` or `functions/index.js` changes.
+  - `task_logs/` are preserved (no cascade-delete in this PR).
 
 ### Add admin task tabs (Assigned to me + All tasks)
 

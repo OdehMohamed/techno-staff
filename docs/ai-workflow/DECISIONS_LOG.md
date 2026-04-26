@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-27 — Add task delete UI for admins and creators
+
+- **Decision**: Implement task deletion from `task_details_screen.dart` as an AppBar action (`Icons.delete_outline`) using the same visibility gate as edit (`admin` or task creator), with a required confirmation dialog that interpolates the task title.
+- **Reason**: Reusing the existing details-screen action pattern keeps permissions and UX consistent while minimizing scope and regression risk.
+- **Impact**: Client now supports delete for authorized users through `TasksRepository.deleteTask`, `TasksCubit.deleteTask`, and localized confirmation/success/failure copy. This PR intentionally does not emit delete notifications and does not clean up `task_logs/`.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md`, backlog item "Add task delete UI for admins and creators".
+
 ## 2026-04-26 — Admin task tabs (Assigned to me + All tasks)
 
 - **Decision**: The admin tasks screen now mirrors the employee tab pattern with two locked tabs in this order: `Assigned to me` first and `All tasks` second, with the admin subtitle using `tasks_overview`.
