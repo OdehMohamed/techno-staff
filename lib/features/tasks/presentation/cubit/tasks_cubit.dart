@@ -121,4 +121,20 @@ class TasksCubit extends Cubit<TasksState> {
       await fetchTasksCreatedBy(currentUserId);
     }
   }
+
+  Future<void> deleteTask({
+    required String taskId,
+    required bool isAdmin,
+    required String currentUserId,
+  }) async {
+    await _tasksRepository.deleteTask(taskId);
+
+    if (isAdmin) {
+      await fetchAllTasks();
+      await fetchTasksAssignedTo(currentUserId);
+    } else {
+      await fetchTasksAssignedTo(currentUserId);
+      await fetchTasksCreatedBy(currentUserId);
+    }
+  }
 }
