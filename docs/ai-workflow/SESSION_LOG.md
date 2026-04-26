@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-26 — GitHub Copilot (GPT-5.4) — Implement admin task tabs
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feature/admin-task-tabs`
+- **Goal**: Implement the approved admin tasks UX so admins can switch between their own assigned tasks and the full team task list without changing the employee flow.
+- **Outcome**: Updated the admin tasks screen to fetch and render two task streams (`Assigned to me`, `All tasks`) using the same tab pattern as the employee view, refreshed both streams after admin inline status updates, added the required locale keys, and ran all three quality gates successfully.
+- **Files touched**: `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/cubit/tasks_cubit.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Follow-ups**: Manual in-app smoke tests and PR creation remain the only external steps.
+
 ## 2026-04-26 — Claude Code (Opus 4.7) — Plan admin task tabs
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
