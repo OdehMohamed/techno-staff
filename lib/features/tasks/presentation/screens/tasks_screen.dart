@@ -39,6 +39,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     if (user.role == 'admin') {
       context.read<TasksCubit>().fetchAllTasks();
+      context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
     } else {
       context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
       context.read<TasksCubit>().fetchTasksCreatedBy(user.id);
@@ -73,7 +74,7 @@ class _TasksScreenState extends State<TasksScreen> {
               builder: (context, state) {
                 if (user != null) {
                   final shouldLoadAdmin =
-                      isAdmin && state.status == TasksStatus.initial;
+                      isAdmin && state.status == TasksStatus.initial && state.tasksAssignedToMeStatus == TasksStatus.initial;
                   final shouldLoadEmployee =
                       !isAdmin &&
                       state.tasksAssignedToMeStatus == TasksStatus.initial &&
@@ -88,7 +89,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 }
 
                 if (isAdmin) {
-                  return _buildAdminTasks(state, user);
+                  return _buildAdminTabs(state, user);
                 }
 
                 return _buildEmployeeTabs(state, user);
@@ -100,33 +101,45 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  Widget _buildAdminTasks(TasksState state, AppUser? user) {
-    if (state.status == TasksStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (state.status == TasksStatus.error) {
-      return EmptyStateWidget(
-        icon: Icons.error_outline,
-        titleKey: state.errorMessage ?? 'unknown_error',
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'tasks'.tr(),
-          subtitle: 'Manage and monitor all assigned tasks'.tr(),
-        ),
-        Expanded(
-          child: _buildTasksList(
-            tasks: state.tasks,
-            currentUser: user,
-            isAdmin: true,
+  Widget _buildAdminTabs(TasksState state, AppUser? user) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'tasks'.tr(),
+            subtitle: 'tasks_overview'.tr(),
           ),
-        ),
-      ],
+          TabBar(
+            tabs: [
+              Tab(text: 'assigned_to_me'.tr()),
+              Tab(text: 'all_tasks'.tr()),
+            ],
+          ),
+          const SizedBox(height: AppSizes.md),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildTasksTabContent(
+                  status: state.tasksAssignedToMeStatus,
+                  errorKey: state.tasksAssignedToMeErrorMessage,
+                  tasks: state.tasksAssignedToMe,
+                  currentUser: user,
+                  isAdmin: true,
+                ),
+                _buildTasksTabContent(
+                  status: state.status,
+                  errorKey: state.errorMessage,
+                  tasks: state.tasks,
+                  currentUser: user,
+                  isAdmin: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

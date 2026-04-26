@@ -77,7 +77,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `admin`         | admin    | Admin home shell                                                               |
 | `employee`      | employee | Employee home shell                                                            |
 | `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)               |
-| `tasks`         | all      | Task list, details, create/edit by creator or admin, status updates (assignee) |
+| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), details, create/edit by creator or admin, status updates (assignee) |
 | `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                    |
 | `reports`       | admin    | Reporting + PDF export                                                         |
 | `notifications` | all      | In-app notification feed with swipe-to-read and grouping                       |

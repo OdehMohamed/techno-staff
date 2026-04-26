@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-26 — Admin task tabs (Assigned to me + All tasks)
+
+- **Decision**: The admin tasks screen now mirrors the employee tab pattern with two locked tabs in this order: `Assigned to me` first and `All tasks` second, with the admin subtitle using `tasks_overview`.
+- **Reason**: Admins need both a personal work queue and a global team view, and reusing the employee tab pattern keeps the tasks experience consistent across roles.
+- **Impact**: `TasksScreen` now fetches both admin task streams on load, renders `_buildAdminTabs()` instead of a single list, and `TasksCubit.updateTaskStatus()` refreshes both `fetchAllTasks()` and `fetchTasksAssignedTo(currentUserId)` after an admin status change so both tabs stay synchronized.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: `CURRENT_TASK.md`, backlog item "Add admin task tabs (Assigned to me + All tasks)".
+
 ## 2026-04-24 — Self-assignment is allowed (reversal of earlier scope detail)
 
 - **Decision**: A user may assign a task to themselves. The current user MUST remain visible in the assignee dropdown on the add-task screen.

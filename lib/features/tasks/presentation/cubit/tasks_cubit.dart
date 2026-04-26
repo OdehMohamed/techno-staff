@@ -115,6 +115,7 @@ class TasksCubit extends Cubit<TasksState> {
 
     if (isAdmin) {
       await fetchAllTasks();
+      await fetchTasksAssignedTo(currentUserId);
     } else {
       await fetchTasksAssignedTo(currentUserId);
       await fetchTasksCreatedBy(currentUserId);
