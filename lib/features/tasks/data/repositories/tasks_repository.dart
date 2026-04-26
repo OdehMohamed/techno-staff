@@ -74,6 +74,10 @@ class TasksRepository {
         .update(updateData);
   }
 
+  Future<void> deleteTask(String taskId) async {
+    await _firestore.collection(FirebasePaths.tasks).doc(taskId).delete();
+  }
+
   Future<TaskModel?> getTaskById(String taskId) async {
     final doc = await _firestore
         .collection(FirebasePaths.tasks)
