@@ -11,6 +11,7 @@ import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../cubit/task_logs_cubit.dart';
 import '../cubit/task_logs_state.dart';
+import '../cubit/tasks_cubit.dart';
 import '../../data/models/task_model.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final task = widget.task;
     final currentUser = context.read<AuthCubit>().state.user;
 
-    final canEditTask =
+    final canEditOrDelete =
         currentUser != null &&
         (currentUser.role == 'admin' || task.assignedBy == currentUser.id);
 
@@ -45,7 +46,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       appBar: AppBar(
         title: Text('task_details'.tr()),
         actions: [
-          if (canEditTask)
+          if (canEditOrDelete)
             IconButton(
               onPressed: () async {
                 final result = await Navigator.pushNamed(
@@ -59,6 +60,63 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 }
               },
               icon: const Icon(Icons.edit_outlined),
+            ),
+          if (canEditOrDelete)
+            IconButton(
+              onPressed: () async {
+                final shouldDelete = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) {
+                    return AlertDialog(
+                      title: Text('delete_task_confirm_title'.tr()),
+                      content: Text(
+                        'delete_task_confirm_message'.tr(args: [task.title]),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(dialogContext, false);
+                          },
+                          child: Text('cancel'.tr()),
+                        ),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                Theme.of(dialogContext).colorScheme.error,
+                          ),
+                          onPressed: () {
+                            Navigator.pop(dialogContext, true);
+                          },
+                          child: Text('delete'.tr()),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (!context.mounted) return;
+                if (shouldDelete != true) return;
+
+                try {
+                  await context.read<TasksCubit>().deleteTask(
+                    taskId: task.id,
+                    isAdmin: currentUser.role == 'admin',
+                    currentUserId: currentUser.id,
+                  );
+
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('task_deleted'.tr())),
+                  );
+                  Navigator.pop(context, true);
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('failed_to_delete_task'.tr())),
+                  );
+                }
+              },
+              icon: const Icon(Icons.delete_outline),
             ),
         ],
       ),
