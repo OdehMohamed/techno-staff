@@ -61,10 +61,11 @@ _None yet._
 ### Add admin task tabs (Assigned to me + All tasks)
 
 - **Priority**: Should-fix
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-25
+- **Planned**: 2026-04-26 (branch `feature/admin-task-tabs`)
 - **Description**: The admin tasks screen currently shows a single merged list of all tasks. Mirror the employee tabs pattern by splitting the admin view into two tabs: "Assigned to me" and "All tasks". This gives admins a quick personal view without losing the full team picture.
 - **Acceptance criteria**:
   1. For admin users, `tasks_screen.dart` shows two tabs: "Assigned to me" and "All tasks for all employees" (label TBD by translation key).
