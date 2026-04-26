@@ -41,10 +41,11 @@ _None yet._
 ### Add task delete UI for admins and creators
 
 - **Priority**: Should-fix
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-25
+- **Planned**: 2026-04-26 (branch `feature/task-delete-ui`)
 - **Description**: `firestore.rules` already permits task deletion for admins and task creators (PR #6, 2026-04-24), but no UI surfaces this action — neither admins nor creators can currently delete a task from the app. Add a delete affordance on the task details / edit screen, visible only when the current user is an admin or the task's creator.
 - **Acceptance criteria**:
   1. A delete action is visible on the task details (or edit) screen if and only if `currentUser.role == 'admin' || task.assignedBy == currentUser.id`.

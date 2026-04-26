@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-26 — Claude Code (Opus 4.7) — Plan task delete UI
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feature/task-delete-ui`
+- **Goal**: Lock scope and product decisions for the "Add task delete UI for admins and creators" backlog item, then hand off to the implementing agent.
+- **Outcome**: Audited `task_details_screen.dart`, `tasks_repository.dart`, and `tasks_cubit.dart`. Confirmed the existing edit-icon AppBar pattern is the right blueprint and the rules already permit creator + admin delete (shipped in PR #6). Locked 5 product decisions: AppBar icon location, same gate as edit, confirmation dialog with task title interpolation, no notifications on delete, no `task_logs/` cleanup. Wrote a complete file-by-file `CURRENT_TASK.md` spec with exact translation values for en + ar (using `easy_localization` positional `{}` args), 7 manual smoke tests, and DoD. Moved the backlog item to "In progress".
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over from `CURRENT_TASK.md` on the existing `feature/task-delete-ui` branch.
+
 ## 2026-04-26 — GitHub Copilot (GPT-5.4) — Implement admin task tabs
 
 - **Agent**: GitHub Copilot (GPT-5.4)
