@@ -41,10 +41,11 @@ _None yet._
 ### Add task search and filtering
 
 - **Priority**: Should-fix
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-25
+- **Planned**: 2026-04-27 (branch `feature/task-search-and-filtering`)
 - **Description**: Add a search field and filter / sort controls on the tasks screen so users can quickly narrow the list. Applies to all tabs (employee tabs and admin tabs).
 - **Acceptance criteria**:
   1. A search input filters the visible tasks by `title` and `description` (case-insensitive substring match), live-updated as the user types.
