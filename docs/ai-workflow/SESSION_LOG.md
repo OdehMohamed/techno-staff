@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement release metadata fixes
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `chore/release-metadata`
+- **Goal**: Execute the metadata-only release-prep PR #2 with exactly five scoped edits and no changes under `lib/` or `functions/` code paths.
+- **Outcome**: Updated `pubspec.yaml` description, replaced starter `README.md` with a concise project README, changed Android launcher label to `Techno Staff`, changed iOS `CFBundleName` to `Techno Staff`, and renamed `in_pending_tasks` to `pending_tasks` in `assets/translations/en.json`. Verification passed (`grep` result `0`), translation key parity remained `171 171 []`, and quality gates passed (`flutter analyze`, `flutter test`, `npm --prefix functions run lint`).
+- **Files touched**: `pubspec.yaml`, `README.md`, `android/app/src/main/AndroidManifest.xml`, `ios/Runner/Info.plist`, `assets/translations/en.json`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Follow-ups**: Open PR to `dev` titled `chore(release): metadata fixes — description, README, app label, translation typo`.
+
 ## 2026-04-27 — Claude Code (Opus 4.7) — Plan release-prep PR #2 (release metadata)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-27 — Release metadata fixes for v1.0.0
+
+- **Decision**: Complete release-prep metadata PR #2 with exactly five edits: `pubspec.yaml` description update, `README.md` rewrite, Android launcher label change to `Techno Staff`, iOS `CFBundleName` change to `Techno Staff`, and English translation key rename `in_pending_tasks` → `pending_tasks`.
+- **Reason**: v1.0.0 needs coherent store-facing and user-facing metadata, and the translation typo caused English dashboard legend fallback to show a literal key.
+- **Impact**: App identity is now consistent across Android/iOS metadata surfaces, the README reflects the actual project, and en/ar translation parity remains intact after the key rename.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md`, `BACKLOG.md` → "Release v1.0.0 readiness".
+
 ## 2026-04-27 — Strip debug logging before v1.0.0
 
 - **Decision**: Completed the mechanical cleanup by deleting all 20 `debugPrint` calls under `lib/` with no replacement logging in this PR.
