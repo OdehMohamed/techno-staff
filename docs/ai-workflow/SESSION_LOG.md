@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-27 — Claude Code (Opus 4.7) — Release-readiness sweep + plan PR #1 (strip debug logging)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `chore/strip-debug-logging`
+- **Goal**: Run a release-readiness sweep for v1.0.0, agree a 5-PR breakdown, then plan the first PR (debug-log strip).
+- **Outcome**: Audited TODO/FIXME (zero), `debugPrint` census (20 calls leaking FCM token + user IDs + task IDs to release logs), Flutter & Functions dep freshness (minor versions behind, major bumps deferred), app metadata (default pubspec description, default README, Android label is lowercase internal name, iOS display correct), permissions (Android 13+ `POST_NOTIFICATIONS` missing — release blocker), privacy surface (no privacy policy / no account deletion — both required by Apple/Google), translation parity (1 typo: `in_pending_tasks` vs `pending_tasks`). User accepted the 5-PR breakdown, locked Cloud Function for account deletion, GitHub Pages for privacy policy, Crashlytics + minor dep bumps in v1.0.0, additional checks A1/A5/A6/A8/A9. Wrote a complete file-by-file `CURRENT_TASK.md` for PR #1, added a `Release v1.0.0 readiness` section to `BACKLOG.md` listing all 5 PRs (PR #1 In progress, others Open), and logged two `DECISIONS_LOG.md` entries.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over PR #1 from `CURRENT_TASK.md` on the existing `chore/strip-debug-logging` branch. PRs #2–#5 each get their own planning round before delegation.
+
 ## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement task search and filtering
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
