@@ -42,19 +42,6 @@ _None yet._
 
 > Coordinated meta-task. Prepare the app for v1.0.0 store submission via 5 small, sequential PRs. Sweep findings and the agreed plan are in the `2026-04-27 — Release-readiness sweep for v1.0.0` entry in `DECISIONS_LOG.md` once that lands; the high-level breakdown is captured here.
 
-#### 1. Strip debug logging — `chore/strip-debug-logging`
-
-- **Priority**: Should-fix (release blocker)
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
-- **Target release**: 1.0.0
-- **Added**: 2026-04-27
-- **Planned**: 2026-04-27 (branch `chore/strip-debug-logging`)
-- **Description**: Remove all 20 `debugPrint` calls in `lib/`. `debugPrint` is not stripped in release builds and currently leaks the user's FCM token, user IDs, task IDs, and report metadata to device logs.
-- **Notes**:
-  - Highest-priority deletion: `auth_cubit.dart` line 130 (FCM token).
-  - Replacement structured logging (Crashlytics breadcrumbs) lands in PR #5.
-
 #### 2. Release metadata fixes — `chore/release-metadata`
 
 - **Priority**: Should-fix (release blocker)
@@ -100,6 +87,21 @@ _Deferred (post-v1.0.0)_: offline UX hardening, performance tuning, app size ana
 _None yet._
 
 ## Done
+
+### Release v1.0.0 readiness
+
+#### 1. Strip debug logging — `chore/strip-debug-logging`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Done (completed 2026-04-27)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Planned**: 2026-04-27 (branch `chore/strip-debug-logging`)
+- **Description**: Removed all 20 `debugPrint` calls in `lib/` to avoid release-log leakage of FCM token, user/task identifiers, and report metadata.
+- **Notes**:
+  - Verification: `grep -rn "debugPrint" lib | wc -l` returned `0`.
+  - Replacement structured logging (Crashlytics breadcrumbs) remains scoped to PR #5.
 
 ### Add task search and filtering
 

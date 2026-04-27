@@ -28,7 +28,6 @@ import 'features/tasks/data/repositories/tasks_repository.dart';
 import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('🔵 Background Message: ${message.notification?.title}');
 }
 
 Future<void> main() async {

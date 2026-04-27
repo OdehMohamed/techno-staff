@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:printing/printing.dart';
 import '../../data/repositories/reports_repository.dart';
@@ -111,8 +110,7 @@ class ReportsCubit extends Cubit<ReportsState> {
       emit(state.copyWith(status: ReportsStatus.pdfExported, clearError: true));
 
       emit(state.copyWith(status: ReportsStatus.loaded, clearError: true));
-    } catch (e) {
-      debugPrint('PDF EXPORT ERROR: $e');
+    } catch (_) {
       emit(
         state.copyWith(
           status: ReportsStatus.error,

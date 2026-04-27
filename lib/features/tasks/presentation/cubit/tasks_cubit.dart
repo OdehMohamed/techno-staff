@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/tasks_repository.dart';
 import 'tasks_state.dart';
@@ -19,11 +18,7 @@ class TasksCubit extends Cubit<TasksState> {
     );
 
     try {
-      debugPrint('FETCHING TASKS ASSIGNED TO USER ID: $userId');
-
       final tasks = await _tasksRepository.getTasksAssignedTo(userId);
-
-      debugPrint('TASKS COUNT ASSIGNED TO USER: ${tasks.length}');
 
       emit(
         state.copyWith(
@@ -32,8 +27,7 @@ class TasksCubit extends Cubit<TasksState> {
           clearTasksAssignedToMeError: true,
         ),
       );
-    } catch (e) {
-      debugPrint('FETCH ASSIGNED TASKS ERROR: $e');
+    } catch (_) {
       emit(
         state.copyWith(
           tasksAssignedToMeStatus: TasksStatus.error,
@@ -52,11 +46,7 @@ class TasksCubit extends Cubit<TasksState> {
     );
 
     try {
-      debugPrint('FETCHING TASKS CREATED BY USER ID: $userId');
-
       final tasks = await _tasksRepository.getTasksCreatedBy(userId);
-
-      debugPrint('TASKS COUNT CREATED BY USER: ${tasks.length}');
 
       emit(
         state.copyWith(
@@ -65,8 +55,7 @@ class TasksCubit extends Cubit<TasksState> {
           clearTasksCreatedByMeError: true,
         ),
       );
-    } catch (e) {
-      debugPrint('FETCH CREATED TASKS ERROR: $e');
+    } catch (_) {
       emit(
         state.copyWith(
           tasksCreatedByMeStatus: TasksStatus.error,
