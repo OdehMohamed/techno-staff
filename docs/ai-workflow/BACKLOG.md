@@ -38,13 +38,70 @@ _None yet._
 
 ## Should-fix
 
-_None yet._
+### Release v1.0.0 readiness
+
+> Coordinated meta-task. Prepare the app for v1.0.0 store submission via 5 small, sequential PRs. Sweep findings and the agreed plan are in the `2026-04-27 — Release-readiness sweep for v1.0.0` entry in `DECISIONS_LOG.md` once that lands; the high-level breakdown is captured here.
+
+#### 2. Release metadata fixes — `chore/release-metadata`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Description**: Fix release metadata: pubspec description (currently default placeholder), README (currently default Flutter starter), Android `android:label` and iOS `CFBundleName` (lowercase `techno_staff`) → user-facing `Techno Staff`. Also fix translation key typo: `en.json` has `in_pending_tasks` while `ar.json` has `pending_tasks`.
+
+#### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Description**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml` and request runtime permission via `firebase_messaging` on app start. Without this, FCM notifications silently fail on Android 13+ (the majority of users).
+
+#### 4. Account deletion + privacy policy — `feat/account-deletion-and-privacy`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Description**: (a) Add a Cloud Function callable `deleteUserAccount` that deletes the user's Firestore data + Firebase Auth account atomically. (b) Add a "Delete account" affordance in Settings with a confirmation dialog. (c) Write a privacy policy and host it on GitHub Pages. (d) Add a Settings → "About" screen showing app version + a link to the privacy policy. Required by Apple App Store (since 2022) and Google Play (since 2024).
+
+#### 5. Release readiness — `chore/release-readiness`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Description**: Add `firebase_crashlytics` and wire `FlutterError.onError` + `PlatformDispatcher.onError`. Bump all Firebase Flutter packages by one minor version (`cloud_firestore` 6.2 → 6.3, etc.). Add `CHANGELOG.md` capturing v1.0.0 features. Add basic operational checklist for the release: enable Firestore scheduled backup, configure Android signed release keystore, configure iOS provisioning. Real-device smoke test on Android 13+ to confirm notifications.
+
+_Deferred (post-v1.0.0)_: offline UX hardening, performance tuning, app size analysis, full dark mode QA, app store metadata drafting (descriptions / screenshots / keywords), `task_logs/` cascade-delete, FCM notification on task delete, major-version dependency bumps.
+
+---
 
 ## Nice-to-have
 
 _None yet._
 
 ## Done
+
+### Release v1.0.0 readiness
+
+#### 1. Strip debug logging — `chore/strip-debug-logging`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Done (completed 2026-04-27)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Planned**: 2026-04-27 (branch `chore/strip-debug-logging`)
+- **Description**: Removed all 20 `debugPrint` calls in `lib/` to avoid release-log leakage of FCM token, user/task identifiers, and report metadata.
+- **Notes**:
+  - Verification: `grep -rn "debugPrint" lib | wc -l` returned `0`.
+  - Replacement structured logging (Crashlytics breadcrumbs) remains scoped to PR #5.
 
 ### Add task search and filtering
 

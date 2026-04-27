@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
@@ -126,8 +125,6 @@ class AuthCubit extends Cubit<AuthState> {
     await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     final token = await messaging.getToken();
-
-    debugPrint("🔥 FCM TOKEN: $token");
 
     if (token != null) {
       await FirebaseFirestore.instance.collection('users').doc(userId).update({

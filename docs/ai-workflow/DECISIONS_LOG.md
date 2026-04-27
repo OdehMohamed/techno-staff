@@ -20,6 +20,30 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-27 — Strip debug logging before v1.0.0
+
+- **Decision**: Completed the mechanical cleanup by deleting all 20 `debugPrint` calls under `lib/` with no replacement logging in this PR.
+- **Reason**: `debugPrint` statements ship in Flutter release builds and were leaking sensitive and operational metadata (including FCM token and user/task identifiers) to device logs.
+- **Impact**: `grep -rn "debugPrint" lib | wc -l` now returns `0`; analyzer/test/functions-lint gates are green; structured error reporting remains deferred to release-prep PR #5 (Crashlytics).
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md`, `BACKLOG.md` → "Release v1.0.0 readiness".
+
+## 2026-04-27 — Release-readiness sweep for v1.0.0
+
+- **Decision**: Ship v1.0.0 via 5 sequential, small PRs that close out the release-readiness audit findings: (1) strip debug logging, (2) release metadata fixes, (3) Android 13+ notifications permission, (4) account deletion + privacy policy, (5) Crashlytics + minor dep bumps + CHANGELOG. Account deletion uses a Cloud Function callable for atomicity. Privacy policy is hosted on GitHub Pages. Release flow: all PRs merge into `dev`, then a `release: v1.0.0` PR fast-forwards `main` from `dev`, and `v1.0.0` is tagged with annotated `git tag` and a GitHub Release.
+- **Reason**: The audit found six release-blocking issues (debug log leakage of FCM tokens and user IDs; missing Android 13+ notifications permission; no privacy policy; no account deletion; default pubspec description; default README) plus four should-fix items (app name inconsistencies, one translation key typo, no Crashlytics, minor deps behind). Small sequential PRs keep each change reviewable and make it easy to gate or roll back individually.
+- **Impact**: A `Release v1.0.0 readiness` section is added to `BACKLOG.md` listing the 5 PRs. Major dependency bumps (`firebase-admin`, `firebase-functions`, `eslint`, `flutter_local_notifications`) are deferred to v1.1. Operational follow-ups (CI/CD, staging Firebase project, full offline UX, performance tuning, dark mode QA, store metadata) are deferred but tracked.
+- **Owner**: Mohamed Odeh.
+- **Related**: `BACKLOG.md` → "Release v1.0.0 readiness", `CURRENT_TASK.md`.
+
+## 2026-04-27 — Strip debug logging before v1.0.0
+
+- **Decision**: Delete all 20 `debugPrint` calls in `lib/` outright (not wrap them in `if (kDebugMode) ...`). Structured error reporting will be reintroduced via Firebase Crashlytics in release-prep PR #5.
+- **Reason**: `debugPrint` is not stripped from release builds in Flutter, so calls like `auth_cubit.dart` printing the user's FCM token leak sensitive data to device logs. Wrapping each call in `kDebugMode` preserves visual clutter and tempts future agents to add more such calls. A clean delete plus Crashlytics is the right pattern.
+- **Impact**: `lib/main.dart`, `auth_cubit.dart`, `tasks_cubit.dart`, `reports_repository.dart`, `reports_cubit.dart`, and `reports_screen.dart` are touched. A handful of `catch (e)` blocks become `catch (_)` to keep `flutter analyze` clean. No behavior changes.
+- **Owner**: Mohamed Odeh.
+- **Related**: `CURRENT_TASK.md`, `BACKLOG.md` → "Release v1.0.0 readiness" → 1.
+
 ## 2026-04-27 — Task search and filtering — global state, client-side, bottom sheet UX
 
 - **Decision**: Implement task search and filtering entirely on the client over already-fetched tab lists, with one global filter state shared across tabs in `TasksScreen`, and a `showModalBottomSheet` apply-flow for status/priority/sort controls.
