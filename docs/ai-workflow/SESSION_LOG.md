@@ -21,6 +21,24 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement task search and filtering
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feature/task-search-and-filtering`
+- **Goal**: Implement the approved client-side task search/filter/sort UX with global screen-level filter state and no cubit/state/repository changes.
+- **Outcome**: Added the new `task_filter_bottom_sheet.dart` widget (`TaskFilters`, `TaskSortOption`, apply/cancel flow), integrated global local-state search/filter/sort in `tasks_screen.dart`, added active-filter indicators and distinct filtered-empty state, and added EN/AR localization keys. Quality gates passed (`flutter analyze`, `flutter test`, `functions` lint).
+- **Files touched**: `lib/features/tasks/presentation/widgets/task_filter_bottom_sheet.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Follow-ups**: Execute full in-app manual smoke tests (16 scenarios) and review PR against `dev`.
+
+## 2026-04-27 — Claude Code (Opus 4.7) — Plan task search and filtering
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feature/task-search-and-filtering`
+- **Goal**: Lock scope, UX shape, and product decisions for the "Add task search and filtering" backlog item, then hand off to the implementing agent.
+- **Outcome**: Audited `TaskModel` (rich enough to filter on title, description, assignedToName, assignedByName, status, priority, dueDate, createdAt), `tasks_screen.dart` (346 lines — flagged extraction of a bottom-sheet widget as mandatory), `tasks_cubit.dart` / `tasks_state.dart` (no changes needed), and translation files (zero existing search/filter/sort keys). Pushed back on two BACKLOG defaults: filter state should be GLOBAL across tabs (not per-tab) for consistency, and the empty-results state should use a new `no_matching_tasks` key with a clear-filters hint (not reuse `no_tasks_found`). Locked 8 product decisions: search covers 4 fields including assignee names, filters limited to status + priority (assignee filter and date range deferred), 3 sort options, global filter state, local widget state (not in TasksState), bottom-sheet UI, badge dot indicator, distinct empty state. Wrote a complete file-by-file `CURRENT_TASK.md` spec with exact translation values for en + ar (13 new keys), 16 manual smoke tests, and DoD. Moved the backlog item to "In progress".
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over from `CURRENT_TASK.md` on the existing `feature/task-search-and-filtering` branch.
+
 ## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement task delete UI
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
