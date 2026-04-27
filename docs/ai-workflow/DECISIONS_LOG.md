@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-27 — Task search and filtering — global state, client-side, bottom sheet UX
+
+- **Decision**: Implement task search and filtering entirely on the client over already-fetched tab lists, with one global filter state shared across tabs in `TasksScreen`, and a `showModalBottomSheet` apply-flow for status/priority/sort controls.
+- **Reason**: Expected list size is small enough for local filtering, and global cross-tab state gives a consistent user mental model while keeping scope limited to UI logic.
+- **Impact**: `tasks_screen.dart` now applies search on title/description/assigned-to/assigned-by names plus status/priority/sort, shows active-filter affordances (badge, count, clear action), and uses a dedicated `task_filter_bottom_sheet.dart` widget with a `TaskFilters` value object.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md`, backlog item "Add task search and filtering".
+
 ## 2026-04-27 — Add task delete UI for admins and creators
 
 - **Decision**: Implement task deletion from `task_details_screen.dart` as an AppBar action (`Icons.delete_outline`) using the same visibility gate as edit (`admin` or task creator), with a required confirmation dialog that interpolates the task title.

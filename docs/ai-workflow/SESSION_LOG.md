@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement task search and filtering
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feature/task-search-and-filtering`
+- **Goal**: Implement the approved client-side task search/filter/sort UX with global screen-level filter state and no cubit/state/repository changes.
+- **Outcome**: Added the new `task_filter_bottom_sheet.dart` widget (`TaskFilters`, `TaskSortOption`, apply/cancel flow), integrated global local-state search/filter/sort in `tasks_screen.dart`, added active-filter indicators and distinct filtered-empty state, and added EN/AR localization keys. Quality gates passed (`flutter analyze`, `flutter test`, `functions` lint).
+- **Files touched**: `lib/features/tasks/presentation/widgets/task_filter_bottom_sheet.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Follow-ups**: Execute full in-app manual smoke tests (16 scenarios) and review PR against `dev`.
+
 ## 2026-04-27 — Claude Code (Opus 4.7) — Plan task search and filtering
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

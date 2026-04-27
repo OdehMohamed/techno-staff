@@ -70,18 +70,18 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 
 ## 4. Modules
 
-| Feature         | Role(s)  | Purpose                                                                        |
-| --------------- | -------- | ------------------------------------------------------------------------------ |
-| `splash`        | all      | Boot + initial auth-state routing                                              |
-| `auth`          | all      | Login, sign-out, FCM token registration                                        |
-| `admin`         | admin    | Admin home shell                                                               |
-| `employee`      | employee | Employee home shell                                                            |
-| `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)               |
-| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), details, create/edit/delete by creator or admin, status updates (assignee) |
-| `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                    |
-| `reports`       | admin    | Reporting + PDF export                                                         |
-| `notifications` | all      | In-app notification feed with swipe-to-read and grouping                       |
-| `settings`      | all      | Theme, language, sign out                                                      |
+| Feature         | Role(s)  | Purpose                                                                                                                                                                                         |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `splash`        | all      | Boot + initial auth-state routing                                                                                                                                                               |
+| `auth`          | all      | Login, sign-out, FCM token registration                                                                                                                                                         |
+| `admin`         | admin    | Admin home shell                                                                                                                                                                                |
+| `employee`      | employee | Employee home shell                                                                                                                                                                             |
+| `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)                                                                                                                                |
+| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), client-side search/filter/sort, details, create/edit/delete by creator or admin, status updates (assignee) |
+| `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                                                                                                                                     |
+| `reports`       | admin    | Reporting + PDF export                                                                                                                                                                          |
+| `notifications` | all      | In-app notification feed with swipe-to-read and grouping                                                                                                                                        |
+| `settings`      | all      | Theme, language, sign out                                                                                                                                                                       |
 
 ## 5. Firestore Data Model
 

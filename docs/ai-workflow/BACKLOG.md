@@ -38,34 +38,34 @@ _None yet._
 
 ## Should-fix
 
-### Add task search and filtering
-
-- **Priority**: Should-fix
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
-- **Target release**: 1.0.0
-- **Added**: 2026-04-25
-- **Planned**: 2026-04-27 (branch `feature/task-search-and-filtering`)
-- **Description**: Add a search field and filter / sort controls on the tasks screen so users can quickly narrow the list. Applies to all tabs (employee tabs and admin tabs).
-- **Acceptance criteria**:
-  1. A search input filters the visible tasks by `title` and `description` (case-insensitive substring match), live-updated as the user types.
-  2. Filter controls allow filtering by `status` (`pending`, `in_progress`, `completed`, `all`) and by `priority` (`low`, `medium`, `high`, `all`).
-  3. Sort options: by `createdAt` (default, descending), `dueDate` (ascending), and `priority` (high → low).
-  4. Search and filters apply per-tab independently — switching tabs preserves each tab's filter state for the session.
-  5. Empty state ("no_tasks_found" or a more specific "no_results_match") is shown when filters yield zero results.
-  6. New translation keys added in both locales for: search placeholder, filter labels, sort labels, and the empty-results message.
-  7. Filtering happens client-side on the already-fetched task lists — no new Firestore queries, no `firestore.rules` change.
-  8. All three quality gates green.
-- **Notes**:
-  - Touches `lib/features/tasks/presentation/screens/tasks_screen.dart` and possibly extracts a small filter widget into the same file or `lib/shared/widgets/`.
-  - State decision (pending the planning round): keep filter state in `tasks_screen.dart` local state, OR push it into `TasksState` so it survives navigation. Recommend local for now (simpler, smaller PR).
-  - Consider performance only if the tasks list grows large; for current expected volumes (~hundreds), client-side filter is fine.
+_None yet._
 
 ## Nice-to-have
 
 _None yet._
 
 ## Done
+
+### Add task search and filtering
+
+- **Priority**: Should-fix
+- **Status**: Done (completed 2026-04-27)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.0
+- **Added**: 2026-04-25
+- **Planned**: 2026-04-27 (branch `feature/task-search-and-filtering`)
+- **Description**: Added global client-side search/filter/sort controls for tasks with a dedicated bottom-sheet widget and active-filter UI indicators.
+- **Acceptance criteria**:
+  1. Search covers title, description, assigned-to name, and assigned-by name.
+  2. Status and priority filters apply with intersection semantics.
+  3. Sort supports newest first, due soonest, and priority high-to-low.
+  4. Filter state is global across tabs.
+  5. Filtered-empty uses `no_matching_tasks` and non-filtered-empty uses `no_tasks_found`.
+  6. Required translation keys were added in EN/AR.
+  7. All three quality gates green.
+- **Notes**:
+  - Implemented in `lib/features/tasks/presentation/screens/tasks_screen.dart` and `lib/features/tasks/presentation/widgets/task_filter_bottom_sheet.dart`.
+  - No repository/cubit/state/rules/functions changes.
 
 ### Add task delete UI for admins and creators
 
