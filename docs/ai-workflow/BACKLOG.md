@@ -45,11 +45,12 @@ _None yet._
 #### 2. Release metadata fixes — `chore/release-metadata`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Description**: Fix release metadata: pubspec description (currently default placeholder), README (currently default Flutter starter), Android `android:label` and iOS `CFBundleName` (lowercase `techno_staff`) → user-facing `Techno Staff`. Also fix translation key typo: `en.json` has `in_pending_tasks` while `ar.json` has `pending_tasks`.
+- **Planned**: 2026-04-27 (branch `chore/release-metadata`)
+- **Description**: Fix release metadata: pubspec description (currently default placeholder), README (currently default Flutter starter), Android `android:label` and iOS `CFBundleName` (lowercase `techno_staff`) → user-facing `Techno Staff`. Also fix translation key typo: `en.json` has `in_pending_tasks` while `ar.json` has `pending_tasks` (the chart legend currently shows the literal key in English).
 
 #### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
 

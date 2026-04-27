@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-27 — Claude Code (Opus 4.7) — Plan release-prep PR #2 (release metadata)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `chore/release-metadata`
+- **Goal**: Lock scope and product decisions for release-prep PR #2 of 5 (metadata fixes for v1.0.0), then hand off to the implementing agent.
+- **Outcome**: Audited pubspec (default placeholder description), README (16 lines of Flutter starter content), `AndroidManifest.xml` (`android:label="techno_staff"` — visible on launcher), iOS `Info.plist` (`CFBundleName: techno_staff`, `CFBundleDisplayName: Techno Staff`), and the `in_pending_tasks` / `pending_tasks` translation key mismatch. Confirmed via grep that `in_pending_tasks` is orphaned in `en.json` — no code references it; `dashboard_pie_chart.dart` uses `pending_tasks` only. Locked 4 product decisions: concise README (~30 lines, no duplication of CLAUDE.md), iOS CFBundleName change to `Techno Staff` for consistency, real pubspec description, English key rename `in_pending_tasks` → `pending_tasks`. Wrote a complete file-by-file `CURRENT_TASK.md` with explicit "do NOT change" lines for `applicationId`, `PRODUCT_BUNDLE_IDENTIFIER`, `pubspec name`, and `version` (each easy to touch by accident with high blast radius). Moved the backlog item to "In progress".
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over PR #2 from `CURRENT_TASK.md` on the existing `chore/release-metadata` branch.
+
 ## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement strip debug logging
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
