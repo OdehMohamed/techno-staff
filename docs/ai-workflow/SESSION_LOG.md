@@ -30,6 +30,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 - **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
 - **Follow-ups**: Implementation agent takes over PR #4 from `CURRENT_TASK.md` on the existing `feat/account-deletion-and-privacy` branch. After merge: project owner enables GitHub Pages from `main`/`/docs` (one-time UI step) and replaces the placeholder support email in `docs/privacy-policy.md`.
 
+## 2026-04-28 — GitHub Copilot (Claude Sonnet 4.6) — Implement account deletion, privacy policy, and About screen (PR #4)
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6)
+- **Branch**: `feat/account-deletion-and-privacy`
+- **Goal**: Implement the 5 surfaces in release-prep PR #4: Cloud Function `deleteUserAccount`, Settings Account section + delete flow, About screen, privacy policy, and 11 new translation keys.
+- **Outcome**: All 5 surfaces implemented. `deleteUserAccount` callable atomically overwrites task display names, deletes notifications, deletes user doc, then deletes Auth account. Settings screen converted to StatefulWidget with Account section (About tile + Delete account tile with confirmation dialog). `AboutScreen` shows version via `package_info_plus` and opens privacy URL via `url_launcher`. `docs/privacy-policy.md` drafted with all 10 required sections. 11 translation keys added with parity (182 == 182 keys). All three quality gates green. Real-device smoke tests pending reviewer before merge.
+- **Files touched**: `functions/index.js`, `pubspec.yaml`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `lib/features/settings/presentation/screens/about_screen.dart` (new), `lib/core/routes/route_names.dart`, `lib/core/routes/app_router.dart`, `docs/privacy-policy.md` (new), `assets/translations/en.json`, `assets/translations/ar.json`, workflow docs.
+- **Follow-ups**: (1) Reviewer to run 14 manual smoke tests on real devices before merge. (2) Owner to enable GitHub Pages (repo Settings → Pages → `main` branch `/docs` folder) after PR #4 merges to `main`. (3) Owner to replace `support@example.com` in `docs/privacy-policy.md`.
+
 ## 2026-04-28 — GitHub Copilot (Claude Sonnet 4.6) — Implement notifications permission (PR #3)
 
 - **Agent**: GitHub Copilot (Claude Sonnet 4.6)

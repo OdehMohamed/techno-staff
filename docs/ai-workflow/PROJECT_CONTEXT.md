@@ -81,7 +81,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                                                                                                                                     |
 | `reports`       | admin    | Reporting + PDF export                                                                                                                                                                          |
 | `notifications` | all      | In-app notification feed with swipe-to-read and grouping                                                                                                                                        |
-| `settings`      | all      | Theme, language, sign out                                                                                                                                                                       |
+| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account                                                                                                   |
 
 ## 5. Firestore Data Model
 
@@ -107,6 +107,7 @@ Single file: `functions/index.js` (Node 22).
 | `testTaskDeadlineReminders`    | admin-triggered callable           | Dry-run of the deadline reminder                                                    |
 | `sendOverdueTaskEscalations`   | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
 | `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
+| `deleteUserAccount`            | callable (authenticated user)      | Delete caller's Firestore data + Firebase Auth account atomically                   |
 | `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
 
 ## 7. Notifications Pipeline
