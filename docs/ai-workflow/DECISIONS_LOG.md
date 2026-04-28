@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-28 — Add POST_NOTIFICATIONS for Android 13+
+
+- **Decision**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` as the single first child of `<manifest>` in `android/app/src/main/AndroidManifest.xml`. No other files changed.
+- **Reason**: Android 13+ requires an explicit `POST_NOTIFICATIONS` manifest declaration before the runtime `requestPermission()` call can surface the system dialog. The runtime call (`FirebaseMessaging.requestPermission(alert: true, badge: true, sound: true)`) was already present in `auth_cubit.dart` `_setupFCM` — the prompt was simply silently suppressed on Android 13+ because the manifest declaration was absent.
+- **Impact**: After this change, Android 13+ users will see the OS notification-permission prompt on first sign-in. Denied-state UX (graceful degradation, Settings deep-link nudge) is intentionally deferred to post-v1.0.0 as out-of-scope for this PR.
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6).
+- **Related**: `CURRENT_TASK.md`, `BACKLOG.md` → "Release v1.0.0 readiness" → 3.
+
 ## 2026-04-27 — Release metadata fixes for v1.0.0
 
 - **Decision**: Complete release-prep metadata PR #2 with exactly five edits: `pubspec.yaml` description update, `README.md` rewrite, Android launcher label change to `Techno Staff`, iOS `CFBundleName` change to `Techno Staff`, and English translation key rename `in_pending_tasks` → `pending_tasks`.
