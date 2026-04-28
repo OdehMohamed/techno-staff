@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-28 — GitHub Copilot (Claude Sonnet 4.6) — Implement notifications permission (PR #3)
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6)
+- **Branch**: `feat/notifications-permission`
+- **Goal**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml` to fix silent FCM permission suppression on Android 13+.
+- **Outcome**: Single manifest line inserted as first child of `<manifest>` before `<application>`. All three quality gates passed: `flutter analyze` → No issues found, `flutter test` → All tests passed, `npm --prefix functions run lint` → clean. Real-device Android 13+ smoke tests are pending reviewer verification before merge. PR opened to `dev`: `feat(notifications): add POST_NOTIFICATIONS for Android 13+`.
+- **Files touched**: `android/app/src/main/AndroidManifest.xml`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Follow-ups**: Reviewer to run 7 smoke tests on a real Android 13+ device (see `CURRENT_TASK.md` §5) before merging. Next: PR #4 account deletion + privacy policy.
+
 ## 2026-04-28 — Claude Code (Opus 4.7) — Plan release-prep PR #3 (notifications permission)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
