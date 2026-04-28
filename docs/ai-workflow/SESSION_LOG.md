@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-28 — Claude Code (Opus 4.7) — Plan release-prep PR #4 (account deletion + privacy)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feat/account-deletion-and-privacy`
+- **Goal**: Lock scope for the largest release-prep PR (account deletion + privacy policy + About screen for v1.0.0), then hand off to the implementing agent.
+- **Outcome**: Audited Settings (93-line stateless screen, no Account section), routes (only `/settings` exists; need `/about`), Cloud Functions (7 existing exports; `createEmployeeUser` is the perfect template — admin SDK with auth check + HttpsError pattern), and dependencies (`cloud_functions` already wired; `package_info_plus` and `url_launcher` need to be added). Locked 6 product decisions: keep tasks of deleted users with `assignedByName`/`assignedToName` overwritten to `"Deleted user"`; simple AlertDialog confirmation; privacy policy drafted by implementing agent for user review on PR; About shows app name + version + privacy + licenses (no support email); approved both new dependencies; GitHub Pages from `main`/`/docs`. Wrote a comprehensive `CURRENT_TASK.md` covering 11 sections of file-by-file scope, exact translation values for 11 new keys (en + ar), 14 manual smoke tests, GitHub Pages enablement instructions for the user, and explicit risk + out-of-scope rails. Moved the backlog item to "In progress".
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over PR #4 from `CURRENT_TASK.md` on the existing `feat/account-deletion-and-privacy` branch. After merge: project owner enables GitHub Pages from `main`/`/docs` (one-time UI step) and replaces the placeholder support email in `docs/privacy-policy.md`.
+
 ## 2026-04-28 — GitHub Copilot (Claude Sonnet 4.6) — Implement notifications permission (PR #3)
 
 - **Agent**: GitHub Copilot (Claude Sonnet 4.6)
