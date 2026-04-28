@@ -169,5 +169,16 @@
   "tasks_trend_subtitle": "عدد المهام المنشأة والمنجزة مع الوقت",
   "in_progress_tasks": "المهام قيد التنفيذ",
   "pending_tasks": "المهام المعلقة",
-  "created_tasks": "المهام المنشأة"
+  "created_tasks": "المهام المنشأة",
+  "account": "الحساب",
+  "delete_account": "حذف الحساب",
+  "delete_account_confirm_title": "حذف الحساب؟",
+  "delete_account_confirm_message": "سيتم حذف حسابك وبياناتك الشخصية من تطبيق Techno Staff نهائياً. ستبقى المهام التي أنشأتها أو المُسندة إليك مرئية للفريق ولكن سيظهر اسمك كـ 'مستخدم محذوف'. لا يمكن التراجع عن هذا الإجراء.",
+  "account_deleted": "تم حذف الحساب",
+  "failed_to_delete_account": "فشل في حذف الحساب",
+  "about": "حول",
+  "app_version": "الإصدار",
+  "privacy_policy": "سياسة الخصوصية",
+  "open_source_licenses": "تراخيص المصادر المفتوحة",
+  "failed_to_open_link": "تعذر فتح الرابط"
 }

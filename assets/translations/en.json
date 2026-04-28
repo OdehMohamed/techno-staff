@@ -169,5 +169,16 @@
   "tasks_trend_subtitle": "Created vs completed tasks over time",
   "in_progress_tasks": "In Progress Tasks",
   "pending_tasks": "Pending Tasks",
-  "created_tasks": "Created Tasks"
+  "created_tasks": "Created Tasks",
+  "account": "Account",
+  "delete_account": "Delete account",
+  "delete_account_confirm_title": "Delete account?",
+  "delete_account_confirm_message": "This permanently deletes your account and removes your personal data from Techno Staff. Tasks you created or are assigned to remain visible to the team but show your name as 'Deleted user'. This action cannot be undone.",
+  "account_deleted": "Account deleted",
+  "failed_to_delete_account": "Failed to delete account",
+  "about": "About",
+  "app_version": "Version",
+  "privacy_policy": "Privacy policy",
+  "open_source_licenses": "Open-source licenses",
+  "failed_to_open_link": "Could not open link"
 }

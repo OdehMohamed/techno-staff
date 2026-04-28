@@ -2,11 +2,64 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/cubit/theme_cubit.dart';
 import '../../../../core/theme/cubit/theme_state.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDeleting = false;
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('delete_account_confirm_title'.tr()),
+        content: Text('delete_account_confirm_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('delete_account'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    // Capture cubit before the async boundary
+    final cubit = context.read<AuthCubit>();
+
+    try {
+      await cubit.deleteAccount();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('account_deleted'.tr())));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('failed_to_delete_account'.tr())));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +138,44 @@ class SettingsScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          const SizedBox(height: AppSizes.lg),
+          Text('account'.tr(), style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: AppSizes.sm),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: Text('about'.tr()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(RouteNames.about),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_forever,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: Text(
+                    'delete_account'.tr(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  trailing: _isDeleting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                  enabled: !_isDeleting,
+                  onTap: _isDeleting ? null : _handleDeleteAccount,
+                ),
+              ],
+            ),
           ),
         ],
       ),
