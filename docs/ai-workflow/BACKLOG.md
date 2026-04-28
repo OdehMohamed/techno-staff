@@ -42,15 +42,6 @@ _None yet._
 
 > Coordinated meta-task. Prepare the app for v1.0.0 store submission via 5 small, sequential PRs. Sweep findings and the agreed plan are in the `2026-04-27 — Release-readiness sweep for v1.0.0` entry in `DECISIONS_LOG.md` once that lands; the high-level breakdown is captured here.
 
-#### 2. Release metadata fixes — `chore/release-metadata`
-
-- **Priority**: Should-fix (release blocker)
-- **Status**: Open
-- **Owner**: unassigned
-- **Target release**: 1.0.0
-- **Added**: 2026-04-27
-- **Description**: Fix release metadata: pubspec description (currently default placeholder), README (currently default Flutter starter), Android `android:label` and iOS `CFBundleName` (lowercase `techno_staff`) → user-facing `Techno Staff`. Also fix translation key typo: `en.json` has `in_pending_tasks` while `ar.json` has `pending_tasks`.
-
 #### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
 
 - **Priority**: Should-fix (release blocker)
@@ -102,6 +93,19 @@ _None yet._
 - **Notes**:
   - Verification: `grep -rn "debugPrint" lib | wc -l` returned `0`.
   - Replacement structured logging (Crashlytics breadcrumbs) remains scoped to PR #5.
+
+#### 2. Release metadata fixes — `chore/release-metadata`
+
+- **Priority**: Should-fix (release blocker)
+- **Status**: Done (completed 2026-04-27)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.0
+- **Added**: 2026-04-27
+- **Planned**: 2026-04-27 (branch `chore/release-metadata`)
+- **Description**: Fixed release metadata with five scoped edits: pubspec description, README rewrite, Android launcher label, iOS bundle name, and `en.json` key rename `in_pending_tasks` → `pending_tasks`.
+- **Notes**:
+  - Verification: `grep -rn "in_pending_tasks" lib assets test | wc -l` returned `0`.
+  - Translation parity check: `171 171 []`.
 
 ### Add task search and filtering
 

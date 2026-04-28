@@ -168,6 +168,6 @@
   "tasks_trend": "Tasks Trend",
   "tasks_trend_subtitle": "Created vs completed tasks over time",
   "in_progress_tasks": "In Progress Tasks",
-  "in_pending_tasks": "Pending Tasks",
+  "pending_tasks": "Pending Tasks",
   "created_tasks": "Created Tasks"
 }
