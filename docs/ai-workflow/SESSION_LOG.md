@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-28 — Claude Code (Opus 4.7) — Plan release-prep PR #3 (notifications permission)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feat/notifications-permission`
+- **Goal**: Lock scope for release-prep PR #3 of 5 (Android 13+ POST_NOTIFICATIONS for v1.0.0), then hand off to the implementing agent.
+- **Outcome**: Audited the FCM setup. Discovered the runtime `FirebaseMessaging.requestPermission(...)` call already exists at `auth_cubit.dart:125` (inside `_setupFCM`, called after successful sign-in) — meaning iOS permission has been working all along. The Android 13+ failure is purely a missing `<uses-permission>` manifest declaration. PR collapses to one line in `AndroidManifest.xml`. Locked 3 product decisions: minimal scope (manifest only, no UX scope creep), placement at top of `<manifest>` before `<application>` per Android convention, real-device Android 13+ verification gate before merge. Wrote `CURRENT_TASK.md` capturing the spec, 7 manual smoke tests (3 must run on a real device — Android 13+ fresh install, deny path, regression checks), and out-of-scope rails.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over PR #3 from `CURRENT_TASK.md` on the existing `feat/notifications-permission` branch.
+
 ## 2026-04-27 — GitHub Copilot (GPT-5.3-Codex) — Implement release metadata fixes
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)

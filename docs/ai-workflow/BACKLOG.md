@@ -45,11 +45,12 @@ _None yet._
 #### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Description**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml` and request runtime permission via `firebase_messaging` on app start. Without this, FCM notifications silently fail on Android 13+ (the majority of users).
+- **Planned**: 2026-04-28 (branch `feat/notifications-permission`)
+- **Description**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml`. The runtime `FirebaseMessaging.requestPermission(...)` call already exists in `auth_cubit.dart` `_setupFCM`; only the manifest declaration is missing, which is why the prompt never shows on Android 13+ today.
 
 #### 4. Account deletion + privacy policy — `feat/account-deletion-and-privacy`
 
