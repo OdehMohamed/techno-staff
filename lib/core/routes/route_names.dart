@@ -14,4 +14,5 @@ class RouteNames {
   static const String editTask = '/edit-task';
   static const String reports = '/reports';
   static const notifications = '/notifications';
+  static const String about = '/about';
 }
