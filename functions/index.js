@@ -840,7 +840,9 @@ exports.deleteUserAccount = onCall(async (request) => {
       const CHUNK = 500;
       for (let i = 0; i < docs.length; i += CHUNK) {
         const batch = db.batch();
-        docs.slice(i, i + CHUNK).forEach((doc) => batch.update(doc.ref, updateFn(doc)));
+        docs
+          .slice(i, i + CHUNK)
+          .forEach((doc) => batch.update(doc.ref, updateFn(doc)));
         await batch.commit();
       }
     }
@@ -861,7 +863,9 @@ exports.deleteUserAccount = onCall(async (request) => {
       .where("assignedBy", "==", uid)
       .get();
     if (!assignedBySnap.empty) {
-      await batchUpdate(assignedBySnap.docs, () => ({ assignedByName: "Deleted user" }));
+      await batchUpdate(assignedBySnap.docs, () => ({
+        assignedByName: "Deleted user",
+      }));
     }
 
     // Step 2: tasks assigned TO this user → overwrite assignedToName
@@ -870,7 +874,9 @@ exports.deleteUserAccount = onCall(async (request) => {
       .where("assignedTo", "==", uid)
       .get();
     if (!assignedToSnap.empty) {
-      await batchUpdate(assignedToSnap.docs, () => ({ assignedToName: "Deleted user" }));
+      await batchUpdate(assignedToSnap.docs, () => ({
+        assignedToName: "Deleted user",
+      }));
     }
 
     // Step 3: notifications belonging to this user → delete
