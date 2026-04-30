@@ -28,7 +28,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _openPrivacyPolicy() async {
     final uri = Uri.parse(
-      'https://odehmohamed.github.io/techno-staff/privacy-policy/',
+      'https://odehmohamed.github.io/techno-staff/privacy-policy.md',
     );
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
