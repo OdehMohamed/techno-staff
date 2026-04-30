@@ -67,11 +67,12 @@ _None yet._
 #### 5. Release readiness — `chore/release-readiness`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Description**: Add `firebase_crashlytics` and wire `FlutterError.onError` + `PlatformDispatcher.onError`. Bump all Firebase Flutter packages by one minor version (`cloud_firestore` 6.2 → 6.3, etc.). Add `CHANGELOG.md` capturing v1.0.0 features. Add basic operational checklist for the release: enable Firestore scheduled backup, configure Android signed release keystore, configure iOS provisioning. Real-device smoke test on Android 13+ to confirm notifications.
+- **Planned**: 2026-04-30 (branch `chore/release-readiness`)
+- **Description**: Add `firebase_crashlytics` (minimal: global handlers + `setUserIdentifier`). Bump 5 Firebase Flutter packages by one minor each. Add `CHANGELOG.md` (Keep a Changelog format) capturing v1.0.0 features. Add `docs/release-checklist.md` covering pre-merge regression, configuration items (privacy email, Pages, dSYM, signing, backups), release flow, post-release verification, and store submission. Version unchanged at `1.0.0+1`.
 
 _Deferred (post-v1.0.0)_: offline UX hardening, performance tuning, app size analysis, full dark mode QA, app store metadata drafting (descriptions / screenshots / keywords), `task_logs/` cascade-delete, FCM notification on task delete, major-version dependency bumps.
 
