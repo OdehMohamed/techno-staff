@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-30 — GitHub Copilot (GPT-5.3-Codex) — Implement release-prep PR #5 (Crashlytics + bumps + release docs)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `chore/release-readiness`
+- **Goal**: Implement the final release-prep PR for v1.0.0 exactly as planned in `CURRENT_TASK.md`.
+- **Outcome**: Added `firebase_crashlytics` and bumped the 5 Firebase Flutter packages by one minor each. Wired global Crashlytics handlers in `main.dart` and user identifier set/clear in `auth_cubit.dart`. Added `CHANGELOG.md` (Keep a Changelog format, v1.0.0 draft) and `docs/release-checklist.md`. Quality gates and verification commands passed. Manual smoke tests requiring real devices and Firebase console interaction were documented in the PR body.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `lib/main.dart`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `CHANGELOG.md`, `docs/release-checklist.md`, workflow docs.
+- **Follow-ups**: Open PR to `dev`, reviewer to complete real-device smoke tests (including Crashlytics test-crash confirmation), then owner runs release flow (`dev -> main` PR, `v1.0.0` tag, operational checklist).
+
 ## 2026-04-30 — Claude Code (Opus 4.7) — Plan release-prep PR #5 (release readiness — Crashlytics + bumps + CHANGELOG)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

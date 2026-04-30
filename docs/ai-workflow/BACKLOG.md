@@ -38,20 +38,28 @@ _None yet._
 
 ## Should-fix
 
+_None yet._
+
+---
+
+## Nice-to-have
+
+_None yet._
+
+## Done
+
 ### Release v1.0.0 readiness
 
-> Coordinated meta-task. Prepare the app for v1.0.0 store submission via 5 small, sequential PRs. Sweep findings and the agreed plan are in the `2026-04-27 — Release-readiness sweep for v1.0.0` entry in `DECISIONS_LOG.md` once that lands; the high-level breakdown is captured here.
-
-#### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
+#### 5. Release readiness — `chore/release-readiness`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: Done — 2026-04-28
-- **Owner**: GitHub Copilot (Claude Sonnet 4.6)
+- **Status**: Done — 2026-04-30
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Planned**: 2026-04-28 (branch `feat/notifications-permission`)
-- **Description**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml`. The runtime `FirebaseMessaging.requestPermission(...)` call already exists in `auth_cubit.dart` `_setupFCM`; only the manifest declaration is missing, which is why the prompt never shows on Android 13+ today.
-- **Completed**: 2026-04-28. One manifest line added. Quality gates (flutter analyze, flutter test, functions lint) all green. Real-device Android 13+ verification pending reviewer smoke test before merge.
+- **Planned**: 2026-04-30 (branch `chore/release-readiness`)
+- **Description**: Added minimal Firebase Crashlytics wiring (`FlutterError.onError`, `PlatformDispatcher.instance.onError`, and `setUserIdentifier` on auth sign-in/sign-out), bumped the 5 Firebase Flutter packages by one minor each, and added release artifacts `CHANGELOG.md` and `docs/release-checklist.md`.
+- **Completed**: 2026-04-30. Quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`), verification commands passed (Crashlytics wiring grep, dependency grep, translation parity `182 182 []`, changelog header, checklist file presence). Manual smoke tests documented in PR body.
 
 #### 4. Account deletion + privacy policy — `feat/account-deletion-and-privacy`
 
@@ -64,27 +72,16 @@ _None yet._
 - **Description**: (a) Cloud Function callable `deleteUserAccount` deletes the caller's Firestore data + Firebase Auth atomically; tasks the user created or was assigned to are kept with `assignedByName` / `assignedToName` overwritten to literal `"Deleted user"`; `task_logs/` preserved. (b) Settings → Account section with "Delete account" entry + simple confirmation dialog. (c) Privacy policy at `docs/privacy-policy.md`, hosted via GitHub Pages from `main` branch `/docs` folder; user enables Pages manually post-merge. (d) Settings → About screen with app name, version (`package_info_plus`), privacy policy link (`url_launcher`), and `showLicensePage()` for open-source licenses. Two new dependencies: `package_info_plus` and `url_launcher`. Required by Apple App Store (since 2022) and Google Play (since 2024).
 - **Completed**: 2026-04-28. All 5 surfaces implemented. Quality gates (flutter analyze, flutter test, functions lint) all green. Translation parity 182 == 182 []. Real-device smoke tests pending reviewer before merge. GitHub Pages enablement documented in PR body.
 
-#### 5. Release readiness — `chore/release-readiness`
+#### 3. Notifications permission for Android 13+ — `feat/notifications-permission`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
+- **Status**: Done — 2026-04-28
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6)
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Planned**: 2026-04-30 (branch `chore/release-readiness`)
-- **Description**: Add `firebase_crashlytics` (minimal: global handlers + `setUserIdentifier`). Bump 5 Firebase Flutter packages by one minor each. Add `CHANGELOG.md` (Keep a Changelog format) capturing v1.0.0 features. Add `docs/release-checklist.md` covering pre-merge regression, configuration items (privacy email, Pages, dSYM, signing, backups), release flow, post-release verification, and store submission. Version unchanged at `1.0.0+1`.
-
-_Deferred (post-v1.0.0)_: offline UX hardening, performance tuning, app size analysis, full dark mode QA, app store metadata drafting (descriptions / screenshots / keywords), `task_logs/` cascade-delete, FCM notification on task delete, major-version dependency bumps.
-
----
-
-## Nice-to-have
-
-_None yet._
-
-## Done
-
-### Release v1.0.0 readiness
+- **Planned**: 2026-04-28 (branch `feat/notifications-permission`)
+- **Description**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` to `AndroidManifest.xml`. The runtime `FirebaseMessaging.requestPermission(...)` call already exists in `auth_cubit.dart` `_setupFCM`; only the manifest declaration is missing, which is why the prompt never shows on Android 13+ today.
+- **Completed**: 2026-04-28. One manifest line added. Quality gates (flutter analyze, flutter test, functions lint) all green. Real-device Android 13+ verification pending reviewer smoke test before merge.
 
 #### 1. Strip debug logging — `chore/strip-debug-logging`
 
