@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - YYYY-MM-DD
+## [1.0.1] - 2026-04-30
+
+### Fixed
+
+- Privacy policy URL inside the About screen no longer returns 404 (switched to `.md` path).
+- Final support email applied in `privacy-policy.md`.
+- CHANGELOG date placeholder corrected.
+
+## [1.0.0] - 2026-04-30
 
 ### Added
 

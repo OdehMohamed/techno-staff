@@ -60,13 +60,13 @@ We do not sell or share your personal data with marketing partners or advertiser
 
 - **Access** — you can view all task and account data within the App.
 - **Correction** — contact your team administrator to correct your name or email.
-- **Deletion** — you can delete your account at any time by opening **Settings → Account → Delete account**. Deletion is immediate and irreversible. If you cannot access the App, contact us at `support@example.com` to request manual deletion.
+- **Deletion** — you can delete your account at any time by opening **Settings → Account → Delete account**. Deletion is immediate and irreversible. If you cannot access the App, contact us at `moh95od@gmail.com` to request manual deletion.
 
 ---
 
 ## Children's data
 
-Techno Staff is intended for workplace use by adults. We do not knowingly collect data from users under 16 years of age. If you believe a minor's data has been collected, please contact us at `support@example.com` and we will remove it promptly.
+Techno Staff is intended for workplace use by adults. We do not knowingly collect data from users under 16 years of age. If you believe a minor's data has been collected, please contact us at `moh95od@gmail.com` and we will remove it promptly.
 
 ---
 
@@ -78,6 +78,4 @@ We may update this policy from time to time. Significant changes will be communi
 
 ## Contact
 
-For privacy-related questions or deletion requests, contact us at: **support@example.com**
-
-> ⚠️ **Note for the project owner:** Replace `support@example.com` above with your real support email before publishing this policy.
+For privacy-related questions or deletion requests, contact us at: **moh95od@gmail.com**
