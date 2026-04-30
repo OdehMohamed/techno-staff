@@ -1,6 +1,6 @@
 # Current Task
 
-> Last updated: 2026-04-28
+> Last updated: 2026-04-30
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
 
@@ -8,6 +8,6 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## No active task
 
-PR #4 (`feat/account-deletion-and-privacy`) is implemented and pending review/merge.
+Release-prep PR #5 (`chore/release-readiness`) is implemented.
 
-Next task when ready: **PR #5** — `chore/release-readiness` (Crashlytics, dep bumps, CHANGELOG, release checklist). See `BACKLOG.md` → item #5.
+v1.0.0 is ready for the release PR flow: open `dev -> main` PR, merge with a merge commit, create tag `v1.0.0`, then publish GitHub Release notes from `CHANGELOG.md`.

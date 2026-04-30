@@ -21,6 +21,24 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-04-30 — GitHub Copilot (GPT-5.3-Codex) — Implement release-prep PR #5 (Crashlytics + bumps + release docs)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `chore/release-readiness`
+- **Goal**: Implement the final release-prep PR for v1.0.0 exactly as planned in `CURRENT_TASK.md`.
+- **Outcome**: Added `firebase_crashlytics` and bumped the 5 Firebase Flutter packages by one minor each. Wired global Crashlytics handlers in `main.dart` and user identifier set/clear in `auth_cubit.dart`. Added `CHANGELOG.md` (Keep a Changelog format, v1.0.0 draft) and `docs/release-checklist.md`. Quality gates and verification commands passed. Manual smoke tests requiring real devices and Firebase console interaction were documented in the PR body.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `lib/main.dart`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `CHANGELOG.md`, `docs/release-checklist.md`, workflow docs.
+- **Follow-ups**: Open PR to `dev`, reviewer to complete real-device smoke tests (including Crashlytics test-crash confirmation), then owner runs release flow (`dev -> main` PR, `v1.0.0` tag, operational checklist).
+
+## 2026-04-30 — Claude Code (Opus 4.7) — Plan release-prep PR #5 (release readiness — Crashlytics + bumps + CHANGELOG)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `chore/release-readiness`
+- **Goal**: Lock scope for the final release-prep PR (Crashlytics, Firebase minor bumps, CHANGELOG, release checklist) before tagging v1.0.0.
+- **Outcome**: Audited current error-handling surface (zero — no `FlutterError.onError`, no `PlatformDispatcher.onError`, no zoned guard), Firebase dep freshness (5 packages one minor behind, deltas confirmed), version (`1.0.0+1` — no bump needed for first build), absence of `CHANGELOG.md` and `docs/release-checklist.md`. Locked 6 product decisions: minimal Crashlytics (global handlers + user identifier only); exactly 5 Firebase Flutter minor bumps and nothing else; CHANGELOG drafted by implementing agent in Keep-a-Changelog format; standalone `docs/release-checklist.md`; version stays at `1.0.0+1`; iOS dSYM upload remains a documented manual Xcode step. Wrote `CURRENT_TASK.md` with file-by-file scope, exact dep-version deltas, exact main.dart/auth_cubit.dart additions, the CHANGELOG and release-checklist structures, 9 manual smoke tests (including the Crashlytics test crash), and risk + out-of-scope rails. Moved the backlog item to "In progress".
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementation agent takes over PR #5 from `CURRENT_TASK.md` on the existing `chore/release-readiness` branch. After PR #5 merges: open `dev → main` release PR (merge commit, not squash), tag `v1.0.0`, create GitHub Release, then run the operational items in the release checklist (Pages enablement, dSYM, signing, backups). Post-v1.0.0 product ideas explicitly deferred per the user.
+
 ## 2026-04-28 — Claude Code (Opus 4.7) — Plan release-prep PR #4 (account deletion + privacy)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

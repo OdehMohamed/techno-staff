@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -109,6 +110,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> signOut() async {
+    await FirebaseCrashlytics.instance.setUserIdentifier('');
     await _authRepository.signOut();
 
     emit(
@@ -148,6 +150,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> _setupFCM(String userId) async {
+    await FirebaseCrashlytics.instance.setUserIdentifier(userId);
     final messaging = FirebaseMessaging.instance;
 
     await messaging.requestPermission(alert: true, badge: true, sound: true);

@@ -20,6 +20,17 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-30 — Crashlytics + Firebase minor bumps + release artifacts for v1.0.0
+
+- **Decision**: Keep Crashlytics integration intentionally minimal for v1.0.0: global handlers in `main.dart` (`FlutterError.onError`, `PlatformDispatcher.instance.onError`) plus `setUserIdentifier` on auth sign-in/sign-out. No `runZonedGuarded`, no per-catch `recordError`, no custom keys in cubits.
+- **Reason**: This delivers immediate production observability with low integration risk in the final release-prep PR, while avoiding invasive instrumentation changes right before tagging.
+- **Dependency policy**: Bump exactly five Firebase Flutter packages by one minor (`cloud_firestore` 6.3, `cloud_functions` 6.2, `firebase_auth` 6.4, `firebase_core` 4.7, `firebase_messaging` 16.2) and add `firebase_crashlytics` only. No non-Firebase bumps and no major-version upgrades.
+- **Release artifacts**: Add `CHANGELOG.md` (Keep a Changelog format) and `docs/release-checklist.md` as required v1.0.0 release assets.
+- **Operational split**: Keep GitHub Pages enablement, iOS dSYM upload script setup, signing configuration, and Firestore backup enablement as manual owner-run checklist steps, not in-repo automation.
+- **Impact**: Final release-prep scope is complete; v1.0.0 is ready for the `dev -> main` release PR and tag flow after this PR merges.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md` (release-prep PR #5), `BACKLOG.md` item 5, `CHANGELOG.md`, `docs/release-checklist.md`.
+
 ## 2026-04-28 — Account deletion + privacy policy for v1.0.0
 
 - **Decision**: Implement account deletion as a Cloud Function callable (`deleteUserAccount`) that the authenticated user calls directly — not as a client-side Firestore operation — so the admin SDK can delete the Auth account atomically.

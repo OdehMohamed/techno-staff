@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-04-24
+> Last updated: 2026-04-30
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -35,16 +35,18 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 
 | Concern             | Choice                                       |
 | ------------------- | -------------------------------------------- |
-| Auth                | `firebase_auth` `^6.3.0`                     |
-| Firestore           | `cloud_firestore` `^6.2.0`                   |
-| Cloud Functions     | `cloud_functions` `^6.1.0` (Node 22 runtime) |
-| Push messaging      | `firebase_messaging` `^16.1.3`               |
+| Auth                | `firebase_auth` `^6.4.0`                     |
+| Firestore           | `cloud_firestore` `^6.3.0`                   |
+| Cloud Functions     | `cloud_functions` `^6.2.0` (Node 22 runtime) |
+| Crash reporting     | `firebase_crashlytics` `^5.0.4`              |
+| Push messaging      | `firebase_messaging` `^16.2.0`               |
 | Firebase project id | `techno-staff`                               |
 
 ### Quality
 
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
+- Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
 
 ## 3. Architecture
 
