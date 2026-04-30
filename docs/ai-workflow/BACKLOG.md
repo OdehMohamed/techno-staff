@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-04-27
+> Last updated: 2026-05-01
 > We start with an empty backlog on purpose. Items are added as we discover them through real work — no speculative lists.
 
 ---
@@ -38,7 +38,19 @@ _None yet._
 
 ## Should-fix
 
-_None yet._
+### Pre-build polish (v1.0.1 stores)
+
+#### B. Android release signing — `chore/android-release-signing`
+
+- **Priority**: Should-fix
+- **Status**: In progress
+- **Owner**: implementation delegated
+- **Target release**: 1.0.1
+- **Added**: 2026-05-01
+- **Description**: Replace Android release debug-key fallback with strict `key.properties`-driven release signing and document the owner-run keystore setup steps in `docs/release-checklist.md`.
+- **Notes**:
+  - Parallel PR in flight.
+  - Tracked in `CURRENT_TASK.md` for branch `chore/android-release-signing`.
 
 ---
 
@@ -47,6 +59,29 @@ _None yet._
 _None yet._
 
 ## Done
+
+### Pre-build polish (v1.0.1 stores)
+
+#### A. App icons — `chore/app-icons`
+
+- **Priority**: Should-fix
+- **Status**: Done — 2026-05-01
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
+- **Target release**: 1.0.1
+- **Added**: 2026-05-01
+- **Description**: Added `flutter_launcher_icons` config in `pubspec.yaml` and regenerated Android/iOS launcher icons from `assets/icon/app_icon.png`.
+- **Notes**:
+  - Verification: Android `mipmap-xxxhdpi/ic_launcher.png` is `192 x 192`; iOS `Icon-App-1024x1024@1x.png` is `1024 x 1024`.
+  - Verification: iOS icon SHA1 changed from the default Flutter value (`7b0546f...`) to `6c3b1e4b0e02dc9e665728bcc2c653ece7e69c7f`.
+
+#### B. Android release signing — `chore/android-release-signing`
+
+- **Priority**: Should-fix
+- **Status**: In progress (tracked under `Should-fix`)
+- **Owner**: implementation delegated
+- **Target release**: 1.0.1
+- **Added**: 2026-05-01
+- **Description**: Parallel pre-build polish PR to configure strict Android release signing via `key.properties` and checklist updates.
 
 ### Release v1.0.0 readiness
 
