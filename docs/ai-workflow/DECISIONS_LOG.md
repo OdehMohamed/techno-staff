@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-01 — Pre-build app icons via flutter_launcher_icons
+
+- **Decision**: Generate launcher icons from `assets/icon/app_icon.png` using `flutter_launcher_icons` (`flutter_launcher_icons: ^0.14.4`) with `android: true`, `ios: true`, `image_path: "assets/icon/app_icon.png"`, and `remove_alpha_ios: true`.
+- **Reason**: This is the standard, low-risk way to regenerate all required Android mipmap icons and the iOS `AppIcon.appiconset` from a single source asset while keeping output deterministic.
+- **Impact**: Android launcher mipmaps and iOS AppIcon assets are regenerated for v1.0.1 store polish; no adaptive icon customization is introduced in v1.0.x.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `CURRENT_TASK.md` (PR A — `chore/app-icons`), `pubspec.yaml`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/`, `android/app/src/main/res/mipmap-*/ic_launcher.png`.
+
 ## 2026-04-30 — Crashlytics + Firebase minor bumps + release artifacts for v1.0.0
 
 - **Decision**: Keep Crashlytics integration intentionally minimal for v1.0.0: global handlers in `main.dart` (`FlutterError.onError`, `PlatformDispatcher.instance.onError`) plus `setUserIdentifier` on auth sign-in/sign-out. No `runZonedGuarded`, no per-catch `recordError`, no custom keys in cubits.

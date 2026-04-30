@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-01 — GitHub Copilot (GPT-5.3-Codex) — Implement app icons pre-build polish (PR A)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `chore/app-icons`
+- **Goal**: Implement PR A by adding launcher icon generation config and regenerating Android/iOS launcher assets from the committed square master icon.
+- **Outcome**: Added `flutter_launcher_icons: ^0.14.4` to `dev_dependencies`, added launcher config in `pubspec.yaml`, ran `flutter pub get` and `dart run flutter_launcher_icons`, regenerated Android mipmap icons and iOS app icon assets, and verified required file dimensions/hash changes. Quality gates passed: `flutter analyze`, `flutter test`, and `cd functions && npm run lint`.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `android/app/src/main/res/mipmap-*/ic_launcher.png`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/*`, workflow docs.
+- **Follow-ups**: Open PR to `dev` titled `chore(icons): add Techno Staff launcher icons`; reviewer to run real-device smoke tests for Android/iOS launcher icon visibility and in-app regression checks.
+
 ## 2026-04-30 — GitHub Copilot (GPT-5.3-Codex) — Implement release-prep PR #5 (Crashlytics + bumps + release docs)
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
