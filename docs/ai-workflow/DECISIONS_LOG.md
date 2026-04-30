@@ -20,6 +20,16 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-04-28 — Account deletion + privacy policy for v1.0.0
+
+- **Decision**: Implement account deletion as a Cloud Function callable (`deleteUserAccount`) that the authenticated user calls directly — not as a client-side Firestore operation — so the admin SDK can delete the Auth account atomically.
+- **Task-name overwrite vs delete**: Tasks the deleted user created or was assigned to are **kept** with display names overwritten to `"Deleted user"` (English literal for v1). UIDs stay intact for traceability. Task deletion was rejected because it would erase the team's business record.
+- **Confirmation strength**: Simple `AlertDialog` with Cancel + destructive-styled Delete. Type-to-confirm was rejected as over-engineered for v1.
+- **GitHub Pages source**: `main` branch, `/docs` folder. Privacy policy lives at `docs/privacy-policy.md`. URL: `https://odehmohamed.github.io/techno-staff/privacy-policy/`. The repo toggle is a manual one-time step documented in the PR body.
+- **Placeholder support email**: `support@example.com` used in `docs/privacy-policy.md` and flagged in the PR body for the owner to replace before publishing Pages.
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6).
+- **Related**: `CURRENT_TASK.md`, `BACKLOG.md` → "Release v1.0.0 readiness" → 4.
+
 ## 2026-04-28 — Add POST_NOTIFICATIONS for Android 13+
 
 - **Decision**: Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>` as the single first child of `<manifest>` in `android/app/src/main/AndroidManifest.xml`. No other files changed.

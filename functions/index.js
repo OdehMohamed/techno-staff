@@ -826,6 +826,86 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
   }
 });
 
+exports.deleteUserAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const uid = request.auth.uid;
+  const db = admin.firestore();
+
+  try {
+    // Helper: batch-update documents in chunks of 500
+    async function batchUpdate(docs, updateFn) {
+      const CHUNK = 500;
+      for (let i = 0; i < docs.length; i += CHUNK) {
+        const batch = db.batch();
+        docs
+          .slice(i, i + CHUNK)
+          .forEach((doc) => batch.update(doc.ref, updateFn(doc)));
+        await batch.commit();
+      }
+    }
+
+    // Helper: batch-delete documents in chunks of 500
+    async function batchDelete(docs) {
+      const CHUNK = 500;
+      for (let i = 0; i < docs.length; i += CHUNK) {
+        const batch = db.batch();
+        docs.slice(i, i + CHUNK).forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    }
+
+    // Step 1: tasks assigned BY this user → overwrite assignedByName
+    const assignedBySnap = await db
+      .collection("tasks")
+      .where("assignedBy", "==", uid)
+      .get();
+    if (!assignedBySnap.empty) {
+      await batchUpdate(assignedBySnap.docs, () => ({
+        assignedByName: "Deleted user",
+      }));
+    }
+
+    // Step 2: tasks assigned TO this user → overwrite assignedToName
+    const assignedToSnap = await db
+      .collection("tasks")
+      .where("assignedTo", "==", uid)
+      .get();
+    if (!assignedToSnap.empty) {
+      await batchUpdate(assignedToSnap.docs, () => ({
+        assignedToName: "Deleted user",
+      }));
+    }
+
+    // Step 3: notifications belonging to this user → delete
+    const notificationsSnap = await db
+      .collection("notifications")
+      .where("userId", "==", uid)
+      .get();
+    if (!notificationsSnap.empty) {
+      await batchDelete(notificationsSnap.docs);
+    }
+
+    // Step 4: user Firestore doc → delete
+    await db.collection("users").doc(uid).delete();
+
+    // Step 5: Firebase Auth account → delete (last; if this fails the user can retry)
+    await admin.auth().deleteUser(uid);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting user account:", error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal", error.message || "Something went wrong");
+  }
+});
+
 async function createInAppNotification({ userId, type, taskId, data }) {
   if (!userId) return;
 

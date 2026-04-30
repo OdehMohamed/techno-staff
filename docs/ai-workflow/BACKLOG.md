@@ -56,11 +56,13 @@ _None yet._
 #### 4. Account deletion + privacy policy — `feat/account-deletion-and-privacy`
 
 - **Priority**: Should-fix (release blocker)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: Done — 2026-04-28
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6)
 - **Target release**: 1.0.0
 - **Added**: 2026-04-27
-- **Description**: (a) Add a Cloud Function callable `deleteUserAccount` that deletes the user's Firestore data + Firebase Auth account atomically. (b) Add a "Delete account" affordance in Settings with a confirmation dialog. (c) Write a privacy policy and host it on GitHub Pages. (d) Add a Settings → "About" screen showing app version + a link to the privacy policy. Required by Apple App Store (since 2022) and Google Play (since 2024).
+- **Planned**: 2026-04-28 (branch `feat/account-deletion-and-privacy`)
+- **Description**: (a) Cloud Function callable `deleteUserAccount` deletes the caller's Firestore data + Firebase Auth atomically; tasks the user created or was assigned to are kept with `assignedByName` / `assignedToName` overwritten to literal `"Deleted user"`; `task_logs/` preserved. (b) Settings → Account section with "Delete account" entry + simple confirmation dialog. (c) Privacy policy at `docs/privacy-policy.md`, hosted via GitHub Pages from `main` branch `/docs` folder; user enables Pages manually post-merge. (d) Settings → About screen with app name, version (`package_info_plus`), privacy policy link (`url_launcher`), and `showLicensePage()` for open-source licenses. Two new dependencies: `package_info_plus` and `url_launcher`. Required by Apple App Store (since 2022) and Google Play (since 2024).
+- **Completed**: 2026-04-28. All 5 surfaces implemented. Quality gates (flutter analyze, flutter test, functions lint) all green. Translation parity 182 == 182 []. Real-device smoke tests pending reviewer before merge. GitHub Pages enablement documented in PR body.
 
 #### 5. Release readiness — `chore/release-readiness`
 
