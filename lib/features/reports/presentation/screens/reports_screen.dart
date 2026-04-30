@@ -487,9 +487,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                                 final result = await callable.call();
 
-                                debugPrint(
-                                  'REMINDER TEST RESULT: ${result.data}',
-                                );
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -498,8 +496,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     ),
                                   ),
                                 );
-                              } catch (e) {
-                                debugPrint('REMINDER ERROR: $e');
+                              } catch (_) {
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -523,9 +522,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                                 final result = await callable.call();
 
-                                debugPrint(
-                                  'ESCALATION TEST RESULT: ${result.data}',
-                                );
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -534,8 +531,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     ),
                                   ),
                                 );
-                              } catch (e) {
-                                debugPrint('ESCALATION ERROR: $e');
+                              } catch (_) {
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

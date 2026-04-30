@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:techno_staff/features/notifications/data/models/in_app_notification_model.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
@@ -147,6 +146,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           notification.id,
           userId,
         );
+
+        if (!context.mounted) return false;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

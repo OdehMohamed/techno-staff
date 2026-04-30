@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
@@ -109,6 +110,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> signOut() async {
+    await FirebaseCrashlytics.instance.setUserIdentifier('');
     await _authRepository.signOut();
 
     emit(
@@ -120,14 +122,40 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  Future<void> deleteAccount() async {
+    if (state.user == null) return;
+
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('deleteUserAccount')
+          .call();
+      // Auth state listener fires when account is deleted and routes to login.
+    } on FirebaseFunctionsException catch (_) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'failed_to_delete_account',
+        ),
+      );
+      rethrow;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'failed_to_delete_account',
+        ),
+      );
+      rethrow;
+    }
+  }
+
   Future<void> _setupFCM(String userId) async {
+    await FirebaseCrashlytics.instance.setUserIdentifier(userId);
     final messaging = FirebaseMessaging.instance;
 
     await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     final token = await messaging.getToken();
-
-    debugPrint("🔥 FCM TOKEN: $token");
 
     if (token != null) {
       await FirebaseFirestore.instance.collection('users').doc(userId).update({

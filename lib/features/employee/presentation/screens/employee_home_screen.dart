@@ -31,7 +31,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
-        context.read<TasksCubit>().fetchTasksForUser(user.id);
+        context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
         context.read<DashboardCubit>().loadEmployeeStats(user.id);
       }
     });
@@ -63,13 +63,26 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
               builder: (context, dashboardState) {
                 return BlocBuilder<TasksCubit, TasksState>(
                   builder: (context, tasksState) {
+                    if (user != null &&
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.initial) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        context.read<TasksCubit>().fetchTasksAssignedTo(
+                          user.id,
+                        );
+                      });
+                    }
+
                     if (dashboardState.status == DashboardStatus.loading ||
-                        tasksState.status == TasksStatus.loading) {
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.loading) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
                     if (dashboardState.status == DashboardStatus.error ||
-                        tasksState.status == TasksStatus.error) {
+                        tasksState.tasksAssignedToMeStatus ==
+                            TasksStatus.error) {
                       return const EmptyStateWidget(
                         icon: Icons.error_outline,
                         titleKey: 'failed_to_load_dashboard',
@@ -77,7 +90,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                     }
 
                     final stats = dashboardState.stats;
-                    final tasks = tasksState.tasks;
+                    final tasks = tasksState.tasksAssignedToMe;
 
                     final totalTasks = stats['totalTasks'] ?? 0;
                     final completedTasks = stats['completedTasks'] ?? 0;

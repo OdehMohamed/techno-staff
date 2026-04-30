@@ -169,9 +169,9 @@ class DashboardRepository {
     String topPerformer = '-';
     int topCompleted = 0;
 
-    completedCount.forEach((name, count) {
-      if (count > topCompleted) {
-        topCompleted = count;
+    completedCount.forEach((name, completedTaskCount) {
+      if (completedTaskCount > topCompleted) {
+        topCompleted = completedTaskCount;
         topPerformer = name;
       }
     });
@@ -179,9 +179,9 @@ class DashboardRepository {
     String mostActive = '-';
     int topActive = 0;
 
-    activeCount.forEach((name, count) {
-      if (count > topActive) {
-        topActive = count;
+    activeCount.forEach((name, activeTaskCount) {
+      if (activeTaskCount > topActive) {
+        topActive = activeTaskCount;
         mostActive = name;
       }
     });

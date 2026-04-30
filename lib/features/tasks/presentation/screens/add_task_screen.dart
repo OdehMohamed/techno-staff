@@ -8,7 +8,6 @@ import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/tasks_repository.dart';
-import 'package:intl/intl.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -89,9 +88,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         updatedAt: DateTime.now(),
         completedAt: null,
       );
-      debugPrint('CREATING TASK FOR EMPLOYEE ID: $_selectedEmployeeId');
-      debugPrint('ASSIGNED BY USER ID: ${currentUser.id}');
-      debugPrint('TASK TITLE: ${_titleController.text.trim()}');
       await repository.createTask(task);
 
       if (!mounted) return;
@@ -123,9 +119,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             constraints: BoxConstraints(maxWidth: contentWidth),
             child: BlocBuilder<EmployeesCubit, EmployeesState>(
               builder: (context, state) {
-                final employees = state.employees
-                    .where((user) => user.role == 'employee')
-                    .toList();
+                final assignableUsers = state.employees.toList();
+                final selectedAssignableUserId =
+                    assignableUsers.any(
+                      (user) => user.id == _selectedEmployeeId,
+                    )
+                    ? _selectedEmployeeId
+                    : null;
+                final isEmployeesLoading =
+                    state.status == EmployeesStatus.loading &&
+                    state.employees.isEmpty;
+                final hasEmployeesError = state.status == EmployeesStatus.error;
 
                 return Form(
                   key: _formKey,
@@ -158,24 +162,43 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         },
                       ),
                       const SizedBox(height: AppSizes.md),
+                      if (isEmployeesLoading)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: AppSizes.md),
+                          child: LinearProgressIndicator(),
+                        ),
                       DropdownButtonFormField<String>(
-                        initialValue: _selectedEmployeeId,
+                        initialValue: selectedAssignableUserId,
                         decoration: InputDecoration(
                           labelText: 'assign_to'.tr(),
+                          helperText: hasEmployeesError
+                              ? 'failed_to_load_employees'.tr()
+                              : (assignableUsers.isEmpty
+                                    ? 'no_employees_found'.tr()
+                                    : null),
+                          enabled: assignableUsers.isNotEmpty,
+                          isDense: true,
                         ),
-                        items: employees
+                        isExpanded: true,
+                        items: assignableUsers
                             .map(
-                              (employee) => DropdownMenuItem(
-                                value: employee.id,
-                                child: Text(employee.name),
+                              (assignee) => DropdownMenuItem(
+                                value: assignee.id,
+                                child: Text(
+                                  assignee.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               ),
                             )
                             .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedEmployeeId = value;
-                          });
-                        },
+                        onChanged: assignableUsers.isEmpty
+                            ? null
+                            : (value) {
+                                setState(() {
+                                  _selectedEmployeeId = value;
+                                });
+                              },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'employee_required'.tr();
@@ -183,6 +206,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           return null;
                         },
                       ),
+                      if (hasEmployeesError)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () {
+                              context.read<EmployeesCubit>().fetchEmployees();
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: Text('failed_to_load_employees'.tr()),
+                          ),
+                        ),
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedPriority,
