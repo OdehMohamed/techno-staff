@@ -28,7 +28,15 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 - **Impact**: `flutter build apk --release` and `flutter build appbundle --release` fail with a clear Gradle error when `android/key.properties` is absent. Debug builds (`flutter run`, `flutter build apk --debug`) are entirely unaffected. Project owner must create `~/upload-keystore.jks` and `android/key.properties` once before their first Play Console upload (instructions in `docs/release-checklist.md`).
 - **iOS out of scope**: iOS distribution signing is configured in Xcode UI — no change to Xcode signing settings in this PR.
 - **Owner**: GitHub Copilot (Claude Sonnet 4.6).
-- **Related**: `android/app/build.gradle.kts`, `docs/release-checklist.md`, `BACKLOG.md` → Pre-build polish for v1.0.1 store submission.
+- **Related**: `android/app/build.gradle.kts`, `docs/release-checklist.md`, `BACKLOG.md` → Pre-build polish (v1.0.1 stores).
+
+## 2026-05-01 — Pre-build app icons via flutter_launcher_icons
+
+- **Decision**: Generate launcher icons from `assets/icon/app_icon.png` using `flutter_launcher_icons` (`flutter_launcher_icons: ^0.14.4`) with `android: true`, `ios: true`, `image_path: "assets/icon/app_icon.png"`, and `remove_alpha_ios: true`.
+- **Reason**: This is the standard, low-risk way to regenerate all required Android mipmap icons and the iOS `AppIcon.appiconset` from a single source asset while keeping output deterministic.
+- **Impact**: Android launcher mipmaps and iOS AppIcon assets are regenerated for v1.0.1 store polish; no adaptive icon customization is introduced in v1.0.x.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `BACKLOG.md` → Pre-build polish (v1.0.1 stores), `pubspec.yaml`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/`, `android/app/src/main/res/mipmap-*/ic_launcher.png`.
 
 ## 2026-04-30 — Crashlytics + Firebase minor bumps + release artifacts for v1.0.0
 

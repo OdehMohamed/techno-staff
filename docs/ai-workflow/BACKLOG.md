@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-04-27
+> Last updated: 2026-05-01
 > We start with an empty backlog on purpose. Items are added as we discover them through real work — no speculative lists.
 
 ---
@@ -38,7 +38,19 @@ _None yet._
 
 ## Should-fix
 
-_None yet._
+### Pre-build polish (v1.0.1 stores)
+
+#### B. Android release signing — `chore/android-release-signing`
+
+- **Priority**: Should-fix
+- **Status**: In progress
+- **Owner**: implementation delegated
+- **Target release**: 1.0.1
+- **Added**: 2026-05-01
+- **Description**: Replace Android release debug-key fallback with strict `key.properties`-driven release signing and document the owner-run keystore setup steps in `docs/release-checklist.md`.
+- **Notes**:
+  - Parallel PR in flight.
+  - Tracked in `CURRENT_TASK.md` for branch `chore/android-release-signing`.
 
 ---
 
@@ -48,27 +60,29 @@ _None yet._
 
 ## Done
 
-### Pre-build polish for v1.0.1 store submission
+### Pre-build polish (v1.0.1 stores)
 
 #### B. Android release signing — `chore/android-release-signing`
 
 - **Priority**: Should-fix (store blocker)
-- **Status**: Done — 2026-05-01
+- **Status**: Done — 2026-05-01 (PR #20)
 - **Owner**: GitHub Copilot (Claude Sonnet 4.6)
 - **Target release**: 1.0.1
 - **Added**: 2026-05-01
 - **Description**: Replaced the Flutter-scaffolding debug-key fallback with a strict `signingConfigs.create("release")` block driven by `android/key.properties` (gitignored). `flutter build apk --release` / `flutter build appbundle --release` fail hard when `key.properties` is absent. `docs/release-checklist.md` updated with copy-pasteable `keytool` + `key.properties` template.
-- **Completed**: 2026-05-01. Quality gates green (`flutter analyze` → No issues, `flutter test` → 2/2 passed, `npm run lint` → clean, `flutter build apk --debug` → ✓). Smoke tests: (1) release APK fails without `key.properties` ✓; (2) signed AAB with throwaway keystore → `jarsigner -verify` passed (`sm` entries, `CN=Test` cert visible) ✓; (3) `flutter build ios --release --no-codesign` ✓ 54.9 MB; (4) `git status` — no `key.properties` or `.jks` tracked ✓.
+- **Completed**: 2026-05-01. Quality gates green (`flutter analyze` → No issues, `flutter test` → 2/2 passed, `npm run lint` → clean, `flutter build apk --debug` → ✓). Smoke tests: (1) release APK fails without `key.properties` ✓; (2) signed AAB with throwaway keystore → `jarsigner -verify` passed ✓; (3) `flutter build ios --release --no-codesign` ✓; (4) `git status` — no `key.properties` or `.jks` tracked ✓.
 
 #### A. App icons — `chore/app-icons`
 
 - **Priority**: Should-fix (store requirement)
-- **Status**: Done — 2026-05-01
-- **Owner**: GitHub Copilot (Claude Sonnet 4.6)
+- **Status**: Done — 2026-05-01 (PR #19)
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
 - **Target release**: 1.0.1
 - **Added**: 2026-05-01
 - **Description**: Added `flutter_launcher_icons` to `dev_dependencies`, committed source icon `assets/icon/app_icon.png`, and ran `dart run flutter_launcher_icons` to generate all required Android mipmap and iOS `Assets.xcassets/AppIcon.appiconset` sizes.
-- **Completed**: 2026-05-01. PR #19 opened to `dev`.
+- **Notes**:
+  - Verification: Android `mipmap-xxxhdpi/ic_launcher.png` is `192 x 192`; iOS `Icon-App-1024x1024@1x.png` is `1024 x 1024`.
+  - Verification: iOS icon SHA1 changed from the default Flutter value (`7b0546f...`) to `6c3b1e4b0e02dc9e665728bcc2c653ece7e69c7f`.
 
 ### Release v1.0.0 readiness
 
