@@ -8,7 +8,9 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-**PR B — Android release signing (`chore/android-release-signing`).** Pre-build polish for the v1.0.1 store submission.
+No active task.
+
+PR B (`chore/android-release-signing`) and PR A (`chore/app-icons`) are both complete. PR A is PR #19 to `dev`. PR B is ready for push + PR creation (commits pending).
 
 > ⚠️ **Parallel work in flight**: PR A (`chore/app-icons`) is being implemented in parallel on a separate branch. They are independent — PR A touches `pubspec.yaml`, `assets/icon/app_icon.png`, and the generated icon files; PR B touches **only** `android/app/build.gradle.kts` and `docs/release-checklist.md`. Do **not** edit any file outside PR B's scope on this branch.
 
@@ -65,6 +67,7 @@ signingConfigs {
 **Edit 3 — replace the existing `buildTypes.release` block:**
 
 Currently:
+
 ```kotlin
 buildTypes {
     release {
@@ -76,6 +79,7 @@ buildTypes {
 ```
 
 Replace with:
+
 ```kotlin
 buildTypes {
     release {
@@ -91,11 +95,12 @@ buildTypes {
 ### 2. `docs/release-checklist.md`
 
 Locate the existing item:
+
 > Configure Android signed release keystore — generate a keystore with `keytool`, place it at `android/app/upload-keystore.jks` (gitignored), create `android/key.properties` with `storeFile`, `storePassword`, `keyAlias`, `keyPassword` (gitignored), and reference it from `android/app/build.gradle.kts` `signingConfigs.release`.
 
 Replace it with the explicit, copy-pasteable version below. The previous wording was a hint; this version is operational truth:
 
-```
+````
 - [ ] **Configure Android signed release keystore (one-time per project owner)** —
   Required before any `flutter build appbundle --release` or upload to Play
   Console. Skip this if the keystore is already generated and `android/key.properties`
@@ -138,7 +143,7 @@ Replace it with the explicit, copy-pasteable version below. The previous wording
      password mismatch, re-check `key.properties`.
      If you get `Keystore file '/...jks' not found` → wrong path in
      `storeFile`.
-```
+````
 
 **Do NOT** modify any other section of the checklist.
 

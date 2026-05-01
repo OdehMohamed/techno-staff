@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-01 — GitHub Copilot (Claude Sonnet 4.6) — Implement Android release signing (PR B)
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6)
+- **Branch**: `chore/android-release-signing`
+- **Goal**: Configure strict release signing in `android/app/build.gradle.kts` via `android/key.properties` (gitignored); update `docs/release-checklist.md` with a copy-pasteable `keytool` + `key.properties` template.
+- **Outcome**: Three structural edits applied to `build.gradle.kts`: (1) `import java.util.Properties` / `import java.io.FileInputStream` + `keystorePropertiesFile`/`keystoreProperties` block above `plugins {}`; (2) `signingConfigs { create("release") { ... } }` with `keystorePropertiesFile.exists()` guard, inside `android {}`; (3) `buildTypes.release` uses `signingConfigs.getByName("release")` — TODO comment removed, debug-key fallback removed. `docs/release-checklist.md` updated with `keytool` command, `key.properties` template, and `flutter build appbundle --release` verification step. All 4 quality gates green. All 4 smoke tests green (release fails without `key.properties` ✓; throwaway-keystore signed AAB + `jarsigner -verify` ✓; iOS no-codesign ✓ 54.9 MB; git status clean ✓).
+- **Files touched**: `android/app/build.gradle.kts`, `docs/release-checklist.md`, workflow docs.
+- **Follow-ups**: PR B opened to `dev`. Owner must create `~/upload-keystore.jks` + `android/key.properties` before first Play Console upload (see `docs/release-checklist.md`).
+
 ## 2026-04-30 — GitHub Copilot (GPT-5.3-Codex) — Implement release-prep PR #5 (Crashlytics + bumps + release docs)
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
