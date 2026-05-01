@@ -20,13 +20,23 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-01 — Android release signing — strict, key.properties-driven (no debug fallback)
+
+- **Decision**: Configure `android/app/build.gradle.kts` to require a real signing keystore for every release build. `signingConfigs.create("release")` reads credentials from `android/key.properties` (gitignored). If the file is absent, `flutter build apk --release` / `flutter build appbundle --release` fails hard — no silent fallback to debug keys.
+- **Reason**: The Flutter scaffolding left a TODO comment and a `signingConfig = signingConfigs.getByName("debug")` fallback in `buildTypes.release`. Google Play Console rejects APKs/AABs signed with Android's debug key on every track (internal, closed, open). Silently succeeding with a debug key would produce an upload that Play Console rejects, which is worse than a clear build-time failure.
+- **Alternatives rejected**: (1) Keeping debug-key fallback for CI convenience — rejected because no CI pipeline exists yet; risk outweighs convenience. (2) Hardcoding keystore path in `build.gradle.kts` — rejected because it would require committing credentials or embedding a machine-specific path.
+- **Impact**: `flutter build apk --release` and `flutter build appbundle --release` fail with a clear Gradle error when `android/key.properties` is absent. Debug builds (`flutter run`, `flutter build apk --debug`) are entirely unaffected. Project owner must create `~/upload-keystore.jks` and `android/key.properties` once before their first Play Console upload (instructions in `docs/release-checklist.md`).
+- **iOS out of scope**: iOS distribution signing is configured in Xcode UI — no change to Xcode signing settings in this PR.
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6).
+- **Related**: `android/app/build.gradle.kts`, `docs/release-checklist.md`, `BACKLOG.md` → Pre-build polish (v1.0.1 stores).
+
 ## 2026-05-01 — Pre-build app icons via flutter_launcher_icons
 
 - **Decision**: Generate launcher icons from `assets/icon/app_icon.png` using `flutter_launcher_icons` (`flutter_launcher_icons: ^0.14.4`) with `android: true`, `ios: true`, `image_path: "assets/icon/app_icon.png"`, and `remove_alpha_ios: true`.
 - **Reason**: This is the standard, low-risk way to regenerate all required Android mipmap icons and the iOS `AppIcon.appiconset` from a single source asset while keeping output deterministic.
 - **Impact**: Android launcher mipmaps and iOS AppIcon assets are regenerated for v1.0.1 store polish; no adaptive icon customization is introduced in v1.0.x.
 - **Owner**: GitHub Copilot (GPT-5.3-Codex).
-- **Related**: `CURRENT_TASK.md` (PR A — `chore/app-icons`), `pubspec.yaml`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/`, `android/app/src/main/res/mipmap-*/ic_launcher.png`.
+- **Related**: `BACKLOG.md` → Pre-build polish (v1.0.1 stores), `pubspec.yaml`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/`, `android/app/src/main/res/mipmap-*/ic_launcher.png`.
 
 ## 2026-04-30 — Crashlytics + Firebase minor bumps + release artifacts for v1.0.0
 
