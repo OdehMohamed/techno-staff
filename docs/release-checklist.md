@@ -24,11 +24,48 @@ target is **v1.0.0**.
       with the FlutterFire-recommended `upload-symbols` invocation, and add
       `$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)` to its Input Files. Without
       this, iOS crashes are reported but stack traces are not symbolicated.
-- [ ] Android signed release keystore: generate a keystore with `keytool`,
-      place it at `android/app/upload-keystore.jks` (gitignored), create
-      `android/key.properties` with `storeFile`, `storePassword`, `keyAlias`,
-      `keyPassword` (gitignored), and reference it from
-      `android/app/build.gradle.kts` `signingConfigs.release`.
+- [ ] **Configure Android signed release keystore (one-time per project owner)** —
+      Required before any `flutter build appbundle --release` or upload to Play
+      Console. Skip this if the keystore is already generated and `android/key.properties`
+      is in place.
+  1. Generate the upload keystore (run from anywhere — store it OUTSIDE the repo):
+
+     ```
+     keytool -genkey -v \
+       -keystore ~/upload-keystore.jks \
+       -keyalg RSA -keysize 2048 -validity 10000 \
+       -alias upload
+     ```
+
+     `keytool` will prompt for: a store password, a key password, and a Distinguished
+     Name (CN, OU, O, L, ST, C). Use any values; record the passwords in a password
+     manager — losing them is unrecoverable.
+
+  2. Create `android/key.properties` (gitignored — never commit):
+
+     ```
+     storePassword=<store-password-from-step-1>
+     keyPassword=<key-password-from-step-1>
+     keyAlias=upload
+     storeFile=/Users/<your-username>/upload-keystore.jks
+     ```
+
+     `storeFile` must be an **absolute path** to the .jks from step 1.
+
+  3. Verify by building a release App Bundle:
+
+     ```
+     flutter build appbundle --release
+     ```
+
+     Should complete successfully and produce a signed `.aab` at
+     `build/app/outputs/bundle/release/app-release.aab`.
+
+     If you get `keystore was tampered with, or password was incorrect` →
+     password mismatch, re-check `key.properties`.
+     If you get `Keystore file '/...jks' not found` → wrong path in
+     `storeFile`.
+
 - [ ] iOS signing and provisioning: Apple Developer account, distribution
       certificate, App Store provisioning profile, configured in Xcode for
       the `Runner` target.
