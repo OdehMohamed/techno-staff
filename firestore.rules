@@ -70,7 +70,7 @@ service cloud.firestore {
 
       allow update: if isAdmin() || (
         isCurrentUser(userId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken', 'languageCode'])
       );
 
       allow delete: if isAdmin();
