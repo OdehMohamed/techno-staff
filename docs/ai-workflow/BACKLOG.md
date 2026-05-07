@@ -38,19 +38,29 @@ _None yet._
 
 ## Should-fix
 
-### Pre-build polish (v1.0.1 stores)
+### v1.1 — testing-phase fixes and improvements
 
-#### B. Android release signing — `chore/android-release-signing`
+> Coordinated v1.1 work covering tester-facing bug fixes, account settings, task improvements, and a deferred attendance MVP. Roadmap and architectural decisions are in `DECISIONS_LOG.md` (2026-05-01 entries). Locked decisions: server-side notification localization driven by `users/{uid}.languageCode`; account settings v1.1 scope = name + password only; attendance MVP = timestamp + biometric (no location, deferred); recurring tasks via `isTemplate` boolean on the existing `tasks` collection; adaptive screen-level countdown ticker (no per-card timers).
 
-- **Priority**: Should-fix
-- **Status**: In progress
+#### 1. Auth + account deletion flow — `fix/auth-and-account-deletion-flow`
+
+- **Priority**: Should-fix (tester-facing)
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
 - **Owner**: implementation delegated
-- **Target release**: 1.0.1
+- **Target release**: 1.1.0
 - **Added**: 2026-05-01
-- **Description**: Replace Android release debug-key fallback with strict `key.properties`-driven release signing and document the owner-run keystore setup steps in `docs/release-checklist.md`.
-- **Notes**:
-  - Parallel PR in flight.
-  - Tracked in `CURRENT_TASK.md` for branch `chore/android-release-signing`.
+- **Planned**: 2026-05-01 (branch `fix/auth-and-account-deletion-flow`)
+- **Description**: Fix FCM token leakage after sign-out (B1) and the delete-account flow getting stuck on a loading spinner (B3). `AuthCubit.signOut()` clears `users/{uid}.fcmToken` (best-effort) and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` explicitly signs out and emits `unauthenticated` after the Cloud Function succeeds — no longer relies on a passive auth state listener. `account_deleted` snackbar dropped (auth state transition is the success signal). Pure client-side; no Firestore rules or Cloud Functions changes.
+
+_Other v1.1 entries (added when each enters its planning round)_:
+- B2 — Notification language (server-side localization driven by `users/{uid}.languageCode`)
+- B4 — Theme persistence
+- F1 — Account settings (name editing + password change)
+- F3.A — Task countdown timer (adaptive screen-level ticker)
+- F3.C — Target/counter task type
+- F3.B — Recurring tasks (`isTemplate` + cron-driven instances)
+
+_Deferred to v1.2.0_: F2 — Attendance MVP (timestamp + biometric, no location).
 
 ---
 
