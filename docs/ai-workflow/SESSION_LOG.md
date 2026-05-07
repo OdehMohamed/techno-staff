@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-07 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #2 notification-language fix
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `fix/notification-language`
+- **Goal**: Implement server-side localization for FCM push payloads by recipient language (`users/{uid}.languageCode`) while keeping in-app notifications unchanged.
+- **Outcome**: Added `FirebasePaths.languageCode`; persisted `languageCode` after successful auth checks/sign-in and after locale changes in Settings (best-effort with Crashlytics logging). Extended `firestore.rules` user self-update mask from `['fcmToken']` to `['fcmToken', 'languageCode']`. Added locked EN/AR i18n table and `localize(...)` helper in `functions/index.js`; localized all four production FCM send sites (`sendTaskAssignedNotification`, `sendTaskStatusNotification`, `sendTaskDeadlineReminders`, `sendOverdueTaskEscalations`) plus both test callables. Quality gates passed: `flutter analyze`, `flutter test`, `cd functions && npm run lint`.
+- **Files touched**: `lib/core/constants/firebase_paths.dart`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/auth/presentation/screens/login_screen.dart`, `lib/features/splash/presentation/screens/splash_screen.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `functions/index.js`, `firestore.rules`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Reviewer/owner runs full device + Firebase-console smoke battery (10 tests, en/ar coverage) and merges PR #2 to `dev` after validation.
+
 ## 2026-05-07 — Claude Code (Opus 4.7) — Plan v1.1 PR #2 (notification language)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

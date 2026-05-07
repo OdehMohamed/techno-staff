@@ -20,6 +20,15 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-07 — Server-side localization for FCM push notifications via users/{uid}.languageCode
+
+- **Decision**: Localize FCM push `notification.title` and `notification.body` in Cloud Functions using a server-side translation table keyed by each recipient's `users/{uid}.languageCode` (`en`/`ar`, fallback `en`). This was applied to all task push senders and both reminder/escalation test callables.
+- **Reason**: In-app notifications were already localized client-side, but system-tray push payloads were hardcoded English. Server-side localization keeps payload behavior deterministic and avoids coupling push rendering to client app version/state.
+- **Locked table**: The approved EN/AR translation table in `CURRENT_TASK.md` was shipped verbatim with no key or wording changes.
+- **Impact**: Recipients now receive push text in their chosen language once `languageCode` is present; missing/invalid values safely default to English. Client persists `languageCode` on sign-in/auth-check and locale changes (best-effort with Crashlytics logging), and rules now allow self-updating `languageCode` alongside `fcmToken`.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `functions/index.js`, `firestore.rules`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `lib/core/constants/firebase_paths.dart`, `BACKLOG.md` → v1.1 PR #2.
+
 ## 2026-05-07 — FCM token lifecycle — cleared on signout and account deletion
 
 - **Decision**: Clear FCM tokens on both sign-out and successful account deletion in the client auth lifecycle. `AuthCubit.signOut()` now best-effort deletes `users/{uid}.fcmToken` and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` now best-effort deletes the device token, then explicitly signs out and emits `unauthenticated` after callable success.
