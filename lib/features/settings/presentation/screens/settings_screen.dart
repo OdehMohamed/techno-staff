@@ -6,6 +6,7 @@ import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/cubit/theme_cubit.dart';
 import '../../../../core/theme/cubit/theme_state.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +19,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDeleting = false;
 
   Future<void> _handleDeleteAccount() async {
+    final cubit = context.read<AuthCubit>();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -40,20 +43,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (!mounted) return;
+    if (!context.mounted) return;
     if (confirmed != true) return;
 
     setState(() => _isDeleting = true);
-    // Capture cubit before the async boundary
-    final cubit = context.read<AuthCubit>();
 
     try {
       await cubit.deleteAccount();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('account_deleted'.tr())));
+      if (!context.mounted) return;
+      if (_isDeleting) {
+        setState(() => _isDeleting = false);
+      }
     } catch (_) {
       if (!mounted) return;
+      if (!context.mounted) return;
       setState(() => _isDeleting = false);
       ScaffoldMessenger.of(
         context,
@@ -66,11 +70,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final locale = context.locale;
     final currentLanguageCode = locale.languageCode;
 
-    return Scaffold(
-      appBar: AppBar(title: Text('settings'.tr())),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSizes.md),
-        children: [
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status &&
+          current.status == AuthStatus.unauthenticated,
+      listener: (context, state) {
+        if (_isDeleting) {
+          setState(() => _isDeleting = false);
+        }
+
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          RouteNames.login,
+          (_) => false,
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text('settings'.tr())),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSizes.md),
+          children: [
           Text('language'.tr(), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSizes.sm),
           Card(
@@ -177,7 +195,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
