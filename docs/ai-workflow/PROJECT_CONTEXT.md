@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-04-30
+> Last updated: 2026-05-07
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -89,7 +89,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 
 | Collection                       | Client write access                                                                                                                                              | Notes                                                                                                |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users/{uid}`                    | admin: full; employee: own `fcmToken` only                                                                                                                       | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, createdAt }` |
+| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` only                                                                                                      | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }` |
 | `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability                     |
 | `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions                                                               |
 | `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed                                                                                 |
@@ -111,6 +111,8 @@ Single file: `functions/index.js` (Node 22).
 | `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
 | `deleteUserAccount`            | callable (authenticated user)      | Delete caller's Firestore data + Firebase Auth account atomically                   |
 | `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
+
+FCM push senders now localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).
 
 ## 7. Notifications Pipeline
 

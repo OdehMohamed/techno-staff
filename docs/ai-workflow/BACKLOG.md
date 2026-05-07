@@ -53,8 +53,18 @@ _None yet._
 - **Description**: Fix FCM token leakage after sign-out (B1) and the delete-account flow getting stuck on a loading spinner (B3). `AuthCubit.signOut()` clears `users/{uid}.fcmToken` (best-effort) and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` explicitly signs out and emits `unauthenticated` after the Cloud Function succeeds — no longer relies on a passive auth state listener. `account_deleted` snackbar dropped (auth state transition is the success signal). Pure client-side; no Firestore rules or Cloud Functions changes.
 - **Completed**: 2026-05-07. Code changes shipped in `auth_cubit.dart` + `settings_screen.dart`; `app.dart` already had top-level unauthenticated routing listener and required no changes. Quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`).
 
+#### 2. Notification language — `fix/notification-language`
+
+- **Priority**: Should-fix (tester-facing)
+- **Status**: Done — 2026-05-07
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
+- **Target release**: 1.1.0
+- **Added**: 2026-05-07
+- **Planned**: 2026-05-07 (branch `fix/notification-language`)
+- **Description**: Make FCM push notifications respect the recipient's chosen language. Cloud Functions read `users/{uid}.languageCode` and send already-localized `title` and `body` strings. In-app notifications already localize correctly client-side (no change there). New field `users/{uid}.languageCode: 'en' | 'ar'` (default `'en'`) persisted on sign-in and on locale change. Single `firestore.rules` update extends the self-update mask from `hasOnly(['fcmToken'])` to `hasOnly(['fcmToken', 'languageCode'])`. Server-side translation table covers ~5 string sets across 4 FCM send sites + 2 test callables.
+- **Completed**: 2026-05-07. Implemented server-side i18n in `functions/index.js` across all 4 FCM send paths + 2 test callables; added client persistence for `languageCode` on auth success and locale change; added `FirebasePaths.languageCode`; updated `firestore.rules` self-update mask to include `languageCode`. Quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`).
+
 _Other v1.1 entries (added when each enters its planning round)_:
-- B2 — Notification language (server-side localization driven by `users/{uid}.languageCode`)
 - B4 — Theme persistence
 - F1 — Account settings (name editing + password change)
 - F3.A — Task countdown timer (adaptive screen-level ticker)

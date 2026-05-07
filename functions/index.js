@@ -7,6 +7,43 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+const i18n = {
+  en: {
+    task_assigned_title: "New Task Assigned",
+    task_assigned_body: "{by} assigned you: {task}",
+    task_completed_title: "Task Completed ✅",
+    task_completed_body: "{task}",
+    task_deadline_title: "Task Reminder ⏰",
+    task_deadline_today_body: "Your task is due today: {task}",
+    task_deadline_tomorrow_body: "Your task is due tomorrow: {task}",
+    task_overdue_title: "Overdue Task ⚠️",
+    task_overdue_body: "Your task is overdue: {task}",
+    task_overdue_escalation_title: "Overdue Task Escalation 🚨",
+    task_overdue_escalation_body: "{employee}'s task is overdue: {task}",
+  },
+  ar: {
+    task_assigned_title: "تم إسناد مهمة جديدة",
+    task_assigned_body: "{by} أسند إليك: {task}",
+    task_completed_title: "تم إنجاز المهمة ✅",
+    task_completed_body: "{task}",
+    task_deadline_title: "تذكير بالمهمة ⏰",
+    task_deadline_today_body: "مهمتك مستحقة اليوم: {task}",
+    task_deadline_tomorrow_body: "مهمتك مستحقة غداً: {task}",
+    task_overdue_title: "مهمة متأخرة ⚠️",
+    task_overdue_body: "مهمتك متأخرة: {task}",
+    task_overdue_escalation_title: "تصعيد مهمة متأخرة 🚨",
+    task_overdue_escalation_body: "مهمة {employee} متأخرة: {task}",
+  },
+};
+
+function localize(key, args, languageCode) {
+  const lang = languageCode === "ar" ? i18n.ar : i18n.en;
+  const template = lang[key] || i18n.en[key] || "";
+  return template.replace(/\{(\w+)\}/g, (_, k) =>
+    args && args[k] != null ? args[k] : "",
+  );
+}
+
 exports.createEmployeeUser = onCall(async (request) => {
   try {
     // 🔐 تحقق أن المستخدم مسجل دخول
@@ -111,6 +148,7 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
 
       const assignedUserData = assignedUserDoc.data() || {};
       const fcmToken = assignedUserData && assignedUserData.fcmToken;
+      const languageCode = assignedUserData.languageCode || "en";
 
       if (!fcmToken) {
         console.log("Assigned user has no FCM token.");
@@ -132,8 +170,12 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
       const message = {
         token: fcmToken,
         notification: {
-          title: "New Task Assigned",
-          body: assignedByName + " assigned you: " + taskTitle,
+          title: localize("task_assigned_title", {}, languageCode),
+          body: localize(
+            "task_assigned_body",
+            { by: assignedByName, task: taskTitle },
+            languageCode,
+          ),
         },
         data: {
           taskId: event.params.taskId,
@@ -201,43 +243,38 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         .where("role", "==", "admin")
         .get();
 
-      const tokens = new Set();
       const adminUserIds = new Set();
 
       adminsSnapshot.forEach((doc) => {
-        const data = doc.data();
-
         adminUserIds.add(doc.id);
-
-        if (data.fcmToken) {
-          tokens.add(data.fcmToken);
-        }
       });
 
       if (assignedById && assignedById !== currentUserId) {
-        const creatorDoc = await db.collection("users").doc(assignedById).get();
-        const creatorData = creatorDoc.data();
-
-        if (creatorData && creatorData.fcmToken) {
-          tokens.add(creatorData.fcmToken);
-        }
-
         adminUserIds.add(assignedById);
       }
 
-      const tokensList = Array.from(tokens);
+      for (const userId of adminUserIds) {
+        const recipientDoc = await db.collection("users").doc(userId).get();
+        const recipientData = recipientDoc.data() || {};
+        const recipientToken = recipientData.fcmToken;
+        const languageCode = recipientData.languageCode || "en";
 
-      if (tokensList.length > 0) {
-        await admin.messaging().sendEachForMulticast({
-          tokens: tokensList,
-          notification: {
-            title: "Task Completed ✅",
-            body: after.title,
-          },
-          data: {
-            taskId: event.params.taskId,
-          },
-        });
+        if (recipientToken) {
+          await admin.messaging().send({
+            token: recipientToken,
+            notification: {
+              title: localize("task_completed_title", {}, languageCode),
+              body: localize(
+                "task_completed_body",
+                { task: after.title || "" },
+                languageCode,
+              ),
+            },
+            data: {
+              taskId: event.params.taskId,
+            },
+          });
+        }
       }
 
       for (const userId of adminUserIds) {
@@ -327,14 +364,19 @@ exports.sendTaskDeadlineReminders = onSchedule(
 
         const userData = userDoc.data() || {};
         const fcmToken = userData.fcmToken;
+        const languageCode = userData.languageCode || "en";
 
         if (!fcmToken) continue;
 
         await admin.messaging().send({
           token: fcmToken,
           notification: {
-            title: "Task Reminder ⏰",
-            body: "Your task is due tomorrow: " + taskTitle,
+            title: localize("task_deadline_title", {}, languageCode),
+            body: localize(
+              "task_deadline_tomorrow_body",
+              { task: taskTitle },
+              languageCode,
+            ),
           },
           data: {
             taskId: doc.id,
@@ -448,14 +490,19 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
 
       const userData = userDoc.data() || {};
       const fcmToken = userData.fcmToken;
+      const languageCode = userData.languageCode || "en";
 
       if (!fcmToken) continue;
 
       await admin.messaging().send({
         token: fcmToken,
         notification: {
-          title: "Task Reminder ⏰",
-          body: "Your task is due today: " + taskTitle,
+          title: localize("task_deadline_title", {}, languageCode),
+          body: localize(
+            "task_deadline_today_body",
+            { task: taskTitle },
+            languageCode,
+          ),
         },
         data: {
           taskId: doc.id,
@@ -569,13 +616,18 @@ exports.sendOverdueTaskEscalations = onSchedule(
           if (userDoc.exists) {
             const userData = userDoc.data() || {};
             const employeeToken = userData.fcmToken;
+            const languageCode = userData.languageCode || "en";
 
             if (employeeToken) {
               await admin.messaging().send({
                 token: employeeToken,
                 notification: {
-                  title: "Overdue Task ⚠️",
-                  body: "Your task is overdue: " + taskTitle,
+                  title: localize("task_overdue_title", {}, languageCode),
+                  body: localize(
+                    "task_overdue_body",
+                    { task: taskTitle },
+                    languageCode,
+                  ),
                 },
                 data: {
                   taskId: taskId,
@@ -612,20 +664,38 @@ exports.sendOverdueTaskEscalations = onSchedule(
 
         // 2) Notify admins
         if (adminTokens.length > 0 && !sameDayEscalation) {
-          await admin.messaging().sendEachForMulticast({
-            tokens: adminTokens,
-            notification: {
-              title: "Overdue Task Escalation 🚨",
-              body:
-                "Overdue task assigned to " + assignedToName + ": " + taskTitle,
-            },
-            data: {
-              taskId: taskId,
-              type: "task_overdue_escalation",
-            },
-          });
+          let sentToAnyAdmin = false;
 
-          adminsNotified = true;
+          for (const adminDoc of adminsSnapshot.docs) {
+            const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+            const adminUserData = adminUserDoc.data() || {};
+            const adminToken = adminUserData.fcmToken;
+            const languageCode = adminUserData.languageCode || "en";
+
+            if (!adminToken) {
+              continue;
+            }
+
+            await admin.messaging().send({
+              token: adminToken,
+              notification: {
+                title: localize("task_overdue_escalation_title", {}, languageCode),
+                body: localize(
+                  "task_overdue_escalation_body",
+                  { employee: assignedToName, task: taskTitle },
+                  languageCode,
+                ),
+              },
+              data: {
+                taskId: taskId,
+                type: "task_overdue_escalation",
+              },
+            });
+
+            sentToAnyAdmin = true;
+          }
+
+          adminsNotified = sentToAnyAdmin;
         }
 
         for (const adminDoc of adminsSnapshot.docs) {
@@ -749,13 +819,18 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
         if (userDoc.exists) {
           const userData = userDoc.data() || {};
           const employeeToken = userData.fcmToken;
+          const languageCode = userData.languageCode || "en";
 
           if (employeeToken) {
             await admin.messaging().send({
               token: employeeToken,
               notification: {
-                title: "Overdue Task ⚠️",
-                body: "Your task is overdue: " + taskTitle,
+                title: localize("task_overdue_title", {}, languageCode),
+                body: localize(
+                  "task_overdue_body",
+                  { task: taskTitle },
+                  languageCode,
+                ),
               },
               data: {
                 taskId: taskId,
@@ -782,20 +857,34 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
       }
 
       if (adminTokens.length > 0) {
-        await admin.messaging().sendEachForMulticast({
-          tokens: adminTokens,
-          notification: {
-            title: "Overdue Task Escalation 🚨",
-            body:
-              "Overdue task assigned to " + assignedToName + ": " + taskTitle,
-          },
-          data: {
-            taskId: taskId,
-            type: "task_overdue_escalation",
-          },
-        });
+        for (const adminDoc of adminsSnapshot.docs) {
+          const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+          const adminUserData = adminUserDoc.data() || {};
+          const adminToken = adminUserData.fcmToken;
+          const languageCode = adminUserData.languageCode || "en";
 
-        sentCount += adminTokens.length;
+          if (!adminToken) {
+            continue;
+          }
+
+          await admin.messaging().send({
+            token: adminToken,
+            notification: {
+              title: localize("task_overdue_escalation_title", {}, languageCode),
+              body: localize(
+                "task_overdue_escalation_body",
+                { employee: assignedToName, task: taskTitle },
+                languageCode,
+              ),
+            },
+            data: {
+              taskId: taskId,
+              type: "task_overdue_escalation",
+            },
+          });
+
+          sentCount++;
+        }
       }
 
       await db.collection("task_logs").add({

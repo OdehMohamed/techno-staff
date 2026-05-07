@@ -1,7 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/cubit/theme_cubit.dart';
 import '../../../../core/theme/cubit/theme_state.dart';
@@ -17,6 +20,23 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDeleting = false;
+
+  Future<void> _persistLanguageCode(String languageCode) async {
+    final currentUser = context.read<AuthCubit>().state.user;
+
+    if (currentUser == null) return;
+
+    final resolvedLanguageCode = languageCode == 'ar' ? 'ar' : 'en';
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebasePaths.users)
+          .doc(currentUser.id)
+          .update({FirebasePaths.languageCode: resolvedLanguageCode});
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+    }
+  }
 
   Future<void> _handleDeleteAccount() async {
     final cubit = context.read<AuthCubit>();
@@ -99,8 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 if (value == 'en') {
                   await context.setLocale(const Locale('en'));
+                  if (!context.mounted) return;
+                  await _persistLanguageCode('en');
+                  if (!context.mounted) return;
                 } else if (value == 'ar') {
                   await context.setLocale(const Locale('ar'));
+                  if (!context.mounted) return;
+                  await _persistLanguageCode('ar');
+                  if (!context.mounted) return;
                 }
               },
               child: Column(
