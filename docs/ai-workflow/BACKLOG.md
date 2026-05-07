@@ -45,12 +45,13 @@ _None yet._
 #### 1. Auth + account deletion flow — `fix/auth-and-account-deletion-flow`
 
 - **Priority**: Should-fix (tester-facing)
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
+- **Status**: Done — 2026-05-07
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-01
 - **Planned**: 2026-05-01 (branch `fix/auth-and-account-deletion-flow`)
 - **Description**: Fix FCM token leakage after sign-out (B1) and the delete-account flow getting stuck on a loading spinner (B3). `AuthCubit.signOut()` clears `users/{uid}.fcmToken` (best-effort) and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` explicitly signs out and emits `unauthenticated` after the Cloud Function succeeds — no longer relies on a passive auth state listener. `account_deleted` snackbar dropped (auth state transition is the success signal). Pure client-side; no Firestore rules or Cloud Functions changes.
+- **Completed**: 2026-05-07. Code changes shipped in `auth_cubit.dart` + `settings_screen.dart`; `app.dart` already had top-level unauthenticated routing listener and required no changes. Quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`).
 
 _Other v1.1 entries (added when each enters its planning round)_:
 - B2 — Notification language (server-side localization driven by `users/{uid}.languageCode`)

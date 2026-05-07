@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-07 — GitHub Copilot (GPT-5.3-Codex) — Implement auth/account-deletion lifecycle fix (v1.1 PR #1)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `fix/auth-and-account-deletion-flow`
+- **Goal**: Implement CURRENT_TASK scope for B1/B3: clear FCM token lifecycle on sign-out/deletion and ensure delete-account routes to login reliably.
+- **Outcome**: Updated `AuthCubit.signOut()` to best-effort delete `users/{uid}.fcmToken` and call `FirebaseMessaging.deleteToken()` (both wrapped in try/catch with `FirebaseCrashlytics.recordError`). Updated `AuthCubit.deleteAccount()` to best-effort delete FCM token, clear Crashlytics user id, sign out, and emit `unauthenticated` on callable success. Updated Settings delete flow to remove success snackbar, add `BlocListener<AuthCubit, AuthState>` for unauthenticated routing to login, and defensively reset `_isDeleting` before navigation while preserving the `failed_to_delete_account` snackbar path. Verified top-level routing in `lib/app/app.dart` already existed; no change required. Quality gates passed.
+- **Files touched**: `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Run/record full manual smoke tests on Android+iOS devices (Firebase-console checks for token removal/leakage), then merge PR after review.
+
 ## 2026-05-01 — Claude Code (Opus 4.7) — v1.1 roadmap + plan PR #1 (auth + account deletion flow)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
