@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-07 — FCM token lifecycle — cleared on signout and account deletion
+
+- **Decision**: Clear FCM tokens on both sign-out and successful account deletion in the client auth lifecycle. `AuthCubit.signOut()` now best-effort deletes `users/{uid}.fcmToken` and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` now best-effort deletes the device token, then explicitly signs out and emits `unauthenticated` after callable success.
+- **Reason**: Closed-testing reports showed notification leakage after logout (stale Firestore/device token) and a stuck delete-account spinner caused by relying on passive auth-listener behavior without explicit unauthenticated emission.
+- **Impact**: Sign-out and delete-account now self-heal notification targeting on shared devices and reliably route users back to login via unauthenticated state. Cleanup remains best-effort and non-blocking: failures are logged via `FirebaseCrashlytics.recordError(e, stack)` and do not block sign-out/deletion success.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #1.
+
 ## 2026-05-01 — Android release signing — strict, key.properties-driven (no debug fallback)
 
 - **Decision**: Configure `android/app/build.gradle.kts` to require a real signing keystore for every release build. `signingConfigs.create("release")` reads credentials from `android/key.properties` (gitignored). If the file is absent, `flutter build apk --release` / `flutter build appbundle --release` fails hard — no silent fallback to debug keys.

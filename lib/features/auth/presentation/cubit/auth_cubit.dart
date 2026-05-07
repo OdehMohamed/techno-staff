@@ -110,6 +110,25 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> signOut() async {
+    final firebaseUser = _authRepository.currentFirebaseUser;
+
+    if (firebaseUser != null) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .update({'fcmToken': FieldValue.delete()});
+      } catch (e, stack) {
+        await FirebaseCrashlytics.instance.recordError(e, stack);
+      }
+    }
+
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+    }
+
     await FirebaseCrashlytics.instance.setUserIdentifier('');
     await _authRepository.signOut();
 
@@ -129,7 +148,23 @@ class AuthCubit extends Cubit<AuthState> {
       await FirebaseFunctions.instance
           .httpsCallable('deleteUserAccount')
           .call();
-      // Auth state listener fires when account is deleted and routes to login.
+
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e, stack) {
+        await FirebaseCrashlytics.instance.recordError(e, stack);
+      }
+
+      await FirebaseCrashlytics.instance.setUserIdentifier('');
+      await _authRepository.signOut();
+
+      emit(
+        state.copyWith(
+          status: AuthStatus.unauthenticated,
+          clearUser: true,
+          clearErrorMessage: true,
+        ),
+      );
     } on FirebaseFunctionsException catch (_) {
       emit(
         state.copyWith(

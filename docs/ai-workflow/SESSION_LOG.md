@@ -21,6 +21,24 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-07 — GitHub Copilot (GPT-5.3-Codex) — Implement auth/account-deletion lifecycle fix (v1.1 PR #1)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `fix/auth-and-account-deletion-flow`
+- **Goal**: Implement CURRENT_TASK scope for B1/B3: clear FCM token lifecycle on sign-out/deletion and ensure delete-account routes to login reliably.
+- **Outcome**: Updated `AuthCubit.signOut()` to best-effort delete `users/{uid}.fcmToken` and call `FirebaseMessaging.deleteToken()` (both wrapped in try/catch with `FirebaseCrashlytics.recordError`). Updated `AuthCubit.deleteAccount()` to best-effort delete FCM token, clear Crashlytics user id, sign out, and emit `unauthenticated` on callable success. Updated Settings delete flow to remove success snackbar, add `BlocListener<AuthCubit, AuthState>` for unauthenticated routing to login, and defensively reset `_isDeleting` before navigation while preserving the `failed_to_delete_account` snackbar path. Verified top-level routing in `lib/app/app.dart` already existed; no change required. Quality gates passed.
+- **Files touched**: `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Run/record full manual smoke tests on Android+iOS devices (Firebase-console checks for token removal/leakage), then merge PR after review.
+
+## 2026-05-01 — Claude Code (Opus 4.7) — v1.1 roadmap + plan PR #1 (auth + account deletion flow)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `fix/auth-and-account-deletion-flow`
+- **Goal**: Audit current state, lock the v1.1 architectural decisions, and write the spec for the first v1.1 PR (auth lifecycle + account deletion fixes).
+- **Outcome**: Synthesized v1.1 roadmap covering 4 tester bugs (B1 FCM-after-logout, B2 notification language, B3 delete-account stuck, B4 theme persistence), 3 feature areas (F1 account settings, F2 attendance MVP, F3 task improvements with countdown/recurring/target sub-features). Locked 5 architectural decisions: (1) server-side notification localization driven by `users/{uid}.languageCode`; (2) account settings v1.1 scope = name + password only; (3) attendance MVP = timestamp + biometric (no location, defer privacy policy update); (4) recurring tasks via `isTemplate` boolean on existing `tasks` collection (not a separate collection); (5) adaptive screen-level countdown ticker (1Hz when any task <1h away, 1/min otherwise — no per-card timers). Audited `auth_cubit.dart` and `settings_screen.dart` for B1/B3 root causes: signOut() never clears FCM (Firestore + device); deleteAccount() relies on a passive auth listener that never explicitly fires + settings screen never resets `_isDeleting` on success. Wrote complete `CURRENT_TASK.md` spec (B1+B3 combined into PR #1) with affected files, expected flow changes, edge cases, 6 smoke tests, rollback considerations, DoD, and explicit workflow doc update plan. Seeded "v1.1 — testing-phase fixes and improvements" subsection in `BACKLOG.md` with PR #1 in progress and a list of upcoming entries.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over PR #1 from `CURRENT_TASK.md`. Subsequent v1.1 PRs each get their own planning round before delegation. v1.1.0 release tag after task improvements ship; attendance MVP ships in v1.2.0.
+
 ## 2026-05-01 — GitHub Copilot (Claude Sonnet 4.6) — Implement Android release signing (PR B)
 
 - **Agent**: GitHub Copilot (Claude Sonnet 4.6)
