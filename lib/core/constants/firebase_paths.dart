@@ -11,5 +11,6 @@ class FirebasePaths {
   static const String assignedBy = 'assignedBy';
   static const String status = 'status';
   static const String role = 'role';
+  static const String languageCode = 'languageCode';
   static const String dueDate = 'dueDate';
 }

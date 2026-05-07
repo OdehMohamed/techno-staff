@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import 'auth_state.dart';
@@ -18,7 +19,7 @@ class AuthCubit extends Cubit<AuthState> {
        _userRepository = userRepository,
        super(const AuthState());
 
-  Future<void> checkAuthStatus() async {
+  Future<void> checkAuthStatus({String? languageCode}) async {
     final firebaseUser = _authRepository.currentFirebaseUser;
 
     if (firebaseUser == null) {
@@ -54,9 +55,14 @@ class AuthCubit extends Cubit<AuthState> {
       ),
     );
     await _setupFCM(firebaseUser.uid);
+    await _syncLanguageCode(firebaseUser.uid, languageCode);
   }
 
-  Future<void> signIn({required String email, required String password}) async {
+  Future<void> signIn({
+    required String email,
+    required String password,
+    String? languageCode,
+  }) async {
     emit(state.copyWith(status: AuthStatus.loading, clearErrorMessage: true));
 
     try {
@@ -99,6 +105,7 @@ class AuthCubit extends Cubit<AuthState> {
         ),
       );
       await _setupFCM(firebaseUser.uid);
+      await _syncLanguageCode(firebaseUser.uid, languageCode);
     } catch (_) {
       emit(
         state.copyWith(
@@ -115,9 +122,11 @@ class AuthCubit extends Cubit<AuthState> {
     if (firebaseUser != null) {
       try {
         await FirebaseFirestore.instance
-            .collection('users')
+            .collection(FirebasePaths.users)
             .doc(firebaseUser.uid)
-            .update({'fcmToken': FieldValue.delete()});
+            .update({
+              'fcmToken': FieldValue.delete(),
+            });
       } catch (e, stack) {
         await FirebaseCrashlytics.instance.recordError(e, stack);
       }
@@ -193,9 +202,22 @@ class AuthCubit extends Cubit<AuthState> {
     final token = await messaging.getToken();
 
     if (token != null) {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      await FirebaseFirestore.instance.collection(FirebasePaths.users).doc(userId).update({
         'fcmToken': token,
       });
+    }
+  }
+
+  Future<void> _syncLanguageCode(String userId, String? languageCode) async {
+    final resolvedLanguageCode = languageCode == 'ar' ? 'ar' : 'en';
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebasePaths.users)
+          .doc(userId)
+          .update({FirebasePaths.languageCode: resolvedLanguageCode});
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
     }
   }
 }
