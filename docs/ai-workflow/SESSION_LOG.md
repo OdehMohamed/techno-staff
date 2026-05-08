@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #5 (F3.A — task countdown timer with adaptive screen-level ticker)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feat/task-countdown-timer` (created from `dev` after PR #26 merged as `6aeb30a`).
+- **Goal**: Lock scope, architecture, and product decisions for v1.1 F3.A — replace the static due-date chip on the tasks list and task details screen with a live adaptive countdown.
+- **Outcome**: Ran a read-only audit covering 8 dimensions (task-card rendering flow, ticker placement, rebuild/perf, formatting, expired states, RTL/i18n, adaptive cadence, task-details parity). Surfaced one critical finding ahead of locking: `dueDate` is selected via `showDatePicker` only in `add_task_screen.dart` so all stored values are at `00:00:00` of the picked day, and existing overdue logic across `dashboard_repository.dart`, `reports_screen.dart`, `pdf_report_service.dart`, and Cloud Functions reminders treats overdue as `now > endOfDay(dueDate)`. User locked 7 planning decisions: (1) count to `endOfDay(dueDate)` — preserves date-only model; (2) minimal-scope `CountdownChip` widget — no `TaskCard` extraction in v1.1; (3) keep Hindu-Arabic numerals (`1234`) in Arabic for consistency with rest of app; (4) single adaptive screen-level ticker per consuming screen — no per-card timers, no global ticker, no two-tier; (5) ticker subscription scoped to the leaf chip via `ValueListenableBuilder` — parent `AppCard` / `InkWell` stay stable on tick; (6) overdue is a derived UI state via red-tinted chip — `StatusBadge` is not modified; (7) `task_details_screen.dart` adopts the same chip with its own ticker provider instance. Wrote complete `CURRENT_TASK.md` spec architecture-first (clock provider lifecycle, adaptive period rule, scope-of-subscription invariant, app-lifecycle pause/resume, explicit "no per-card `Timer.periodic`" / "no `setState` per tick" guardrails) followed by formatting buckets (7 buckets, 6 translation keys × 2 locales), visual states (default/warning/overdue), affected files (2 new widgets + 2 screen edits + 2 translation files), 12 smoke tests (#1–#11 require real-device execution, #12 is a quick regression check), DoD, risks, out-of-scope rails, and workflow doc update plan.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over PR #5 from `CURRENT_TASK.md` on the existing `feat/task-countdown-timer` branch. After this PR merges, two v1.1 features remain (F3.C target/counter task type, F3.B recurring tasks) before we cut v1.1.0.
+
 ## 2026-05-08 — GitHub Copilot (GPT-5.4) — Implement PR #26 second supplement (session revocation + iOS APNS race handling)
 
 - **Agent**: GitHub Copilot (GPT-5.4)
