@@ -29,7 +29,7 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 | Charts              | `fl_chart` `^1.2.0`                          |
 | PDF                 | `pdf` `^3.12.0`, `printing` `^5.14.3`        |
 | Local notifications | `flutter_local_notifications` `^20.1.0`      |
-| Utilities           | `uuid`, `intl`, `path_provider`              |
+| Utilities           | `uuid`, `intl`, `path_provider`, `shared_preferences` |
 
 ### Backend (Firebase)
 

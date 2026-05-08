@@ -67,12 +67,13 @@ _None yet._
 #### 3. Theme persistence — `fix/theme-persistence`
 
 - **Priority**: Should-fix (tester-facing)
-- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
-- **Owner**: implementation delegated
+- **Status**: Done — 2026-05-08
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-08
 - **Planned**: 2026-05-08 (branch `fix/theme-persistence`)
 - **Description**: Persist the user-selected theme mode (system / light / dark) across app launches via `shared_preferences`. Hydrate the cubit synchronously in `main()` before `runApp()` so the first frame paints the correct theme — no flicker on cold start. `ThemeCubit` gains `prefs` + `initialMode` constructor params; setters write to prefs after `emit` (best-effort with Crashlytics on failure). No changes to Settings screen, `app.dart`, `MaterialApp.themeMode` mapping, Firestore, or rules. New dep: `shared_preferences ^2.x.x` (Flutter team official). No Firestore sync — local-only persistence; cross-device sync deferred.
+- **Completed**: 2026-05-08. Added direct `shared_preferences` dependency, implemented `ThemeCubit` persistence with best-effort Crashlytics logging, and hydrated initial theme in `main()` before `runApp()` with defensive fallback to `AppThemeMode.system` for missing/invalid stored values.
 
 _Other v1.1 entries (added when each enters its planning round)_:
 - F1 — Account settings (name editing + password change)

@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #3 theme persistence
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `fix/theme-persistence`
+- **Goal**: Persist selected theme mode across app launches and hydrate it before first frame to eliminate cold-start theme flicker.
+- **Outcome**: Added direct `shared_preferences` dependency. Refactored `ThemeCubit` to accept `SharedPreferences` + `initialMode`, persist mode changes (`system`/`light`/`dark`) after `emit`, and log persistence failures to Crashlytics without blocking UI updates. Updated `main.dart` to hydrate persisted mode before `runApp()` with defensive parsing and fallback to `AppThemeMode.system`. No changes to settings UI, routing, Firestore rules, or Cloud Functions.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `lib/core/theme/cubit/theme_cubit.dart`, `lib/main.dart`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Run and record required manual smoke tests on Android + iOS, then open PR to `dev` titled `fix(theme): persist theme preference across launches`.
+
 ## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #3 (theme persistence)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
