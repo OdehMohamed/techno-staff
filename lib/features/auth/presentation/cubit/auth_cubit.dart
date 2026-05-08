@@ -224,7 +224,21 @@ class AuthCubit extends Cubit<AuthState> {
 
     await messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    final token = await messaging.getToken();
+    String? token;
+    try {
+      token = await messaging.getToken();
+    } on FirebaseException catch (e, stack) {
+      if (e.code == 'apns-token-not-set') {
+        // iOS-only race: APNS hasn't registered the device yet. The token
+        // will be obtained on the next sign-in attempt or via the FCM
+        // onTokenRefresh stream. This is benign; do NOT log to Crashlytics
+        // (it floods on every iOS first launch).
+      } else {
+        await FirebaseCrashlytics.instance.recordError(e, stack);
+      }
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+    }
 
     if (token != null) {
       await FirebaseFirestore.instance.collection(FirebasePaths.users).doc(userId).update({
@@ -317,6 +331,14 @@ class AuthCubit extends Cubit<AuthState> {
         ),
       );
       rethrow;
+    }
+
+    try {
+      await FirebaseFunctions.instance.httpsCallable('revokeUserSessions').call();
+    } catch (e, stack) {
+      // Best-effort. The password change has already succeeded; a revocation
+      // failure should NOT undo it or surface as an error to the user.
+      await FirebaseCrashlytics.instance.recordError(e, stack);
     }
   }
 
