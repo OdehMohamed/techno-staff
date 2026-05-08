@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/settings/presentation/screens/about_screen.dart';
+import '../../features/settings/presentation/screens/change_password_screen.dart';
+import '../../features/settings/presentation/screens/edit_profile_screen.dart';
 import 'package:techno_staff/features/reports/presentation/screens/reports_screen.dart';
 import 'package:techno_staff/features/tasks/presentation/screens/task_details_loader_screen.dart';
 import '../../features/employees/presentation/screens/add_employee_screen.dart';
@@ -119,6 +121,16 @@ class AppRouter {
       case RouteNames.about:
         return MaterialPageRoute(
           builder: (_) => const AboutScreen(),
+          settings: settings,
+        );
+      case RouteNames.editProfile:
+        return MaterialPageRoute(
+          builder: (_) => const EditProfileScreen(),
+          settings: settings,
+        );
+      case RouteNames.changePassword:
+        return MaterialPageRoute(
+          builder: (_) => const ChangePasswordScreen(),
           settings: settings,
         );
       default:
