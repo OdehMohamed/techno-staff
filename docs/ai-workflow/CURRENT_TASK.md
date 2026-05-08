@@ -2,10 +2,10 @@
 
 > Last updated: 2026-05-08
 
-Only one task is active at a time.
+Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
 
 ---
 
-No active task.
+## Active Task
 
-The previous task (v1.1 PR #3 — theme persistence) was completed on branch `fix/theme-persistence` and is ready for review/merge.
+No active task. PR #26 (`feat/account-settings`) is implementation-complete in code and docs. Remaining real-device validation, if any, is tracked in the PR discussion rather than here.

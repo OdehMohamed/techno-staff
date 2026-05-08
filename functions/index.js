@@ -995,6 +995,19 @@ exports.deleteUserAccount = onCall(async (request) => {
   }
 });
 
+exports.revokeUserSessions = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+  try {
+    await admin.auth().revokeRefreshTokens(request.auth.uid);
+    return { success: true };
+  } catch (error) {
+    console.error("revokeUserSessions failed", error);
+    throw new HttpsError("internal", "Failed to revoke sessions");
+  }
+});
+
 async function createInAppNotification({ userId, type, taskId, data }) {
   if (!userId) return;
 

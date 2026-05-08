@@ -20,6 +20,31 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-08 — Stop iterating on automatic cross-device session invalidation in v1.1
+
+- **Decision**: Treat the current PR #26 implementation (server-side `revokeUserSessions` + client `authStateChanges` listener) as the final v1.1 state for cross-device session invalidation. Do not add Firestore-tickle, custom token-refresh listeners, polling heuristics, or any further timing workarounds. Document the behavior as best-effort eventual invalidation (seconds → up to ~1h worst case) rather than chase deterministic immediate invalidation.
+- **Reason**: Real-device validation showed the implementation is architecturally correct — refresh tokens are revoked server-side, the client listener is wired, the lifecycle is sound — but practical UX timing is governed by Firebase Auth ID-token refresh cadence and Firebase SDK background-state policies that we do not control. Further iterations would mean adding speculative complexity to compensate for platform-internal behavior, which is the kind of code that ages badly. We are still in Closed Testing / TestFlight, password change itself works correctly, the larger v1.1 roadmap (F3.A countdown, F3.C target tasks, F3.B recurring tasks) is the higher-leverage spend, and a future user-triggered "Sign out of all other devices" Settings action (deterministic by construction) is a much cleaner surface if we ever need stronger session-management UX or get a compliance ask.
+- **Impact**: PR #26 ships and merges with the current implementation. The PR body and v1.1 release notes describe the behavior as best-effort eventual cross-device invalidation. The "Sign out of all other devices" idea is captured in `NEXT_STEPS.md` for a future release. No further engineering cycles on this in v1.1.
+- **Trigger to revisit**: A real user complaint about the timing, an Apple/Google compliance requirement, or a security incident. Until then this decision stands.
+- **Owner**: Project owner (Mohamed) + Claude Code (Opus 4.7) lead.
+- **Related**: `NEXT_STEPS.md` (Security Improvements), 2026-05-08 decision "Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens", 2026-05-08 decision "AuthCubit reacts to server-initiated session invalidation via authStateChanges", PR #26 (`feat/account-settings`).
+
+## 2026-05-08 — Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens
+
+- **Decision**: Add a callable Cloud Function `revokeUserSessions` that invokes `admin.auth().revokeRefreshTokens(request.auth.uid)` after a successful password change, and keep the client-side `authStateChanges()` listener as the reaction layer. Also tolerate the iOS-only `apns-token-not-set` race in `AuthCubit._setupFCM` without logging it to Crashlytics.
+- **Reason**: Real-device validation corrected an earlier assumption: current Firebase Auth `updatePassword` does not revoke refresh tokens for other active sessions, so the first supplement's listener had no revocation event to observe. Server-side revocation is therefore required to force eventual re-authentication on other devices. The APNS race is benign on first iOS launch and would otherwise flood Crashlytics.
+- **Impact**: After password change, all refresh tokens for the caller are revoked and other signed-in devices route back to login on their next token refresh or Firestore-triggered refresh attempt. The client call is best-effort only: revocation failures are logged to Crashlytics and do not undo a successful password change. iOS first-launch APNS registration races no longer generate noisy Crashlytics events while other Firebase exceptions still do.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `functions/index.js`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
+## 2026-05-08 — AuthCubit reacts to server-initiated session invalidation via authStateChanges
+
+- **Decision**: Subscribe `AuthCubit` to `FirebaseAuth.instance.authStateChanges()` in the cubit constructor, guard the listener with `state.status != AuthStatus.authenticated` then `firebaseUser != null`, and emit `unauthenticated` only when the SDK reports `null` while the cubit currently believes it is authenticated.
+- **Reason**: Real-device validation of PR #26 exposed a latent architectural gap: cross-device password change, account deletion, admin disable, or token revocation never reached UI state because `AuthCubit` only emitted `unauthenticated` on explicit local sign-out / deletion paths. `authStateChanges()` is the narrowest stream that covers sign-in, sign-out, and SDK-detected session invalidation without the extra churn of `idTokenChanges()` or `userChanges()`.
+- **Impact**: Devices logged into the same account now route back to login after a server-initiated session invalidation is detected during token refresh. Same-device explicit sign-out and delete-account remain correct and idempotent because duplicate `unauthenticated` emissions are benign.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
 ## 2026-05-08 — Theme persistence is local-only and hydrated before first frame
 
 - **Decision**: Persist `ThemeCubit` mode (`system`/`light`/`dark`) locally via `shared_preferences` and hydrate it in `main()` before `runApp()`. `ThemeCubit` writes are best-effort and non-blocking: emit first, then persist, logging failures to Crashlytics.

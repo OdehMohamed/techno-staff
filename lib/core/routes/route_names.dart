@@ -15,4 +15,6 @@ class RouteNames {
   static const String reports = '/reports';
   static const notifications = '/notifications';
   static const String about = '/about';
+  static const String editProfile = '/edit-profile';
+  static const String changePassword = '/change-password';
 }

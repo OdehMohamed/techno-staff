@@ -17,4 +17,11 @@ class UserRepository {
 
     return AppUser.fromMap(doc.data()!, doc.id);
   }
+
+  Future<void> updateName(String uid, String name) async {
+    await _firestore
+        .collection(FirebasePaths.users)
+        .doc(uid)
+        .update({'name': name.trim()});
+  }
 }
