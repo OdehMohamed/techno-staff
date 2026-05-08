@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-05-07
+> Last updated: 2026-05-08
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -83,13 +83,13 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                                                                                                                                     |
 | `reports`       | admin    | Reporting + PDF export                                                                                                                                                                          |
 | `notifications` | all      | In-app notification feed with swipe-to-read and grouping                                                                                                                                        |
-| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account                                                                                                   |
+| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account, edit profile (name), change password |
 
 ## 5. Firestore Data Model
 
 | Collection                       | Client write access                                                                                                                                              | Notes                                                                                                |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` only                                                                                                      | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }` |
+| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` + `name` only                                                                                                      | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }` |
 | `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability                     |
 | `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions                                                               |
 | `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed                                                                                 |

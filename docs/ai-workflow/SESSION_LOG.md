@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — GitHub Copilot (Claude Sonnet 4.6) — Implement v1.1 PR #4 account settings
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6)
+- **Branch**: `feat/account-settings`
+- **Goal**: Implement account settings: name editing (`EditProfileScreen`) and password change (`ChangePasswordScreen`) reachable from Settings → Account.
+- **Outcome**: Added `reauthenticate` + `updatePassword` to `AuthRepository`; `updateName` to `UserRepository`; `copyWith` to `AppUser`; `updateName` + `changePassword` (locked error-code mapping: `wrong-password`/`invalid-credential` → `current_password_incorrect`, `weak-password` → `password_too_short_min_8`, `network-request-failed` → `network_error`, fallback per operation type) to `AuthCubit`. Created `EditProfileScreen` (name pre-fill, Save disabled until valid AND changed, `use_build_context_synchronously`-clean) and `ChangePasswordScreen` (3 obscured fields, mandatory reauth before updatePassword). Wired two new Account section tiles + routes (`/edit-profile`, `/change-password`). Extended `firestore.rules` self-update mask to `['fcmToken', 'languageCode', 'name']`. Added 16 new translation keys to en.json + ar.json. Quality gates green: `flutter analyze` → No issues, `flutter test` → 2/2 passed, `cd functions && npm run lint` → clean.
+- **Files touched**: `lib/features/auth/data/repositories/auth_repository.dart`, `lib/features/auth/data/repositories/user_repository.dart`, `lib/features/auth/domain/models/app_user.dart`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/edit_profile_screen.dart` (new), `lib/features/settings/presentation/screens/change_password_screen.dart` (new), `lib/features/settings/presentation/screens/settings_screen.dart`, `lib/core/routes/route_names.dart`, `lib/core/routes/app_router.dart`, `firestore.rules`, `assets/translations/en.json`, `assets/translations/ar.json`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Owner deploys updated `firestore.rules` (`firebase deploy --only firestore:rules`) before merging or immediately after. Reviewer runs manual smoke tests (11 cases from `CURRENT_TASK.md`). After this PR merges: three v1.1 task-system features remain (F3.A countdown, F3.C target tasks, F3.B recurring tasks).
+
 ## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #4 (account settings)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
