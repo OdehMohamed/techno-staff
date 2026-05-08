@@ -20,6 +20,15 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-08 — Stop iterating on automatic cross-device session invalidation in v1.1
+
+- **Decision**: Treat the current PR #26 implementation (server-side `revokeUserSessions` + client `authStateChanges` listener) as the final v1.1 state for cross-device session invalidation. Do not add Firestore-tickle, custom token-refresh listeners, polling heuristics, or any further timing workarounds. Document the behavior as best-effort eventual invalidation (seconds → up to ~1h worst case) rather than chase deterministic immediate invalidation.
+- **Reason**: Real-device validation showed the implementation is architecturally correct — refresh tokens are revoked server-side, the client listener is wired, the lifecycle is sound — but practical UX timing is governed by Firebase Auth ID-token refresh cadence and Firebase SDK background-state policies that we do not control. Further iterations would mean adding speculative complexity to compensate for platform-internal behavior, which is the kind of code that ages badly. We are still in Closed Testing / TestFlight, password change itself works correctly, the larger v1.1 roadmap (F3.A countdown, F3.C target tasks, F3.B recurring tasks) is the higher-leverage spend, and a future user-triggered "Sign out of all other devices" Settings action (deterministic by construction) is a much cleaner surface if we ever need stronger session-management UX or get a compliance ask.
+- **Impact**: PR #26 ships and merges with the current implementation. The PR body and v1.1 release notes describe the behavior as best-effort eventual cross-device invalidation. The "Sign out of all other devices" idea is captured in `NEXT_STEPS.md` for a future release. No further engineering cycles on this in v1.1.
+- **Trigger to revisit**: A real user complaint about the timing, an Apple/Google compliance requirement, or a security incident. Until then this decision stands.
+- **Owner**: Project owner (Mohamed) + Claude Code (Opus 4.7) lead.
+- **Related**: `NEXT_STEPS.md` (Security Improvements), 2026-05-08 decision "Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens", 2026-05-08 decision "AuthCubit reacts to server-initiated session invalidation via authStateChanges", PR #26 (`feat/account-settings`).
+
 ## 2026-05-08 — Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens
 
 - **Decision**: Add a callable Cloud Function `revokeUserSessions` that invokes `admin.auth().revokeRefreshTokens(request.auth.uid)` after a successful password change, and keep the client-side `authStateChanges()` listener as the reaction layer. Also tolerate the iOS-only `apns-token-not-set` race in `AuthCubit._setupFCM` without logging it to Crashlytics.
