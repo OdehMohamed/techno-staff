@@ -7,6 +7,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:techno_staff/core/routes/app_navigator.dart';
 import 'package:techno_staff/core/routes/route_names.dart';
 import 'package:techno_staff/core/services/notification_service.dart';
@@ -21,6 +22,7 @@ import 'package:techno_staff/features/tasks/presentation/cubit/task_details_cubi
 import 'package:techno_staff/features/tasks/presentation/cubit/task_logs_cubit.dart';
 import 'app/app.dart';
 import 'core/theme/cubit/theme_cubit.dart';
+import 'core/theme/cubit/theme_state.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/user_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -44,6 +46,21 @@ Future<void> main() async {
   };
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  late final SharedPreferences prefs;
+  AppThemeMode initialThemeMode = AppThemeMode.system;
+  try {
+    // Hydrate theme preference synchronously so the first frame paints correctly.
+    prefs = await SharedPreferences.getInstance();
+    final storedThemeName = prefs.getString('theme_mode');
+    initialThemeMode = AppThemeMode.values.firstWhere(
+      (m) => m.name == storedThemeName,
+      orElse: () => AppThemeMode.system,
+    );
+  } catch (e, stack) {
+    await FirebaseCrashlytics.instance.recordError(e, stack);
+    prefs = await SharedPreferences.getInstance();
+  }
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {
@@ -99,7 +116,10 @@ Future<void> main() async {
       startLocale: const Locale('en'),
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (_) => ThemeCubit()),
+          BlocProvider(
+            create: (_) =>
+                ThemeCubit(prefs: prefs, initialMode: initialThemeMode),
+          ),
           BlocProvider(
             create: (_) => AuthCubit(
               authRepository: authRepository,

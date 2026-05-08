@@ -21,6 +21,24 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #3 theme persistence
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `fix/theme-persistence`
+- **Goal**: Persist selected theme mode across app launches and hydrate it before first frame to eliminate cold-start theme flicker.
+- **Outcome**: Added direct `shared_preferences` dependency. Refactored `ThemeCubit` to accept `SharedPreferences` + `initialMode`, persist mode changes (`system`/`light`/`dark`) after `emit`, and log persistence failures to Crashlytics without blocking UI updates. Updated `main.dart` to hydrate persisted mode before `runApp()` with defensive parsing and fallback to `AppThemeMode.system`. No changes to settings UI, routing, Firestore rules, or Cloud Functions.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `lib/core/theme/cubit/theme_cubit.dart`, `lib/main.dart`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Run and record required manual smoke tests on Android + iOS, then open PR to `dev` titled `fix(theme): persist theme preference across launches`.
+
+## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #3 (theme persistence)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `fix/theme-persistence`
+- **Goal**: Lock scope and hydration strategy for v1.1 PR #3 (B4 — theme persistence across launches).
+- **Outcome**: Audited theme stack: `ThemeCubit` is 11 lines and has zero persistence — defaults to `AppThemeMode.system` every launch; `main.dart` creates it synchronously with no async hydration; `app.dart`'s `BlocBuilder` maps state to `MaterialApp.themeMode` correctly. `shared_preferences` is not yet a dep. Locked decisions: (1) local-only persistence via `shared_preferences` — no Firestore sync for v1.1; (2) synchronous hydration before `runApp` — read prefs in `main()`, parse stored mode (default `system` on missing/invalid), pass into cubit constructor — eliminates first-frame flicker on cold start; (3) best-effort writes wrapped in try/catch + Crashlytics on failure; (4) no Settings screen UI changes. Wrote complete `CURRENT_TASK.md` with locked `ThemeCubit` design, locked `main.dart` hydration block, edge cases, 7 smoke tests including the no-flicker check, rollback considerations, DoD, and explicit workflow doc update plan.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over PR #3 from `CURRENT_TASK.md` on the existing `fix/theme-persistence` branch. After this PR merges, four v1.1 features remain (F1 account settings, F3.A countdown, F3.C target tasks, F3.B recurring tasks).
+
 ## 2026-05-07 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #2 notification-language fix
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)

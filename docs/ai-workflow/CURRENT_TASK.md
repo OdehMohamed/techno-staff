@@ -1,11 +1,11 @@
 # Current Task
 
-> Last updated: 2026-05-07
+> Last updated: 2026-05-08
 
-Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
+Only one task is active at a time.
 
 ---
 
-## Active Task
-
 No active task.
+
+The previous task (v1.1 PR #3 — theme persistence) was completed on branch `fix/theme-persistence` and is ready for review/merge.

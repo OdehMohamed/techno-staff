@@ -1,12 +1,30 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'theme_state.dart';
 
 class ThemeCubit extends Cubit<AppThemeMode> {
-  ThemeCubit() : super(AppThemeMode.system);
+  static const _prefsKey = 'theme_mode';
+  final SharedPreferences _prefs;
 
-  void setSystemTheme() => emit(AppThemeMode.system);
+  ThemeCubit({
+    required SharedPreferences prefs,
+    required AppThemeMode initialMode,
+  }) : _prefs = prefs,
+       super(initialMode);
 
-  void setLightTheme() => emit(AppThemeMode.light);
+  Future<void> setSystemTheme() => _setMode(AppThemeMode.system);
 
-  void setDarkTheme() => emit(AppThemeMode.dark);
+  Future<void> setLightTheme() => _setMode(AppThemeMode.light);
+
+  Future<void> setDarkTheme() => _setMode(AppThemeMode.dark);
+
+  Future<void> _setMode(AppThemeMode mode) async {
+    emit(mode);
+    try {
+      await _prefs.setString(_prefsKey, mode.name);
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+    }
+  }
 }

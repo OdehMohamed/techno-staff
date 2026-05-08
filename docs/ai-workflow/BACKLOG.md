@@ -64,8 +64,18 @@ _None yet._
 - **Description**: Make FCM push notifications respect the recipient's chosen language. Cloud Functions read `users/{uid}.languageCode` and send already-localized `title` and `body` strings. In-app notifications already localize correctly client-side (no change there). New field `users/{uid}.languageCode: 'en' | 'ar'` (default `'en'`) persisted on sign-in and on locale change. Single `firestore.rules` update extends the self-update mask from `hasOnly(['fcmToken'])` to `hasOnly(['fcmToken', 'languageCode'])`. Server-side translation table covers ~5 string sets across 4 FCM send sites + 2 test callables.
 - **Completed**: 2026-05-07. Implemented server-side i18n in `functions/index.js` across all 4 FCM send paths + 2 test callables; added client persistence for `languageCode` on auth success and locale change; added `FirebasePaths.languageCode`; updated `firestore.rules` self-update mask to include `languageCode`. Quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`).
 
+#### 3. Theme persistence — `fix/theme-persistence`
+
+- **Priority**: Should-fix (tester-facing)
+- **Status**: Done — 2026-05-08
+- **Owner**: GitHub Copilot (GPT-5.3-Codex)
+- **Target release**: 1.1.0
+- **Added**: 2026-05-08
+- **Planned**: 2026-05-08 (branch `fix/theme-persistence`)
+- **Description**: Persist the user-selected theme mode (system / light / dark) across app launches via `shared_preferences`. Hydrate the cubit synchronously in `main()` before `runApp()` so the first frame paints the correct theme — no flicker on cold start. `ThemeCubit` gains `prefs` + `initialMode` constructor params; setters write to prefs after `emit` (best-effort with Crashlytics on failure). No changes to Settings screen, `app.dart`, `MaterialApp.themeMode` mapping, Firestore, or rules. New dep: `shared_preferences ^2.x.x` (Flutter team official). No Firestore sync — local-only persistence; cross-device sync deferred.
+- **Completed**: 2026-05-08. Added direct `shared_preferences` dependency, implemented `ThemeCubit` persistence with best-effort Crashlytics logging, and hydrated initial theme in `main()` before `runApp()` with defensive fallback to `AppThemeMode.system` for missing/invalid stored values.
+
 _Other v1.1 entries (added when each enters its planning round)_:
-- B4 — Theme persistence
 - F1 — Account settings (name editing + password change)
 - F3.A — Task countdown timer (adaptive screen-level ticker)
 - F3.C — Target/counter task type

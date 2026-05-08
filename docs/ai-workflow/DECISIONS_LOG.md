@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-08 — Theme persistence is local-only and hydrated before first frame
+
+- **Decision**: Persist `ThemeCubit` mode (`system`/`light`/`dark`) locally via `shared_preferences` and hydrate it in `main()` before `runApp()`. `ThemeCubit` writes are best-effort and non-blocking: emit first, then persist, logging failures to Crashlytics.
+- **Reason**: Testers reported theme reset on every launch. Hydrating before app bootstrap avoids cold-start flicker and keeps UX deterministic. Firestore sync was deferred because cross-device theme sync is not required for v1.1 and would add backend/schema/rules complexity.
+- **Impact**: `ThemeCubit` now receives `prefs` + `initialMode`; startup resolves persisted mode defensively (missing/invalid values fall back to `system`); persistence failures do not block visible theme toggling.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/core/theme/cubit/theme_cubit.dart`, `lib/main.dart`, `pubspec.yaml`, `BACKLOG.md` → v1.1 PR #3.
+
 ## 2026-05-07 — Server-side localization for FCM push notifications via users/{uid}.languageCode
 
 - **Decision**: Localize FCM push `notification.title` and `notification.body` in Cloud Functions using a server-side translation table keyed by each recipient's `users/{uid}.languageCode` (`en`/`ar`, fallback `en`). This was applied to all task push senders and both reminder/escalation test callables.
