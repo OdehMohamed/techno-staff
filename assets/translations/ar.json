@@ -180,5 +180,21 @@
   "app_version": "الإصدار",
   "privacy_policy": "سياسة الخصوصية",
   "open_source_licenses": "تراخيص المصادر المفتوحة",
-  "failed_to_open_link": "تعذر فتح الرابط"
+  "failed_to_open_link": "تعذر فتح الرابط",
+  "network_error": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
+  "account_settings": "إعدادات الحساب",
+  "edit_profile": "تعديل الملف الشخصي",
+  "change_password": "تغيير كلمة المرور",
+  "name_too_short": "يجب أن يتكون الاسم من حرفين على الأقل",
+  "name_too_long": "يجب أن لا يتجاوز الاسم 50 حرفاً",
+  "current_password": "كلمة المرور الحالية",
+  "new_password": "كلمة المرور الجديدة",
+  "confirm_new_password": "تأكيد كلمة المرور الجديدة",
+  "passwords_do_not_match": "كلمتا المرور غير متطابقتين",
+  "password_too_short_min_8": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
+  "current_password_incorrect": "كلمة المرور الحالية غير صحيحة",
+  "password_updated": "تم تحديث كلمة المرور بنجاح",
+  "profile_updated": "تم تحديث الملف الشخصي بنجاح",
+  "failed_to_update_password": "فشل تحديث كلمة المرور",
+  "failed_to_update_profile": "فشل تحديث الملف الشخصي"
 }

@@ -180,5 +180,21 @@
   "app_version": "Version",
   "privacy_policy": "Privacy policy",
   "open_source_licenses": "Open-source licenses",
-  "failed_to_open_link": "Could not open link"
+  "failed_to_open_link": "Could not open link",
+  "network_error": "Network error. Please check your connection.",
+  "account_settings": "Account Settings",
+  "edit_profile": "Edit Profile",
+  "change_password": "Change Password",
+  "name_too_short": "Name must be at least 2 characters",
+  "name_too_long": "Name must be 50 characters or fewer",
+  "current_password": "Current Password",
+  "new_password": "New Password",
+  "confirm_new_password": "Confirm New Password",
+  "passwords_do_not_match": "Passwords do not match",
+  "password_too_short_min_8": "Password must be at least 8 characters",
+  "current_password_incorrect": "Current password is incorrect",
+  "password_updated": "Password updated successfully",
+  "profile_updated": "Profile updated successfully",
+  "failed_to_update_password": "Failed to update password",
+  "failed_to_update_profile": "Failed to update profile"
 }
