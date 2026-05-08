@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — Claude Code (Opus 4.7) — Plan supplemental fix for v1.1 PR #4 (cross-device session invalidation via authStateChanges)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feat/account-settings` (continuation — no new branch).
+- **Goal**: Plan a supplemental fix on the in-flight PR #4 branch to close a cross-device session-invalidation gap surfaced during real-device validation of the password-change feature.
+- **Outcome**: Audited the gap. Confirmed it is **not a regression introduced by PR #4** but a pre-existing architectural latent bug: `AuthCubit` does not subscribe to any Firebase Auth stream, so server-initiated session invalidation (password change on another device, account deletion on another device, admin disabling user, token revocation) is never propagated to the current process. The existing `BlocListener<AuthCubit>` from PR #23 only reacts to cubit emissions, and the cubit only emits `unauthenticated` on explicit `signOut()` / `deleteAccount()`. PR #4's cross-device password change is the first feature that exercises the gap. Locked the fix as a supplement on the same branch (rather than a follow-up PR) so PR #4 doesn't ship with a known cross-device flaw. Locked design: subscribe to `FirebaseAuth.instance.authStateChanges()` in `AuthCubit` constructor; `_onAuthStateChanged` short-circuits unless `state.status == authenticated && firebaseUser == null`; emits unauthenticated; `close()` cancels the subscription. Chose `authStateChanges` over `idTokenChanges`/`userChanges` for minimal listener surface. Documented the timing expectation: cross-device propagation is not instant (Firebase Auth ID token TTL is up to 1 hour) but lands within minutes after any Firestore-backed action triggers token refresh. Wrote complete supplement spec in `CURRENT_TASK.md` covering the locked code, edge cases (8 cases including same-device sign-out idempotence), 6 supplemental smoke tests (3 require two devices), DoD, and additional workflow doc updates required because the agent already reset CURRENT_TASK and other docs after the original implementation. Also confirmed denormalized `assignedByName`/`assignedToName` snapshot semantics remain unchanged for v1.1 (Option A — no backfill).
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent extends PR #4 with the auth-listener fix (~25 lines in `auth_cubit.dart`) plus updated workflow docs. Smoke tests #8 from the original PR #4 plus the 6 supplemental smoke tests must pass before merge.
+
 ## 2026-05-08 — GitHub Copilot (Claude Sonnet 4.6) — Implement v1.1 PR #4 account settings
 
 - **Agent**: GitHub Copilot (Claude Sonnet 4.6)
