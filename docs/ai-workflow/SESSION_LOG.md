@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — GitHub Copilot (GPT-5.4) — Implement PR #26 supplemental authStateChanges listener
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feat/account-settings`
+- **Goal**: Close the cross-device session-invalidation gap surfaced during real-device validation of PR #26 by making `AuthCubit` react to Firebase server-side session invalidation.
+- **Outcome**: Applied the locked one-file supplement in `AuthCubit`: added `dart:async`, `StreamSubscription<User?>? _authSub`, a constructor subscription to `FirebaseAuth.instance.authStateChanges()`, `_onAuthStateChanged(User? firebaseUser)` with the locked `state.status` then `firebaseUser` guards, and a `close()` override that cancels the subscription before `super.close()`. No existing methods were modified. Automated quality gates passed: `flutter analyze` → no issues, `flutter test` → 2/2 passed, `cd functions && npm run lint` → clean. Real-device supplemental smoke tests could not be executed from the agent environment and remain pending owner validation.
+- **Files touched**: `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`, `CHANGELOG.md`.
+- **Follow-ups**: Project owner runs the 6 supplemental real-device smoke tests plus the original PR #4 regression subset, then updates / confirms PR #26 before merge.
+
 ## 2026-05-08 — Claude Code (Opus 4.7) — Plan supplemental fix for v1.1 PR #4 (cross-device session invalidation via authStateChanges)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

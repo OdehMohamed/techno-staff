@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-08 — AuthCubit reacts to server-initiated session invalidation via authStateChanges
+
+- **Decision**: Subscribe `AuthCubit` to `FirebaseAuth.instance.authStateChanges()` in the cubit constructor, guard the listener with `state.status != AuthStatus.authenticated` then `firebaseUser != null`, and emit `unauthenticated` only when the SDK reports `null` while the cubit currently believes it is authenticated.
+- **Reason**: Real-device validation of PR #26 exposed a latent architectural gap: cross-device password change, account deletion, admin disable, or token revocation never reached UI state because `AuthCubit` only emitted `unauthenticated` on explicit local sign-out / deletion paths. `authStateChanges()` is the narrowest stream that covers sign-in, sign-out, and SDK-detected session invalidation without the extra churn of `idTokenChanges()` or `userChanges()`.
+- **Impact**: Devices logged into the same account now route back to login after a server-initiated session invalidation is detected during token refresh. Same-device explicit sign-out and delete-account remain correct and idempotent because duplicate `unauthenticated` emissions are benign.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
 ## 2026-05-08 — Theme persistence is local-only and hydrated before first frame
 
 - **Decision**: Persist `ThemeCubit` mode (`system`/`light`/`dark`) locally via `shared_preferences` and hydrate it in `main()` before `runApp()`. `ThemeCubit` writes are best-effort and non-blocking: emit first, then persist, logging failures to Crashlytics.

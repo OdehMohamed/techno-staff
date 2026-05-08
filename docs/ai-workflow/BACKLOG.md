@@ -78,13 +78,14 @@ _None yet._
 #### 4. Account settings — `feat/account-settings`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress — supplemental fix in flight (cross-device session invalidation), see `CURRENT_TASK.md`
-- **Owner**: GitHub Copilot (Claude Sonnet 4.6) — initial implementation; supplement delegated
+- **Status**: Done — 2026-05-08
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6) + GitHub Copilot (GPT-5.4 supplement)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-08
 - **Planned**: 2026-05-08 (branch `feat/account-settings`)
-- **Description**: Add Edit profile (name) and Change password screens reachable from Settings → Account. Two separate screens (cleaner UX, security isolation between mundane name edits and password changes). Name validation: 2–50 chars after trim. Password minimum 8 chars (stricter than Firebase's 6). Password change always reauthenticates with current password before `updatePassword` to avoid `requires-recent-login`. Firestore rules `users/{userId}` self-update mask extends to include `name`. Firebase Auth `displayName` is NOT synced — Firestore `users/{uid}.name` remains the single source of truth. Email change deferred. **Supplemental fix in flight**: `AuthCubit` subscribes to `FirebaseAuth.authStateChanges()` so server-initiated session invalidation (password change on another device, account deletion on another device, admin disabling user) routes the affected device to login automatically. Closes a pre-existing architectural gap surfaced by the password-change feature; landing on the same branch before merge.
+- **Description**: Add Edit profile (name) and Change password screens reachable from Settings → Account. Two separate screens (cleaner UX, security isolation between mundane name edits and password changes). Name validation: 2–50 chars after trim. Password minimum 8 chars (stricter than Firebase's 6). Password change always reauthenticates with current password before `updatePassword` to avoid `requires-recent-login`. Firestore rules `users/{userId}` self-update mask extends to include `name`. Firebase Auth `displayName` is NOT synced — Firestore `users/{uid}.name` remains the single source of truth. Email change deferred. Supplemental fix shipped on the same branch: `AuthCubit` subscribes to `FirebaseAuth.authStateChanges()` so server-initiated session invalidation (password change on another device, account deletion on another device, admin disabling user) routes the affected device to login automatically.
 - **Initial implementation completed**: 2026-05-08 — repos, cubit methods, two new screens, rules update, 16 translation keys. Smoke tests #1-7, #9-11 passed. Smoke test #8 (cross-device sign-out) revealed the auth-listener gap, addressed by the supplemental fix.
+- **Completed**: 2026-05-08 — added the locked `authStateChanges()` listener, authenticated-state/null-user guards, and subscription cleanup in `AuthCubit.close()`. Automated quality gates green (`flutter analyze`, `flutter test`, `cd functions && npm run lint`). Real-device supplemental smoke tests remain pending project-owner execution.
 
 _Other v1.1 entries (added when each enters its planning round)_:
 - F3.A — Task countdown timer (adaptive screen-level ticker)

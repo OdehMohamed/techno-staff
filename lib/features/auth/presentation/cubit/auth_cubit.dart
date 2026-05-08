@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,13 +14,35 @@ import 'auth_state.dart';
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
   final UserRepository _userRepository;
+  StreamSubscription<User?>? _authSub;
 
   AuthCubit({
     required AuthRepository authRepository,
     required UserRepository userRepository,
   }) : _authRepository = authRepository,
        _userRepository = userRepository,
-       super(const AuthState());
+       super(const AuthState()) {
+    _authSub = FirebaseAuth.instance
+        .authStateChanges()
+        .listen(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged(User? firebaseUser) {
+    // Only react to server-initiated invalidation while we currently believe
+    // we are authenticated. Explicit signOut() / deleteAccount() paths emit
+    // unauthenticated themselves; double-emits with equal state are deduped
+    // by Bloc and BlocListener, so this is idempotent.
+    if (state.status != AuthStatus.authenticated) return;
+    if (firebaseUser != null) return;
+
+    emit(
+      state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        clearErrorMessage: true,
+      ),
+    );
+  }
 
   Future<void> checkAuthStatus({String? languageCode}) async {
     final firebaseUser = _authRepository.currentFirebaseUser;
@@ -294,5 +318,11 @@ class AuthCubit extends Cubit<AuthState> {
       );
       rethrow;
     }
+  }
+
+  @override
+  Future<void> close() async {
+    await _authSub?.cancel();
+    return super.close();
   }
 }
