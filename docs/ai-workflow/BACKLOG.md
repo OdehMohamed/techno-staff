@@ -75,8 +75,17 @@ _None yet._
 - **Description**: Persist the user-selected theme mode (system / light / dark) across app launches via `shared_preferences`. Hydrate the cubit synchronously in `main()` before `runApp()` so the first frame paints the correct theme — no flicker on cold start. `ThemeCubit` gains `prefs` + `initialMode` constructor params; setters write to prefs after `emit` (best-effort with Crashlytics on failure). No changes to Settings screen, `app.dart`, `MaterialApp.themeMode` mapping, Firestore, or rules. New dep: `shared_preferences ^2.x.x` (Flutter team official). No Firestore sync — local-only persistence; cross-device sync deferred.
 - **Completed**: 2026-05-08. Added direct `shared_preferences` dependency, implemented `ThemeCubit` persistence with best-effort Crashlytics logging, and hydrated initial theme in `main()` before `runApp()` with defensive fallback to `AppThemeMode.system` for missing/invalid stored values.
 
+#### 4. Account settings — `feat/account-settings`
+
+- **Priority**: Should-fix (feature)
+- **Status**: In progress — planning complete, see `CURRENT_TASK.md`
+- **Owner**: implementation delegated
+- **Target release**: 1.1.0
+- **Added**: 2026-05-08
+- **Planned**: 2026-05-08 (branch `feat/account-settings`)
+- **Description**: Add Edit profile (name) and Change password screens reachable from Settings → Account. Two separate screens (cleaner UX, security isolation between mundane name edits and password changes). Name validation: 2–50 chars after trim. Password minimum 8 chars (stricter than Firebase's 6). Password change always reauthenticates with current password before `updatePassword` to avoid `requires-recent-login`. Firestore rules `users/{userId}` self-update mask extends to include `name`. Firebase Auth `displayName` is NOT synced — Firestore `users/{uid}.name` remains the single source of truth. Email change deferred.
+
 _Other v1.1 entries (added when each enters its planning round)_:
-- F1 — Account settings (name editing + password change)
 - F3.A — Task countdown timer (adaptive screen-level ticker)
 - F3.C — Target/counter task type
 - F3.B — Recurring tasks (`isTemplate` + cron-driven instances)

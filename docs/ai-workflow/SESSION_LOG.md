@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #4 (account settings)
+
+- **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).
+- **Branch**: `feat/account-settings`
+- **Goal**: Lock scope, UI structure, and validation rules for v1.1 PR #4 (F1 — account settings: name editing + password change).
+- **Outcome**: Audited current auth/account architecture: `AuthRepository` has only sign-in/sign-out (no password update or reauth helpers); `UserRepository` has only `getUserById` (no name update); `AppUser` model is clean and likely needs a `copyWith`; Firestore `users/{userId}` self-update mask is `hasOnly(['fcmToken', 'languageCode'])` and needs to extend to `['fcmToken', 'languageCode', 'name']`. Firebase Auth notes captured: `updatePassword` throws `requires-recent-login` if session is older than ~5 min, so always reauthenticate first via `EmailAuthProvider.credential(email, currentPassword)` then `User.reauthenticateWithCredential(...)`. Firebase Auth's default min password length is 6 chars; we'll be stricter at 8. Locked 5 product decisions: (1) two separate screens — `EditProfileScreen` and `ChangePasswordScreen`; (2) password minimum 8 chars; (3) name validation 2–50 chars after trim; (4) NO Firebase Auth `displayName` sync — Firestore `users/{uid}.name` is single source of truth; (5) email change deferred. Wrote complete `CURRENT_TASK.md` covering 9 affected files (2 new screens, 4 modified Dart files, 1 rules edit, 2 route additions, 17 new translation keys), 11 manual smoke tests including the cross-device sign-out regression check, rules deployment ordering note for the project owner, rollback considerations, DoD, and explicit workflow doc update plan.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over PR #4 from `CURRENT_TASK.md` on the existing `feat/account-settings` branch. After this PR merges, three v1.1 task-system features remain (F3.A countdown, F3.C target tasks, F3.B recurring tasks) before we cut v1.1.0.
+
 ## 2026-05-08 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #3 theme persistence
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
