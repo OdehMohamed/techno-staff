@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-08 — GitHub Copilot (GPT-5.4) — Implement PR #26 second supplement (session revocation + iOS APNS race handling)
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feat/account-settings`
+- **Goal**: Complete the second supplement for PR #26 by adding server-side refresh-token revocation after password change and tolerating the iOS first-launch APNS token race in the auth lifecycle.
+- **Outcome**: Added `revokeUserSessions` to `functions/index.js` as a callable that revokes refresh tokens for `request.auth.uid` only. Extended `AuthCubit.changePassword()` with a best-effort `FirebaseFunctions.instance.httpsCallable('revokeUserSessions').call()` after `updatePassword` succeeds, logging failures to Crashlytics without surfacing them to the user. Wrapped `_setupFCM()` `getToken()` in the locked APNS-aware try/catch: `apns-token-not-set` is silently tolerated, other Firebase exceptions and non-Firebase errors still flow to Crashlytics. Automated quality gates passed: `flutter analyze` → no issues, `flutter test` → 2/2 passed, `cd functions && npm run lint` → clean. Real-device smoke tests #1, #2, and #6 remain pending project-owner execution; the rest were not run from this environment.
+- **Files touched**: `functions/index.js`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`, `docs/ai-workflow/CURRENT_TASK.md`, `CHANGELOG.md`.
+- **Follow-ups**: Project owner deploys `firebase deploy --only functions:revokeUserSessions` plus the earlier `firebase deploy --only firestore:rules` step after merge, then completes the pending real-device smoke tests before final approval.
+
 ## 2026-05-08 — Claude Code (Opus 4.7) — Plan second supplemental fix for v1.1 PR #4 (cross-device session invalidation via Cloud Function + iOS APNS race)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

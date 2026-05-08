@@ -78,15 +78,15 @@ _None yet._
 #### 4. Account settings — `feat/account-settings`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress — second supplement
-- **Owner**: GitHub Copilot (Claude Sonnet 4.6) + GitHub Copilot (GPT-5.4 first supplement) + implementing agent (second supplement, TBD)
+- **Status**: Done — 2026-05-08
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6) + GitHub Copilot (GPT-5.4 first supplement + second supplement)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-08
 - **Planned**: 2026-05-08 (branch `feat/account-settings`)
 - **Description**: Add Edit profile (name) and Change password screens reachable from Settings → Account. Two separate screens (cleaner UX, security isolation between mundane name edits and password changes). Name validation: 2–50 chars after trim. Password minimum 8 chars (stricter than Firebase's 6). Password change always reauthenticates with current password before `updatePassword` to avoid `requires-recent-login`. Firestore rules `users/{userId}` self-update mask extends to include `name`. Firebase Auth `displayName` is NOT synced — Firestore `users/{uid}.name` remains the single source of truth. Email change deferred. Two supplements shipped on the same branch: (a) `AuthCubit` subscribes to `FirebaseAuth.authStateChanges()` to react when Firebase invalidates a session server-side; (b) a new `revokeUserSessions` Cloud Function calls `admin.auth().revokeRefreshTokens(uid)` after a successful password change so other-device sessions actually get invalidated (current Firebase Auth's `updatePassword` does NOT auto-revoke refresh tokens). Same PR also adds a small iOS APNS token race-condition handler in `AuthCubit._setupFCM` that silently tolerates the `apns-token-not-set` error on first launch.
 - **Initial implementation completed**: 2026-05-08 — repos, cubit methods, two new screens, rules update, 16 translation keys. Smoke tests #1-7, #9-11 passed. Smoke test #8 (cross-device sign-out) revealed the auth-listener gap, addressed by the first supplemental fix.
 - **First supplement completed**: 2026-05-08 — added the locked `authStateChanges()` listener, authenticated-state/null-user guards, and subscription cleanup in `AuthCubit.close()`. Real-device validation showed the listener never fires after `updatePassword` because Firebase Auth doesn't auto-revoke refresh tokens; another iteration required.
-- **Second supplement (in progress)**: 2026-05-08 — add `revokeUserSessions` callable Cloud Function, best-effort call from `AuthCubit.changePassword` after `updatePassword` succeeds, plus iOS APNS race-condition handling in `_setupFCM`. Cross-device propagation timing now ranges seconds → ~1 hour worst case. Spec in `CURRENT_TASK.md`. Awaiting agent implementation + owner real-device validation.
+- **Second supplement completed**: 2026-05-08 — added `revokeUserSessions` callable Cloud Function, best-effort call from `AuthCubit.changePassword` after `updatePassword` succeeds, plus iOS APNS race-condition handling in `_setupFCM`. Quality gates green. Real-device cross-device smoke tests remain pending project-owner execution.
 
 _Other v1.1 entries (added when each enters its planning round)_:
 - F3.A — Task countdown timer (adaptive screen-level ticker)

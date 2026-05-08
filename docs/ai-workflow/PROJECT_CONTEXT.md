@@ -110,6 +110,7 @@ Single file: `functions/index.js` (Node 22).
 | `sendOverdueTaskEscalations`   | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
 | `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
 | `deleteUserAccount`            | callable (authenticated user)      | Delete caller's Firestore data + Firebase Auth account atomically                   |
+| `revokeUserSessions`          | callable (any signed-in user)      | Revokes all refresh tokens for the caller; used after password change to force other devices to re-authenticate |
 | `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
 
 FCM push senders now localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).

@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Edit Profile screen (Settings → Account → Edit Profile) — users can update their display name (2–50 chars). Save button disabled until value is valid and changed from current.
 - Change Password screen (Settings → Account → Change Password) — reauthenticates with current password before updating; minimum 8 chars; confirm-field cross-validation.
+- Password change now revokes refresh tokens for all of the user's sessions, so other signed-in devices route back to login on their next token refresh (eventual, up to ~1 hour).
 
 ### Fixed
 
 - Auth lifecycle now clears FCM token state on sign-out and successful account deletion, and delete-account now reliably transitions to login by emitting unauthenticated state instead of relying on passive listener behavior.
 - Account changes made on one device now propagate to other devices logged into the same account: when Firebase server-invalidates the session after password change, account deletion, disablement, or token revocation, affected devices route back to login once the SDK reports the invalidated session.
+- iOS first-launch `apns-token-not-set` race no longer logs spuriously; FCM token is obtained on subsequent sign-in.
 - FCM push notifications now respect the recipient's chosen language (English / Arabic). In-app notifications were already localized; this fix covers the system-tray push payload.
 - Theme preference (system / light / dark) now persists across app launches via `shared_preferences`. The persisted choice is hydrated before the first frame paints, so cold start does not flash the default theme.
 

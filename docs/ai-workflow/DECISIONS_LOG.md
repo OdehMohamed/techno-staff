@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-08 — Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens
+
+- **Decision**: Add a callable Cloud Function `revokeUserSessions` that invokes `admin.auth().revokeRefreshTokens(request.auth.uid)` after a successful password change, and keep the client-side `authStateChanges()` listener as the reaction layer. Also tolerate the iOS-only `apns-token-not-set` race in `AuthCubit._setupFCM` without logging it to Crashlytics.
+- **Reason**: Real-device validation corrected an earlier assumption: current Firebase Auth `updatePassword` does not revoke refresh tokens for other active sessions, so the first supplement's listener had no revocation event to observe. Server-side revocation is therefore required to force eventual re-authentication on other devices. The APNS race is benign on first iOS launch and would otherwise flood Crashlytics.
+- **Impact**: After password change, all refresh tokens for the caller are revoked and other signed-in devices route back to login on their next token refresh or Firestore-triggered refresh attempt. The client call is best-effort only: revocation failures are logged to Crashlytics and do not undo a successful password change. iOS first-launch APNS registration races no longer generate noisy Crashlytics events while other Firebase exceptions still do.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `functions/index.js`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
 ## 2026-05-08 — AuthCubit reacts to server-initiated session invalidation via authStateChanges
 
 - **Decision**: Subscribe `AuthCubit` to `FirebaseAuth.instance.authStateChanges()` in the cubit constructor, guard the listener with `state.status != AuthStatus.authenticated` then `firebaseUser != null`, and emit `unauthenticated` only when the SDK reports `null` while the cubit currently believes it is authenticated.
