@@ -50,12 +50,18 @@
   "priority": "Priority",
   "status": "Status",
   "due_date": "Due Date",
-  "due_in_days": "Due in {count} {count, plural, =1{day} other{days}}",
+  "due_in_days": {
+    "one": "Due in {} day",
+    "other": "Due in {} days"
+  },
   "due_in_hours_minutes": "Due in {hours}h {minutes}m",
   "due_in_minutes": "Due in {minutes}m",
   "due_today": "Due today",
   "overdue_by_hours": "Overdue by {count}h",
-  "overdue_by_days": "Overdue by {count} {count, plural, =1{day} other{days}}",
+  "overdue_by_days": {
+    "one": "Overdue by {} day",
+    "other": "Overdue by {} days"
+  },
   "search_tasks": "Search tasks",
   "filters": "Filters",
   "sort_by": "Sort by",

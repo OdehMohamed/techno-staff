@@ -50,12 +50,18 @@
   "priority": "الأولوية",
   "status": "الحالة",
   "due_date": "تاريخ الاستحقاق",
-  "due_in_days": "خلال {count} {count, plural, =1{يوم} other{أيام}}",
+  "due_in_days": {
+    "one": "خلال {} يوم",
+    "other": "خلال {} أيام"
+  },
   "due_in_hours_minutes": "خلال {hours}س {minutes}د",
   "due_in_minutes": "خلال {minutes} دقيقة",
   "due_today": "اليوم",
   "overdue_by_hours": "متأخرة بـ {count} ساعات",
-  "overdue_by_days": "متأخرة بـ {count} {count, plural, =1{يوم} other{أيام}}",
+  "overdue_by_days": {
+    "one": "متأخرة بـ {} يوم",
+    "other": "متأخرة بـ {} أيام"
+  },
   "search_tasks": "ابحث في المهام",
   "filters": "تصفية",
   "sort_by": "ترتيب حسب",

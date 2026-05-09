@@ -58,7 +58,7 @@ class CountdownChip extends StatelessWidget {
 
     if (remaining >= const Duration(days: 1)) {
       final days = remaining.inDays;
-      return 'due_in_days'.tr(namedArgs: {'count': days.toString()});
+      return 'due_in_days'.plural(days);
     }
 
     if (remaining > const Duration(hours: 1) ||
@@ -78,7 +78,7 @@ class CountdownChip extends StatelessWidget {
     final overdue = remaining.abs();
     if (overdue >= const Duration(days: 1)) {
       final days = overdue.inDays <= 0 ? 1 : overdue.inDays;
-      return 'overdue_by_days'.tr(namedArgs: {'count': days.toString()});
+      return 'overdue_by_days'.plural(days);
     }
 
     final hours = overdue.inHours <= 0 ? 1 : overdue.inHours;
