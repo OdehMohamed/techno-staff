@@ -20,9 +20,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _targetCountController = TextEditingController();
 
   String? _selectedEmployeeId;
   String _selectedPriority = 'medium';
+  String _selectedTaskType = 'standard';
   DateTime? _selectedDueDate;
   bool _isSaving = false;
 
@@ -36,6 +38,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _targetCountController.dispose();
     super.dispose();
   }
 
@@ -59,6 +62,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedEmployeeId == null || _selectedDueDate == null) return;
+
+    final taskType = _selectedTaskType;
+    final int? targetCount = taskType == 'counter'
+        ? int.tryParse(_targetCountController.text.trim())
+        : null;
+    if (taskType == 'counter' &&
+        (targetCount == null || targetCount < 1 || targetCount > 999)) {
+      return;
+    }
 
     final currentUser = context.read<AuthCubit>().state.user;
     if (currentUser == null) return;
@@ -87,6 +99,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         completedAt: null,
+        taskType: taskType,
+        targetCount: targetCount,
+        currentCount: 0,
       );
       await repository.createTask(task);
 
@@ -241,6 +256,53 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           });
                         },
                       ),
+                      const SizedBox(height: AppSizes.md),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedTaskType,
+                        decoration: InputDecoration(
+                          labelText: 'task_type'.tr(),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'standard',
+                            child: Text('task_type_standard'.tr()),
+                          ),
+                          DropdownMenuItem(
+                            value: 'counter',
+                            child: Text('task_type_counter'.tr()),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedTaskType = value ?? 'standard';
+                            if (_selectedTaskType != 'counter') {
+                              _targetCountController.clear();
+                            }
+                          });
+                        },
+                      ),
+                      if (_selectedTaskType == 'counter') ...[
+                        const SizedBox(height: AppSizes.md),
+                        TextFormField(
+                          controller: _targetCountController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'target_count'.tr(),
+                          ),
+                          validator: (value) {
+                            if (_selectedTaskType != 'counter') return null;
+                            final raw = value?.trim() ?? '';
+                            if (raw.isEmpty) {
+                              return 'target_count_required'.tr();
+                            }
+                            final parsed = int.tryParse(raw);
+                            if (parsed == null || parsed < 1 || parsed > 999) {
+                              return 'target_count_invalid_range'.tr();
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                       const SizedBox(height: AppSizes.md),
                       ListTile(
                         contentPadding: EdgeInsets.zero,

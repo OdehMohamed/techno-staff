@@ -10,6 +10,6 @@ Only one task is active at a time. When this task is done, either replace the co
 
 No active task.
 
-The most recently completed work was **v1.1 F3.A — Task countdown timer (adaptive screen-level ticker)** on branch `feat/task-countdown-timer`.
+The most recently completed work was **v1.1 F3.C — Target / counter task type** on branch `feat/counter-tasks`.
 
 Pick the next task from `docs/ai-workflow/BACKLOG.md` and replace this file when implementation begins.
