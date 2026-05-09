@@ -4,6 +4,7 @@ class FirebasePaths {
   // Collections
   static const String users = 'users';
   static const String tasks = 'tasks';
+  static const String taskTemplates = 'task_templates';
 
   // Fields (اختياري بس مهم لقدام)
   static const String createdAt = 'createdAt';

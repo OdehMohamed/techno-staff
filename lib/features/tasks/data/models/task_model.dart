@@ -19,6 +19,7 @@ class TaskModel {
   final String taskType;
   final int? targetCount;
   final int currentCount;
+  final String? templateId;
 
   TaskModel({
     required this.id,
@@ -39,6 +40,7 @@ class TaskModel {
     this.taskType = 'standard',
     this.targetCount,
     this.currentCount = 0,
+    this.templateId,
   });
 
   bool get isCounter => taskType == 'counter';
@@ -77,6 +79,7 @@ class TaskModel {
       currentCount: data['currentCount'] is int
           ? data['currentCount'] as int
           : 0,
+      templateId: data['templateId'] as String?,
     );
   }
 
@@ -101,6 +104,7 @@ class TaskModel {
       'taskType': taskType,
       if (targetCount != null) 'targetCount': targetCount,
       'currentCount': currentCount,
+      if (templateId != null) 'templateId': templateId,
     };
   }
 
@@ -125,6 +129,7 @@ class TaskModel {
     String? taskType,
     int? targetCount,
     int? currentCount,
+    String? templateId,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -145,6 +150,7 @@ class TaskModel {
       taskType: taskType ?? this.taskType,
       targetCount: clearTargetCount ? null : (targetCount ?? this.targetCount),
       currentCount: currentCount ?? this.currentCount,
+      templateId: templateId ?? this.templateId,
     );
   }
 }

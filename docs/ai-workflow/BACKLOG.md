@@ -113,10 +113,11 @@ _None yet._
 #### 7. Recurring tasks — `feat/recurring-tasks`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress
+- **Status**: Done
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-09
+- **Completed**: 2026-05-09 — shipped `TaskTemplateModel` + `RecurrenceRule`, `TemplatesRepository`, `TemplatesCubit`, three admin screens (list / add / edit), `generateRecurringTaskInstances` cron Cloud Function (daily 6 am Asia/Jerusalem) with 7 timezone helpers + layered idempotency transaction, Firestore `task_templates` rules block, drawer entry, 27 translation keys × 2 locales (EN + AR). `flutter analyze` clean, `flutter test` all passed, `npm run lint` clean, translation parity `241 241 []`. Smoke tests deferred to project owner (real-device/ops dependent).
 - **Planned**: 2026-05-09 (branch `feat/recurring-tasks`, branched from `dev` after PR #28 merge)
 - **Description**: Add admin-authored recurring task templates that auto-generate fresh task instances on a daily / weekly / monthly schedule. Templates live in a **separate `task_templates` collection** (revising the original 2026-05-01 `isTemplate` flag decision after audit found ~13 downstream consumers would need filtering); the existing `tasks` collection stays semantically clean and continues to represent only actionable runtime instances. Generation is **server-only** in a new `generateRecurringTaskInstances` `onSchedule` Cloud Function (daily 6 am Asia/Jerusalem, before the existing 9 am reminder sweep). Idempotency is layered: deterministic instance document IDs `${templateId}_${YYYY-MM-DD}` plus `lastGeneratedAt` same-day guard on the template, both inside one Firestore transaction. Generated instances **snapshot** template fields at generation time — historical instances stay stable when the template is later renamed or paused. Counter-task templates supported (each instance starts fresh with `currentCount: 0`). Monthly clamps overflow days to the last valid day of the month (so day-31 templates generate on Feb 28/29). All recurrence + date-boundary math uses Asia/Jerusalem wall-clock via `Intl.DateTimeFormat` helpers — no raw UTC math. Soft pause via `isActive: false`; hard delete preserves historical instances. Admin-only authoring (rules + UI). Last v1.1 feature before cutting v1.1.0. Spec in `CURRENT_TASK.md`.
 

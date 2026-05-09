@@ -17,4 +17,7 @@ class RouteNames {
   static const String about = '/about';
   static const String editProfile = '/edit-profile';
   static const String changePassword = '/change-password';
+  static const String recurringTasks = '/recurring-tasks';
+  static const String addTemplate = '/add-template';
+  static const String editTemplate = '/edit-template';
 }

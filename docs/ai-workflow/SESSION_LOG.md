@@ -1,3 +1,12 @@
+## 2026-05-09 — GitHub Copilot (Claude Sonnet 4.6) — Implement v1.1 F3.B recurring task templates
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6) — implementing from the spec written in the planning session above.
+- **Branch**: `feat/recurring-tasks`
+- **Goal**: Implement all code for recurring task templates with cron-driven instance generation per the locked spec in `CURRENT_TASK.md`.
+- **Outcome**: Full implementation shipped. `flutter analyze` clean, `flutter test` 6/6 passed, `npm run lint` clean, translation parity `241 241 []`. All 13 new + modified files completed.
+- **Files touched**: `lib/features/tasks/data/models/task_template_model.dart` (new), `lib/features/tasks/data/models/task_model.dart` (+templateId), `lib/core/constants/firebase_paths.dart` (+taskTemplates), `lib/features/tasks/data/repositories/templates_repository.dart` (new), `lib/features/tasks/presentation/cubit/templates_state.dart` (new), `lib/features/tasks/presentation/cubit/templates_cubit.dart` (new), `lib/main.dart` (+TemplatesRepository+TemplatesCubit), `lib/core/routes/route_names.dart` (+3 routes), `lib/core/routes/app_router.dart` (+3 cases), `lib/shared/widgets/app_drawer.dart` (+recurring tasks admin entry), `lib/features/tasks/presentation/screens/recurring_tasks_screen.dart` (new), `lib/features/tasks/presentation/screens/add_template_screen.dart` (new), `lib/features/tasks/presentation/screens/edit_template_screen.dart` (new), `functions/index.js` (+7 Jerusalem helpers + shouldGenerateOn + generateRecurringTaskInstances), `firestore.rules` (+task_templates block), `assets/translations/en.json` (+27 keys → 241), `assets/translations/ar.json` (+27 keys → 241).
+- **Follow-ups**: Deploy `firebase deploy --only firestore:rules,functions` before testing. Run smoke tests #1-#15 (device/ops-dependent). Deferred to NEXT_STEPS: manual "generate now" callable, recurring badge on task cards.
+
 # AI Session Log
 
 > Append-only log of AI-assisted work sessions. One entry per meaningful session, newest at the top.

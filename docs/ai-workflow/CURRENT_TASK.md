@@ -1,5 +1,4 @@
 # Current Task
-
 > Last updated: 2026-05-09
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
@@ -8,7 +7,9 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-**v1.1 F3.B — Recurring tasks (template + cron-driven instance generation).**
+No active task. v1.1 is feature-complete (F3.A countdown timer, F3.C counter tasks, F3.B recurring task templates all merged or in PR). Next step: cut v1.1.0 release.
+
+See `BACKLOG.md` for open items and `NEXT_STEPS.md` for deferred ideas.
 
 Add a new admin-authored template object that produces a fresh task instance on a daily / weekly / monthly schedule. Templates live in a **separate `task_templates` collection** so the existing `tasks` collection stays semantically clean: `tasks` continues to represent only actionable runtime instances, and every existing consumer (dashboards, reports, FCM triggers, deadline reminders, overdue escalations, countdown chip, Firestore rules, task_logs) keeps working without per-type branches or template filters. Generation runs **server-only** in a new daily Cloud Function. Idempotency is layered: deterministic instance document IDs (`${templateId}_${YYYY-MM-DD}`) plus a `lastGeneratedAt` same-day guard on the template doc.
 

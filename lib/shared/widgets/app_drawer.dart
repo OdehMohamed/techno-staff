@@ -73,6 +73,18 @@ class AppDrawer extends StatelessWidget {
                   Navigator.pushReplacementNamed(context, RouteNames.reports);
                 },
               ),
+            if (user?.role == 'admin')
+              ListTile(
+                leading: const Icon(Icons.repeat),
+                title: Text('recurring_tasks'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.recurringTasks,
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: Text('settings'.tr()),
