@@ -99,8 +99,17 @@ _None yet._
 - **Completed**: 2026-05-09 — added `CountdownClockProvider` + `CountdownChip`, replaced the static due-date chip on the tasks list and task details screen, added 6 EN + 6 AR countdown keys, and kept rebuilds scoped to the chip leaf via `ValueListenableBuilder`.
 - **Description**: Replace the static "Due date: yyyy-MM-dd" chip on the tasks list and task details screen with a live countdown chip ("Due in 5h 32m", "Overdue by 2h", "Due today"). Adaptive single screen-level ticker per consuming screen — 60s default cadence, upgrades to 1s when any visible task's `endOfDay(dueDate) - now < 1h`. Pauses on `AppLifecycleState.paused`. Subscribers bound to a leaf `CountdownChip` via `ValueListenableBuilder` so parent `AppCard` / `InkWell` / `_buildTasksList` body don't rebuild on tick. Counts to **end-of-day of `dueDate`** (Option A from audit) — preserves the existing date-only model and aligns with overdue logic across dashboard / reports / Cloud Functions reminder paths. No `TaskCard` widget extraction in v1.1 (Option B from audit). No data-model change, no `firestore.rules` change, no Cloud Functions change. 6 new translation keys × 2 locales. Spec in `CURRENT_TASK.md`.
 
+#### 6. Counter task type — `feat/counter-tasks`
+
+- **Priority**: Should-fix (feature)
+- **Status**: In progress
+- **Owner**: TBD (implementing agent)
+- **Target release**: 1.1.0
+- **Added**: 2026-05-09
+- **Planned**: 2026-05-09 (branch `feat/counter-tasks`, branched from `dev` after PR #27 merge)
+- **Description**: Add a second task variant alongside the existing standard task: a counter task whose progress is tracked as `currentCount / targetCount`. Assignees increment from the task list / task details via a `+` button; status (`pending` / `in_progress` / `completed`) is **derived from the counts and persisted into the existing `status` field** so every downstream consumer (dashboards, reports, FCM completion notifications, deadline-reminder filters, countdown chip, Firestore rules, `task_logs`) keeps working without per-type branches. Storage is flat fields on the existing `tasks` collection (`taskType`, `targetCount`, `currentCount`); zero migration. Increment goes through a `runTransaction` so concurrent device taps never lose progress. Firestore rules diff is a single line — extending the assignee self-update mask to include `currentCount`. No Cloud Functions changes. 10 new translation keys × 2 locales. Spec in `CURRENT_TASK.md`.
+
 _Other v1.1 entries (added when each enters its planning round)_:
-- F3.C — Target/counter task type
 - F3.B — Recurring tasks (`isTemplate` + cron-driven instances)
 
 _Deferred to v1.2.0_: F2 — Attendance MVP (timestamp + biometric, no location).
