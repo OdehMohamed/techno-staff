@@ -98,12 +98,13 @@ class TasksRepository {
         .update(task.toMap());
   }
 
-  Future<void> incrementTaskCounter({
+  Future<TaskModel?> incrementTaskCounter({
     required String taskId,
     required String currentUserId,
     required String currentUserName,
   }) async {
     final ref = _firestore.collection(FirebasePaths.tasks).doc(taskId);
+    TaskModel? updated;
     await _firestore.runTransaction((txn) async {
       final snap = await txn.get(ref);
       if (!snap.exists) return;
@@ -119,16 +120,25 @@ class TasksRepository {
       final next = current + 1;
       final newStatus = TaskModel.deriveCounterStatus(next, target);
       final completedAt = newStatus == 'completed' ? Timestamp.now() : null;
+      final updatedAt = Timestamp.now();
 
-      txn.update(ref, <String, dynamic>{
+      final updateFields = <String, dynamic>{
         'currentCount': next,
         FirebasePaths.status: newStatus,
         'completedAt': completedAt,
-        'updatedAt': Timestamp.now(),
+        'updatedAt': updatedAt,
         'updatedBy': currentUserId,
         'updatedByName': currentUserName,
-      });
+      };
+
+      txn.update(ref, updateFields);
+
+      // Build the post-transaction TaskModel from the snap data merged with
+      // the locked update fields. Returning it lets the cubit patch local
+      // state directly without a follow-up read or a list refetch.
+      updated = TaskModel.fromMap(snap.id, {...data, ...updateFields});
     });
+    return updated;
   }
 
   Future<String> getUserNameById(String userId) async {

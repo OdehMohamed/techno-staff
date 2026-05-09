@@ -12,6 +12,7 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../cubit/task_logs_cubit.dart';
 import '../cubit/task_logs_state.dart';
 import '../cubit/tasks_cubit.dart';
+import '../cubit/tasks_state.dart';
 import '../../data/models/task_model.dart';
 import '../widgets/countdown_chip.dart';
 import '../widgets/countdown_clock_provider.dart';
@@ -35,9 +36,27 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
+  TaskModel _findTask(TasksState state) {
+    for (final list in [
+      state.tasks,
+      state.tasksAssignedToMe,
+      state.tasksCreatedByMe,
+    ]) {
+      for (final candidate in list) {
+        if (candidate.id == widget.task.id) return candidate;
+      }
+    }
+    return widget.task;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final task = widget.task;
+    // Subscribe to TasksCubit so increment / edit emissions update this
+    // screen in place. Falls back to the constructor argument when the task
+    // isn't in any of the cubit's lists (e.g. first frame before any fetch).
+    final task = context.select<TasksCubit, TaskModel>(
+      (cubit) => _findTask(cubit.state),
+    );
     final currentUser = context.read<AuthCubit>().state.user;
 
     final canEditOrDelete =
