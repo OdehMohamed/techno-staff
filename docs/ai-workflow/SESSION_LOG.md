@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-09 — GitHub Copilot (GPT-5.4) — Implement v1.1 PR #5 (F3.A — adaptive task countdown timer)
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feat/task-countdown-timer`
+- **Goal**: Replace the static due-date chip on the tasks list and task details screen with a live countdown, while keeping ticker-driven rebuilds isolated to the chip leaf.
+- **Outcome**: Added `CountdownClockProvider` as a per-screen adaptive ticker owner (60s default, 1s when any visible deadline is under 1 hour, lifecycle pause/resume) and `CountdownChip` as the localized leaf renderer for default / warning / overdue states. Wired the provider into `tasks_screen.dart` and `task_details_screen.dart`, removed the old due-date `_InfoChip`, and added 6 countdown keys to both locales. Validation passed: `flutter analyze` clean, `flutter test` passed, `cd functions && npm run lint` clean, translation parity check returned `204 204 []`. Real-device smoke tests #1–#11 remain pending project-owner execution; smoke #12 was spot-checked from the agent environment by confirming the existing `dueDateSoonest` comparator path in `tasks_screen.dart` is unchanged.
+- **Files touched**: `lib/features/tasks/presentation/widgets/countdown_clock_provider.dart`, `lib/features/tasks/presentation/widgets/countdown_chip.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/screens/task_details_screen.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/SESSION_LOG.md`, `CHANGELOG.md`.
+- **Follow-ups**: Project owner runs the real-device smoke suite (#1–#11) and decides whether the next active v1.1 task is F3.C (target/counter task type) or F3.B (recurring tasks).
+
 ## 2026-05-08 — Claude Code (Opus 4.7) — Plan v1.1 PR #5 (F3.A — task countdown timer with adaptive screen-level ticker)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

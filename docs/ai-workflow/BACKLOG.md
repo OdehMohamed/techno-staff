@@ -91,11 +91,12 @@ _None yet._
 #### 5. Task countdown timer — `feat/task-countdown-timer`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress
+- **Status**: Done — 2026-05-09
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-08
 - **Planned**: 2026-05-08 (branch `feat/task-countdown-timer`, branched from `dev` after PR #26 merge)
+- **Completed**: 2026-05-09 — added `CountdownClockProvider` + `CountdownChip`, replaced the static due-date chip on the tasks list and task details screen, added 6 EN + 6 AR countdown keys, and kept rebuilds scoped to the chip leaf via `ValueListenableBuilder`.
 - **Description**: Replace the static "Due date: yyyy-MM-dd" chip on the tasks list and task details screen with a live countdown chip ("Due in 5h 32m", "Overdue by 2h", "Due today"). Adaptive single screen-level ticker per consuming screen — 60s default cadence, upgrades to 1s when any visible task's `endOfDay(dueDate) - now < 1h`. Pauses on `AppLifecycleState.paused`. Subscribers bound to a leaf `CountdownChip` via `ValueListenableBuilder` so parent `AppCard` / `InkWell` / `_buildTasksList` body don't rebuild on tick. Counts to **end-of-day of `dueDate`** (Option A from audit) — preserves the existing date-only model and aligns with overdue logic across dashboard / reports / Cloud Functions reminder paths. No `TaskCard` widget extraction in v1.1 (Option B from audit). No data-model change, no `firestore.rules` change, no Cloud Functions change. 6 new translation keys × 2 locales. Spec in `CURRENT_TASK.md`.
 
 _Other v1.1 entries (added when each enters its planning round)_:

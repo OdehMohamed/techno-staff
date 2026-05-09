@@ -20,6 +20,15 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-09 — Adaptive screen-level countdown ticker for task deadlines
+
+- **Decision**: Implement task-deadline countdowns with one `CountdownClockProvider` per consuming screen (`TasksScreen`, `TaskDetailsScreen`) and a leaf-only `CountdownChip` subscriber. Countdowns target `endOfDay(dueDate)`, not the stored midnight timestamp and not a new time-of-day field.
+- **Reason**: The feature's main risk is rebuild churn, not label formatting. A per-card timer or a screen-level `setState()` on every tick would scale poorly on long task lists. Reusing the date-only model also keeps countdown semantics aligned with the existing overdue logic in dashboard, reports, and Cloud Functions reminder paths.
+- **Locked rules**: (1) count to `endOfDay(dueDate)`; (2) keep a minimal `CountdownChip` widget instead of extracting a `TaskCard`; (3) keep Hindu-Arabic numerals (`1234`) in Arabic for v1.1 consistency; (4) use a single adaptive screen-level ticker per consuming screen, never per-card and never global; (5) bind ticking rebuilds to the `CountdownChip` leaf via `ValueListenableBuilder`, leaving parent `AppCard` / `InkWell` / list builders stable; (6) treat overdue as a derived red-tinted chip state, without changing `StatusBadge`; (7) give `task_details_screen.dart` the same chip with its own provider instance.
+- **Impact**: The tasks list and task details screen now show live countdown chips with three visual states (default, warning, overdue). The provider owns exactly one `Timer.periodic`, recomputes cadence when visible due dates change, pauses on app background states, resumes on foreground, and exposes the current time through a `ValueListenable`. No repository, model, rule, or Cloud Function changes were required.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: `lib/features/tasks/presentation/widgets/countdown_clock_provider.dart`, `lib/features/tasks/presentation/widgets/countdown_chip.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/screens/task_details_screen.dart`, `docs/ai-workflow/BACKLOG.md` item 5, PR #5 (`feat/task-countdown-timer`).
+
 ## 2026-05-08 — Stop iterating on automatic cross-device session invalidation in v1.1
 
 - **Decision**: Treat the current PR #26 implementation (server-side `revokeUserSessions` + client `authStateChanges` listener) as the final v1.1 state for cross-device session invalidation. Do not add Firestore-tickle, custom token-refresh listeners, polling heuristics, or any further timing workarounds. Document the behavior as best-effort eventual invalidation (seconds → up to ~1h worst case) rather than chase deterministic immediate invalidation.
