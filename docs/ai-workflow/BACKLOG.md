@@ -102,11 +102,12 @@ _None yet._
 #### 6. Counter task type — `feat/counter-tasks`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress
+- **Status**: Done — 2026-05-09
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-09
 - **Planned**: 2026-05-09 (branch `feat/counter-tasks`, branched from `dev` after PR #27 merge)
+- **Completed**: 2026-05-09 — shipped counter-task fields (`taskType` / `targetCount` / `currentCount`), status derivation helper, transactional `incrementTaskCounter`, counter UI in add/edit/list/details, and the one-line `firestore.rules` assignee-mask widening for `currentCount`. Automated gates: `flutter analyze` (clean), `flutter test` (all passed), `cd functions && npm run lint` (clean), translation parity `214 214 []`. Smoke tests #4-#6, #8-#10, #13, #14 deferred to project owner (real-device/ops dependent).
 - **Description**: Add a second task variant alongside the existing standard task: a counter task whose progress is tracked as `currentCount / targetCount`. Assignees increment from the task list / task details via a `+` button; status (`pending` / `in_progress` / `completed`) is **derived from the counts and persisted into the existing `status` field** so every downstream consumer (dashboards, reports, FCM completion notifications, deadline-reminder filters, countdown chip, Firestore rules, `task_logs`) keeps working without per-type branches. Storage is flat fields on the existing `tasks` collection (`taskType`, `targetCount`, `currentCount`); zero migration. Increment goes through a `runTransaction` so concurrent device taps never lose progress. Firestore rules diff is a single line — extending the assignee self-update mask to include `currentCount`. No Cloud Functions changes. 10 new translation keys × 2 locales. Spec in `CURRENT_TASK.md`.
 
 _Other v1.1 entries (added when each enters its planning round)_:

@@ -50,6 +50,7 @@ service cloud.firestore {
           'completedAt',
           'updatedBy',
           'updatedByName',
+          'currentCount',
         ]);
     }
 

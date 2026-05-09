@@ -126,4 +126,25 @@ class TasksCubit extends Cubit<TasksState> {
       await fetchTasksCreatedBy(currentUserId);
     }
   }
+
+  Future<void> incrementTaskCounter({
+    required String taskId,
+    required bool isAdmin,
+    required String currentUserId,
+    required String currentUserName,
+  }) async {
+    await _tasksRepository.incrementTaskCounter(
+      taskId: taskId,
+      currentUserId: currentUserId,
+      currentUserName: currentUserName,
+    );
+
+    if (isAdmin) {
+      await fetchAllTasks();
+      await fetchTasksAssignedTo(currentUserId);
+    } else {
+      await fetchTasksAssignedTo(currentUserId);
+      await fetchTasksCreatedBy(currentUserId);
+    }
+  }
 }

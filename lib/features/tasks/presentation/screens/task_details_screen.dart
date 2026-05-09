@@ -154,8 +154,38 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             children: [
                               StatusBadge(status: task.status),
                               PriorityBadge(priority: task.priority),
+                              if (task.isCounter) const _CounterTypeBadge(),
                             ],
                           ),
+                          if (task.isCounter) ...[
+                            const SizedBox(height: AppSizes.lg),
+                            Text(
+                              'progress'.tr(),
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: AppSizes.sm),
+                            _CounterProgressRow(
+                              task: task,
+                              onIncrement:
+                                  (currentUser != null &&
+                                      task.assignedTo == currentUser.id &&
+                                      task.currentCount <
+                                          (task.targetCount ?? 0))
+                                  ? () {
+                                      context
+                                          .read<TasksCubit>()
+                                          .incrementTaskCounter(
+                                            taskId: task.id,
+                                            isAdmin:
+                                                currentUser.role == 'admin',
+                                            currentUserId: currentUser.id,
+                                            currentUserName: currentUser.name,
+                                          );
+                                    }
+                                  : null,
+                            ),
+                            const SizedBox(height: AppSizes.lg),
+                          ],
                           const SizedBox(height: AppSizes.xl),
                           _DetailsRow(
                             label: 'assigned_to'.tr(),
@@ -356,6 +386,76 @@ class _DetailsRow extends StatelessWidget {
       children: [
         Text('$label:', style: Theme.of(context).textTheme.titleMedium),
         Text(value, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+}
+
+class _CounterTypeBadge extends StatelessWidget {
+  const _CounterTypeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.numbers, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            'task_type_counter'.tr(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CounterProgressRow extends StatelessWidget {
+  final TaskModel task;
+  final VoidCallback? onIncrement;
+
+  const _CounterProgressRow({required this.task, required this.onIncrement});
+
+  @override
+  Widget build(BuildContext context) {
+    final target = task.targetCount ?? 0;
+    final current = task.currentCount.clamp(0, target);
+    final ratio = target == 0 ? 0.0 : current / target;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${'progress'.tr()}: $current / $target',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: onIncrement,
+              tooltip: 'increment'.tr(),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(value: ratio, minHeight: 8),
+        ),
       ],
     );
   }

@@ -21,6 +21,15 @@ The goal is a quick skim-friendly history so you can answer "what did we do last
 
 ---
 
+## 2026-05-09 — GitHub Copilot (GPT-5.3-Codex) — Implement v1.1 PR #6 (F3.C — counter task type with derived completion)
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feat/counter-tasks`
+- **Goal**: Implement counter tasks with target/current progress while keeping persisted `status` authoritative for all downstream consumers.
+- **Outcome**: Added flat counter fields to `TaskModel` (`taskType`, `targetCount`, `currentCount`) with backward-compatible defaults and centralized `deriveCounterStatus`. Implemented `TasksRepository.incrementTaskCounter` using `runTransaction` so every increment writes `currentCount` + derived `status` + `completedAt` + update metadata atomically. Added `TasksCubit.incrementTaskCounter` and wired counter-specific UI in add/edit/list/details screens (status dropdown hidden for counter tasks in edit, immutable task type on edit save, target/current validation and clamping, no decrement button in employee UI). Applied the locked one-line Firestore-rules mask widening (`currentCount` only). Added 10 EN + 10 AR translation keys and a new unit test for the three locked status transitions. Automated gates passed: `flutter analyze` clean, `flutter test` all passed, `cd functions && npm run lint` clean, parity check `214 214 []`.
+- **Files touched**: `lib/features/tasks/data/models/task_model.dart`, `lib/features/tasks/data/repositories/tasks_repository.dart`, `lib/features/tasks/presentation/cubit/tasks_cubit.dart`, `lib/features/tasks/presentation/screens/add_task_screen.dart`, `lib/features/tasks/presentation/screens/edit_task_screen.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/screens/task_details_screen.dart`, `firestore.rules`, `assets/translations/en.json`, `assets/translations/ar.json`, `test/features/tasks/data/models/task_model_test.dart`, workflow docs, `CHANGELOG.md`.
+- **Follow-ups**: Project owner runs smoke tests #4–#6, #8–#10, #13, #14 on real devices and runs `firebase deploy --only firestore:rules` after merge.
+
 ## 2026-05-09 — Claude Code (Opus 4.7) — Plan v1.1 PR #6 (F3.C — counter task type with derived completion)
 
 - **Agent**: Claude Code (Opus 4.7) — acting as lead / architect (planning only, no code).

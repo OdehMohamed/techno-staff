@@ -16,6 +16,9 @@ class TaskModel {
   final DateTime? completedAt;
   final String? updatedBy;
   final String? updatedByName;
+  final String taskType;
+  final int? targetCount;
+  final int currentCount;
 
   TaskModel({
     required this.id,
@@ -33,7 +36,18 @@ class TaskModel {
     this.completedAt,
     this.updatedBy,
     this.updatedByName,
+    this.taskType = 'standard',
+    this.targetCount,
+    this.currentCount = 0,
   });
+
+  bool get isCounter => taskType == 'counter';
+
+  static String deriveCounterStatus(int currentCount, int targetCount) {
+    if (currentCount <= 0) return 'pending';
+    if (currentCount >= targetCount) return 'completed';
+    return 'in_progress';
+  }
 
   factory TaskModel.fromMap(String id, Map<String, dynamic> data) {
     return TaskModel(
@@ -56,6 +70,13 @@ class TaskModel {
           : null,
       updatedBy: data['updatedBy'],
       updatedByName: data['updatedByName'],
+      taskType: (data['taskType'] as String?) ?? 'standard',
+      targetCount: data['targetCount'] is int
+          ? data['targetCount'] as int
+          : null,
+      currentCount: data['currentCount'] is int
+          ? data['currentCount'] as int
+          : 0,
     );
   }
 
@@ -77,6 +98,9 @@ class TaskModel {
           : null,
       'updatedBy': updatedBy,
       'updatedByName': updatedByName,
+      'taskType': taskType,
+      if (targetCount != null) 'targetCount': targetCount,
+      'currentCount': currentCount,
     };
   }
 
@@ -95,8 +119,12 @@ class TaskModel {
     DateTime? updatedAt,
     DateTime? completedAt,
     bool clearCompletedAt = false,
+    bool clearTargetCount = false,
     String? updatedBy,
     String? updatedByName,
+    String? taskType,
+    int? targetCount,
+    int? currentCount,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -114,6 +142,9 @@ class TaskModel {
       completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
       updatedBy: updatedBy ?? this.updatedBy,
       updatedByName: updatedByName ?? this.updatedByName,
+      taskType: taskType ?? this.taskType,
+      targetCount: clearTargetCount ? null : (targetCount ?? this.targetCount),
+      currentCount: currentCount ?? this.currentCount,
     );
   }
 }

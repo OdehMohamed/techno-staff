@@ -20,6 +20,16 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-09 — Counter task type with derived completion via persisted status field
+
+- **Decision**: Introduce a second task variant (`taskType: 'counter'`) with flat optional fields on `tasks` documents (`targetCount`, `currentCount`), and enforce a strict persistence contract: every write that changes `currentCount` must atomically persist derived `status` and matching `completedAt` in the same write/transaction.
+- **Reason**: The existing downstream pipeline (dashboard/report aggregates, deadline filters, countdown visibility, completion notifications, and `task_logs`) already treats persisted `status` as the completion truth. Keeping `status` authoritative avoids branching Cloud Functions and all downstream consumers by task type.
+- **Locked decisions**: (1) flat fields on the existing collection (no nested map/subcollection); (2) locked mapping `0 -> pending`, `0<n<target -> in_progress`, `n>=target -> completed`; (3) no manual status override for counter tasks; (4) `taskType` immutable after create; (5) `targetCount` in 1..999 and `currentCount` in 0..target; (6) no decrement action on employee cards; (7) simple Firestore rules mask widening only (`currentCount` added for assignee status updates); (8) subtle counter-type visual indicator chip; (9) hide edit-screen status dropdown for counter tasks; (10) backward compatibility defaults missing `taskType` to `standard`.
+- **Persistence contract**: Count writes and status writes are inseparable. Transaction path derives from post-increment count and writes `currentCount`, derived `status`, `completedAt`, `updatedAt`, `updatedBy`, and `updatedByName` together. Edit-screen counter saves clamp `currentCount` to target, derive status with the same helper, and persist status/completedAt in the same full update.
+- **Impact**: Counter progress and completion now flow through the same status-based behavior as standard tasks with no Cloud Function changes, no dashboard/report refactors, and no new dependencies. Firestore rules changed by one key in the assignee mask; operationally, rules must be deployed before using increment in production.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/features/tasks/data/models/task_model.dart`, `lib/features/tasks/data/repositories/tasks_repository.dart`, `lib/features/tasks/presentation/screens/edit_task_screen.dart`, `firestore.rules`, `docs/ai-workflow/BACKLOG.md` item 6, PR #6 (`feat/counter-tasks`).
+
 ## 2026-05-09 — Adaptive screen-level countdown ticker for task deadlines
 
 - **Decision**: Implement task-deadline countdowns with one `CountdownClockProvider` per consuming screen (`TasksScreen`, `TaskDetailsScreen`) and a leaf-only `CountdownChip` subscriber. Countdowns target `endOfDay(dueDate)`, not the stored midnight timestamp and not a new time-of-day field.
