@@ -14,6 +14,8 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../../data/models/task_model.dart';
 import '../cubit/tasks_cubit.dart';
 import '../cubit/tasks_state.dart';
+import '../widgets/countdown_chip.dart';
+import '../widgets/countdown_clock_provider.dart';
 import '../widgets/task_filter_bottom_sheet.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -136,6 +138,19 @@ class _TasksScreenState extends State<TasksScreen> {
     return filtered;
   }
 
+  List<DateTime> _collectVisibleDueDates(TasksState state, bool isAdmin) {
+    final lists = <List<TaskModel>>[
+      state.tasks,
+      state.tasksAssignedToMe,
+      state.tasksCreatedByMe,
+    ];
+    return [
+      for (final list in lists)
+        for (final task in list)
+          if (task.status != 'completed') task.dueDate,
+    ];
+  }
+
   Widget _buildSearchAndFiltersBar() {
     return Row(
       children: [
@@ -221,11 +236,19 @@ class _TasksScreenState extends State<TasksScreen> {
                   }
                 }
 
+                final visibleDueDates = _collectVisibleDueDates(state, isAdmin);
+
                 if (isAdmin) {
-                  return _buildAdminTabs(state, user);
+                  return CountdownClockProvider(
+                    dueDates: visibleDueDates,
+                    child: _buildAdminTabs(state, user),
+                  );
                 }
 
-                return _buildEmployeeTabs(state, user);
+                return CountdownClockProvider(
+                  dueDates: visibleDueDates,
+                  child: _buildEmployeeTabs(state, user),
+                );
               },
             ),
           ),
@@ -447,10 +470,9 @@ class _TasksScreenState extends State<TasksScreen> {
                     runSpacing: AppSizes.sm,
                     children: [
                       PriorityBadge(priority: task.priority),
-                      _InfoChip(
-                        icon: Icons.calendar_today_outlined,
-                        label:
-                            '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                      CountdownChip(
+                        dueDate: task.dueDate,
+                        isCompleted: task.status == 'completed',
                       ),
                     ],
                   ),
@@ -497,28 +519,6 @@ class _TasksScreenState extends State<TasksScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [Icon(icon, size: 16), const SizedBox(width: 6), Text(label)],
-      ),
     );
   }
 }

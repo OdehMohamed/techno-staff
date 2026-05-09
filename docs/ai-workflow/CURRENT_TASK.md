@@ -1,6 +1,6 @@
 # Current Task
 
-> Last updated: 2026-05-08
+> Last updated: 2026-05-09
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
 
@@ -8,4 +8,8 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-No active task. PR #26 (`feat/account-settings`) is implementation-complete in code and docs. Remaining real-device validation, if any, is tracked in the PR discussion rather than here.
+No active task.
+
+The most recently completed work was **v1.1 F3.A — Task countdown timer (adaptive screen-level ticker)** on branch `feat/task-countdown-timer`.
+
+Pick the next task from `docs/ai-workflow/BACKLOG.md` and replace this file when implementation begins.
