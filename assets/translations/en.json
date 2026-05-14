@@ -249,5 +249,6 @@
   "no_internet_connection": "No internet connection",
   "update_required_title": "Update Required",
   "update_required_message": "A new version of the app is required to continue. Please update and reopen.",
-  "update_now": "Update Now"
+  "update_now": "Update Now",
+  "task_deadline_72h_body": "Your task '{taskTitle}' is due in 3 days."
 }

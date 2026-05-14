@@ -249,5 +249,6 @@
   "no_internet_connection": "لا يوجد اتصال بالإنترنت",
   "update_required_title": "تحديث مطلوب",
   "update_required_message": "إصدار جديد من التطبيق مطلوب للمتابعة. يرجى التحديث وإعادة الفتح.",
-  "update_now": "تحديث الآن"
+  "update_now": "تحديث الآن",
+  "task_deadline_72h_body": "مهمتك '{taskTitle}' تستحق خلال 3 أيام."
 }

@@ -15,6 +15,7 @@ const i18n = {
     task_completed_body: "{task}",
     task_deadline_title: "Task Reminder ⏰",
     task_deadline_today_body: "Your task is due today: {task}",
+    task_deadline_72h_body: "Your task '{taskTitle}' is due in 3 days.",
     task_deadline_tomorrow_body: "Your task is due tomorrow: {task}",
     task_overdue_title: "Overdue Task ⚠️",
     task_overdue_body: "Your task is overdue: {task}",
@@ -28,6 +29,7 @@ const i18n = {
     task_completed_body: "{task}",
     task_deadline_title: "تذكير بالمهمة ⏰",
     task_deadline_today_body: "مهمتك مستحقة اليوم: {task}",
+    task_deadline_72h_body: "مهمتك '{taskTitle}' تستحق خلال 3 أيام.",
     task_deadline_tomorrow_body: "مهمتك مستحقة غداً: {task}",
     task_overdue_title: "مهمة متأخرة ⚠️",
     task_overdue_body: "مهمتك متأخرة: {task}",
@@ -510,96 +512,143 @@ exports.sendTaskDeadlineReminders = onSchedule(
       const db = admin.firestore();
 
       const now = new Date();
-      const tomorrowStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1,
-        0,
-        0,
-        0,
-        0,
-      );
-      const tomorrowEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 2,
-        0,
-        0,
-        0,
-        0,
-      );
+      const todayYmd = ymdInJerusalem(now);
+      const [year, month, day] = todayYmd.split("-").map(Number);
 
-      const tasksSnapshot = await db
-        .collection("tasks")
-        .where("status", "!=", "completed")
-        .where(
-          "dueDate",
-          ">=",
-          admin.firestore.Timestamp.fromDate(tomorrowStart),
-        )
-        .where("dueDate", "<", admin.firestore.Timestamp.fromDate(tomorrowEnd))
-        .get();
+      const jerusalemDay = (offsetDays) =>
+        new Date(Date.UTC(year, month - 1, day + offsetDays, 12, 0, 0));
 
-      if (tasksSnapshot.empty) {
-        console.log("No tasks due tomorrow.");
-        return;
-      }
+      const in72hStart = jerusalemMidnightAsUTC(jerusalemDay(3));
+      const in72hEnd = jerusalemMidnightAsUTC(jerusalemDay(4));
 
-      for (const doc of tasksSnapshot.docs) {
-        const task = doc.data();
-        const assignedTo = task.assignedTo;
-        const taskTitle = task.title || "Task";
+      const in24hStart = jerusalemMidnightAsUTC(jerusalemDay(1));
+      const in24hEnd = jerusalemMidnightAsUTC(jerusalemDay(2));
 
-        if (!assignedTo) continue;
+      const [snap72h, snap24h] = await Promise.all([
+        db
+          .collection("tasks")
+          .where("status", "!=", "completed")
+          .where(
+            "dueDate",
+            ">=",
+            admin.firestore.Timestamp.fromDate(in72hStart),
+          )
+          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in72hEnd))
+          .get(),
+        db
+          .collection("tasks")
+          .where("status", "!=", "completed")
+          .where(
+            "dueDate",
+            ">=",
+            admin.firestore.Timestamp.fromDate(in24hStart),
+          )
+          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in24hEnd))
+          .get(),
+      ]);
 
-        const userDoc = await db.collection("users").doc(assignedTo).get();
-        if (!userDoc.exists) continue;
+      const processThreshold = async ({
+        snapshot,
+        dedupField,
+        bodyKey,
+        bodyArgs,
+      }) => {
+        for (const taskDoc of snapshot.docs) {
+          try {
+            const task = taskDoc.data();
+            const taskId = taskDoc.id;
+            const assignedTo = task.assignedTo;
+            const taskTitle = task.title || "Task";
 
-        const userData = userDoc.data() || {};
-        const fcmToken = userData.fcmToken;
-        const languageCode = userData.languageCode || "en";
+            if (!assignedTo) {
+              continue;
+            }
 
-        if (!fcmToken) continue;
+            const sentAt = task[dedupField];
+            if (
+              sentAt &&
+              typeof sentAt.toDate === "function" &&
+              sameDayJerusalem(sentAt.toDate(), now)
+            ) {
+              continue;
+            }
 
-        await admin.messaging().send({
-          token: fcmToken,
-          notification: {
-            title: localize("task_deadline_title", {}, languageCode),
-            body: localize(
-              "task_deadline_tomorrow_body",
-              { task: taskTitle },
-              languageCode,
-            ),
-          },
-          data: {
-            taskId: doc.id,
-            type: "task_deadline_reminder",
-          },
-          android: {
-            priority: "high",
-            notification: {
-              channelId: "task_notifications",
-            },
-          },
-          apns: {
-            payload: {
-              aps: {
-                sound: "default",
+            const userDoc = await db.collection("users").doc(assignedTo).get();
+            if (!userDoc.exists) {
+              continue;
+            }
+
+            const userData = userDoc.data() || {};
+            if (userData.isActive === false) {
+              continue;
+            }
+
+            const languageCode = userData.languageCode || "en";
+            const fcmToken = userData.fcmToken || null;
+
+            await sendFCMNotification({
+              token: fcmToken,
+              notification: {
+                title: localize("task_deadline_title", {}, languageCode),
+                body: localize(bodyKey, bodyArgs(taskTitle), languageCode),
               },
-            },
-          },
-        });
+              data: {
+                taskId,
+                type: "task_deadline_reminder",
+              },
+              android: {
+                priority: "high",
+                notification: {
+                  channelId: "task_notifications",
+                },
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: "default",
+                  },
+                },
+              },
+            });
 
-        await createInAppNotification({
-          userId: assignedTo,
-          type: "task_deadline_reminder",
-          taskId: doc.id,
-          data: {
-            taskTitle: taskTitle,
-          },
-        });
-        console.log("Reminder sent for task:", doc.id);
-      }
+            await createInAppNotification({
+              userId: assignedTo,
+              type: "task_deadline_reminder",
+              taskId,
+              data: {
+                taskTitle,
+              },
+            });
+
+            await db
+              .collection("tasks")
+              .doc(taskId)
+              .update({
+                [dedupField]: admin.firestore.FieldValue.serverTimestamp(),
+              });
+          } catch (taskError) {
+            console.error("Error processing deadline reminder task:", {
+              taskId: taskDoc.id,
+              dedupField,
+              error: taskError,
+            });
+          }
+        }
+      };
+
+      await processThreshold({
+        snapshot: snap72h,
+        dedupField: "reminderSent72hAt",
+        bodyKey: "task_deadline_72h_body",
+        bodyArgs: (taskTitle) => ({ taskTitle }),
+      });
+
+      await processThreshold({
+        snapshot: snap24h,
+        dedupField: "reminderSent24hAt",
+        bodyKey: "task_deadline_tomorrow_body",
+        bodyArgs: (taskTitle) => ({ task: taskTitle }),
+      });
     } catch (error) {
       console.error("Error sending deadline reminders:", error);
     }
@@ -788,16 +837,10 @@ exports.sendOverdueTaskEscalations = onSchedule(
           : null;
 
         const sameDayReminder =
-          lastReminderAt &&
-          lastReminderAt.getFullYear() === now.getFullYear() &&
-          lastReminderAt.getMonth() === now.getMonth() &&
-          lastReminderAt.getDate() === now.getDate();
+          lastReminderAt && sameDayJerusalem(lastReminderAt, now);
 
         const sameDayEscalation =
-          lastEscalationAt &&
-          lastEscalationAt.getFullYear() === now.getFullYear() &&
-          lastEscalationAt.getMonth() === now.getMonth() &&
-          lastEscalationAt.getDate() === now.getDate();
+          lastEscalationAt && sameDayJerusalem(lastEscalationAt, now);
 
         let employeeNotified = false;
         let adminsNotified = false;
@@ -1229,4 +1272,11 @@ async function createInAppNotification({ userId, type, taskId, data }) {
       isRead: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+}
+
+async function sendFCMNotification(message) {
+  if (!message || !message.token) {
+    return;
+  }
+  await admin.messaging().send(message);
 }
