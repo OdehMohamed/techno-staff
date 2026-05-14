@@ -15,8 +15,12 @@ import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/tasks/presentation/screens/add_task_screen.dart';
 import '../../features/tasks/presentation/screens/tasks_screen.dart';
 import '../../features/tasks/data/models/task_model.dart';
+import '../../features/tasks/data/models/task_template_model.dart';
 import '../../features/tasks/presentation/screens/edit_task_screen.dart';
 import '../../features/tasks/presentation/screens/task_details_screen.dart';
+import '../../features/tasks/presentation/screens/recurring_tasks_screen.dart';
+import '../../features/tasks/presentation/screens/add_template_screen.dart';
+import '../../features/tasks/presentation/screens/edit_template_screen.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -131,6 +135,22 @@ class AppRouter {
       case RouteNames.changePassword:
         return MaterialPageRoute(
           builder: (_) => const ChangePasswordScreen(),
+          settings: settings,
+        );
+      case RouteNames.recurringTasks:
+        return MaterialPageRoute(
+          builder: (_) => const RecurringTasksScreen(),
+          settings: settings,
+        );
+      case RouteNames.addTemplate:
+        return MaterialPageRoute(
+          builder: (_) => const AddTemplateScreen(),
+          settings: settings,
+        );
+      case RouteNames.editTemplate:
+        final template = settings.arguments as TaskTemplateModel;
+        return MaterialPageRoute(
+          builder: (_) => EditTemplateScreen(template: template),
           settings: settings,
         );
       default:

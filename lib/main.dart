@@ -30,7 +30,9 @@ import 'firebase_options.dart';
 import 'features/employees/data/repositories/employees_repository.dart';
 import 'features/employees/presentation/cubit/employees_cubit.dart';
 import 'features/tasks/data/repositories/tasks_repository.dart';
+import 'features/tasks/data/repositories/templates_repository.dart';
 import 'features/tasks/presentation/cubit/tasks_cubit.dart';
+import 'features/tasks/presentation/cubit/templates_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
@@ -105,6 +107,7 @@ Future<void> main() async {
   final userRepository = UserRepository();
   final employeesRepository = EmployeesRepository();
   final tasksRepository = TasksRepository(FirebaseFirestore.instance);
+  final templatesRepository = TemplatesRepository(FirebaseFirestore.instance);
   final dashboardRepository = DashboardRepository();
   final reportsRepository = ReportsRepository();
   final pdfReportService = PdfReportService();
@@ -151,6 +154,10 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => NotificationsCubit(NotificationsRepository()),
+          ),
+          BlocProvider(
+            create: (_) =>
+                TemplatesCubit(templatesRepository: templatesRepository),
           ),
         ],
         child: const TechnoStaffApp(),

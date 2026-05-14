@@ -44,6 +44,199 @@ function localize(key, args, languageCode) {
   );
 }
 
+// ─── Asia/Jerusalem helpers ───────────────────────────────────────────────────
+
+function ymdInJerusalem(date) {
+  // Returns "YYYY-MM-DD" in Asia/Jerusalem wall-clock.
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date); // en-CA gives ISO-like YYYY-MM-DD
+}
+
+function jerusalemOffsetForDate(date) {
+  // Compute Asia/Jerusalem UTC offset for the given date as ±HH:MM.
+  const tzFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    timeZoneName: "longOffset",
+  });
+  const parts = tzFormatter.formatToParts(date);
+  const tz = parts.find((p) => p.type === "timeZoneName").value; // e.g. "GMT+3"
+  const match = tz.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return "+00:00";
+  const sign = match[1];
+  const hh = match[2].padStart(2, "0");
+  const mm = (match[3] || "00").padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
+function jerusalemMidnightAsUTC(date) {
+  // Returns the JS Date representing 00:00 Asia/Jerusalem on date's calendar day.
+  const ymd = ymdInJerusalem(date);
+  const offset = jerusalemOffsetForDate(date); // e.g. "+03:00"
+  return new Date(`${ymd}T00:00:00${offset}`);
+}
+
+function sameDayJerusalem(a, b) {
+  return ymdInJerusalem(a) === ymdInJerusalem(b);
+}
+
+function jerusalemDayOfWeek(date) {
+  // 1=Mon ... 7=Sun (matches Dart DateTime.weekday).
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    weekday: "short",
+  });
+  const map = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  return map[formatter.format(date)];
+}
+
+function jerusalemDayOfMonth(date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    day: "numeric",
+  });
+  return parseInt(formatter.format(date), 10);
+}
+
+function jerusalemLastDayOfMonth(date) {
+  // Last calendar day of the month containing `date` in Asia/Jerusalem.
+  const ymd = ymdInJerusalem(date); // "YYYY-MM-DD"
+  const [y, m] = ymd.split("-").map(Number);
+  // JS Date with day=0 of the next month gives the last day of month m.
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function shouldGenerateOn(recurrence, now) {
+  if (!recurrence || typeof recurrence !== "object") return false;
+  const type = recurrence.type;
+  if (type === "daily") return true;
+
+  if (type === "weekly") {
+    const days = recurrence.daysOfWeek;
+    if (!Array.isArray(days) || days.length === 0) return false;
+    return days.includes(jerusalemDayOfWeek(now));
+  }
+
+  if (type === "monthly") {
+    const dayOfMonth = recurrence.dayOfMonth;
+    if (typeof dayOfMonth !== "number" || dayOfMonth < 1 || dayOfMonth > 31) {
+      return false;
+    }
+    const lastDay = jerusalemLastDayOfMonth(now);
+    const targetDay = Math.min(dayOfMonth, lastDay); // monthly clamp
+    return jerusalemDayOfMonth(now) === targetDay;
+  }
+
+  return false;
+}
+
+// ─── Recurring task instance generator ───────────────────────────────────────
+
+exports.generateRecurringTaskInstances = onSchedule(
+  {
+    schedule: "0 6 * * *",
+    timeZone: "Asia/Jerusalem",
+  },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const now = new Date();
+      const todayYMD = ymdInJerusalem(now);
+      const todayDueDate = jerusalemMidnightAsUTC(now);
+
+      const snap = await db
+        .collection("task_templates")
+        .where("isActive", "==", true)
+        .get();
+
+      for (const templateDoc of snap.docs) {
+        try {
+          const template = templateDoc.data();
+          if (!shouldGenerateOn(template.recurrence, now)) continue;
+
+          // Support both legacy single-assignee and new multi-assignee templates.
+          const assigneeIds =
+            Array.isArray(template.assignedToIds) &&
+            template.assignedToIds.length > 0
+              ? template.assignedToIds
+              : template.assignedTo
+                ? [template.assignedTo]
+                : [];
+          const assigneeNames =
+            Array.isArray(template.assignedToNames) &&
+            template.assignedToNames.length > 0
+              ? template.assignedToNames
+              : template.assignedToName
+                ? [template.assignedToName]
+                : [];
+
+          if (assigneeIds.length === 0) continue;
+
+          for (let i = 0; i < assigneeIds.length; i++) {
+            const assigneeId = assigneeIds[i];
+            const assigneeName = assigneeNames[i] || "";
+            // One instance per (template, assignee, date) — deterministic ID is
+            // the sole idempotency gate; existence check is inside the transaction.
+            const instanceId = `${templateDoc.id}_${assigneeId}_${todayYMD}`;
+            const instanceRef = db.collection("tasks").doc(instanceId);
+
+            await db.runTransaction(async (txn) => {
+              const freshTemplate = await txn.get(templateDoc.ref);
+              if (!freshTemplate.exists) return;
+              const freshData = freshTemplate.data() || {};
+              if (freshData.isActive !== true) return;
+
+              const existingInstance = await txn.get(instanceRef);
+              if (existingInstance.exists) return; // already generated
+
+              const instance = {
+                title: freshData.title || "",
+                description: freshData.description || "",
+                assignedTo: assigneeId,
+                assignedToName: assigneeName,
+                assignedBy: freshData.assignedBy || "",
+                assignedByName: freshData.assignedByName || "",
+                priority: freshData.priority || "medium",
+                status: "pending",
+                taskType: freshData.taskType || "standard",
+                currentCount: 0,
+                dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
+                createdAt: admin.firestore.Timestamp.fromDate(now),
+                updatedAt: admin.firestore.Timestamp.fromDate(now),
+                completedAt: null,
+                templateId: templateDoc.id,
+              };
+              if (freshData.taskType === "counter" && freshData.targetCount) {
+                instance.targetCount = freshData.targetCount;
+              }
+
+              txn.set(instanceRef, instance);
+            });
+          }
+
+          // lastGeneratedAt is metadata only — written after all assignees are
+          // processed so a partial-run crash leaves it unset for the next retry.
+          await templateDoc.ref.update({
+            lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
+            updatedAt: admin.firestore.Timestamp.fromDate(now),
+          });
+        } catch (templateError) {
+          console.error(
+            `Error processing template ${templateDoc.id}:`,
+            templateError,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error generating recurring task instances:", error);
+    }
+  },
+);
+
 exports.createEmployeeUser = onCall(async (request) => {
   try {
     // 🔐 تحقق أن المستخدم مسجل دخول
@@ -667,7 +860,10 @@ exports.sendOverdueTaskEscalations = onSchedule(
           let sentToAnyAdmin = false;
 
           for (const adminDoc of adminsSnapshot.docs) {
-            const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+            const adminUserDoc = await db
+              .collection("users")
+              .doc(adminDoc.id)
+              .get();
             const adminUserData = adminUserDoc.data() || {};
             const adminToken = adminUserData.fcmToken;
             const languageCode = adminUserData.languageCode || "en";
@@ -679,7 +875,11 @@ exports.sendOverdueTaskEscalations = onSchedule(
             await admin.messaging().send({
               token: adminToken,
               notification: {
-                title: localize("task_overdue_escalation_title", {}, languageCode),
+                title: localize(
+                  "task_overdue_escalation_title",
+                  {},
+                  languageCode,
+                ),
                 body: localize(
                   "task_overdue_escalation_body",
                   { employee: assignedToName, task: taskTitle },
@@ -858,7 +1058,10 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
 
       if (adminTokens.length > 0) {
         for (const adminDoc of adminsSnapshot.docs) {
-          const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+          const adminUserDoc = await db
+            .collection("users")
+            .doc(adminDoc.id)
+            .get();
           const adminUserData = adminUserDoc.data() || {};
           const adminToken = adminUserData.fcmToken;
           const languageCode = adminUserData.languageCode || "en";
@@ -870,7 +1073,11 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
           await admin.messaging().send({
             token: adminToken,
             notification: {
-              title: localize("task_overdue_escalation_title", {}, languageCode),
+              title: localize(
+                "task_overdue_escalation_title",
+                {},
+                languageCode,
+              ),
               body: localize(
                 "task_overdue_escalation_body",
                 { employee: assignedToName, task: taskTitle },
