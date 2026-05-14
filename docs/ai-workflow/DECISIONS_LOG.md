@@ -20,6 +20,14 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-14 — MaterialApp.builder overlay for offline connectivity state
+
+- **Decision**: Show offline state with a `MaterialApp.builder` `Stack` overlay banner instead of pushing a dedicated offline route.
+- **Reason**: A route-push approach would interfere with FCM deep links, auth-driven navigation, and in-progress form state. The offline requirement is informational only, so it should not take over navigation or block interaction.
+- **Impact**: Connectivity state is now a lightweight top-of-app UI layer that preserves existing routes, button behavior, and Firestore offline queue behavior. Users can continue navigating and acting while the banner indicates that data may be stale.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: `lib/app/app.dart`, `lib/core/services/connectivity_service.dart`, `docs/ai-workflow/BACKLOG.md` item 8, PR `feat/connectivity-and-refresh`.
+
 ## 2026-05-09 — Counter task type with derived completion via persisted status field
 
 - **Decision**: Introduce a second task variant (`taskType: 'counter'`) with flat optional fields on `tasks` documents (`targetCount`, `currentCount`), and enforce a strict persistence contract: every write that changes `currentCount` must atomically persist derived `status` and matching `completedAt` in the same write/transaction.

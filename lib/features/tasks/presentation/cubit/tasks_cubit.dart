@@ -10,13 +10,18 @@ class TasksCubit extends Cubit<TasksState> {
     : _tasksRepository = tasksRepository,
       super(const TasksState());
 
-  Future<void> fetchTasksAssignedTo(String userId) async {
-    emit(
-      state.copyWith(
-        tasksAssignedToMeStatus: TasksStatus.loading,
-        clearTasksAssignedToMeError: true,
-      ),
-    );
+  Future<void> fetchTasksAssignedTo(
+    String userId, {
+    bool silent = false,
+  }) async {
+    if (!silent) {
+      emit(
+        state.copyWith(
+          tasksAssignedToMeStatus: TasksStatus.loading,
+          clearTasksAssignedToMeError: true,
+        ),
+      );
+    }
 
     try {
       final tasks = await _tasksRepository.getTasksAssignedTo(userId);
@@ -38,13 +43,15 @@ class TasksCubit extends Cubit<TasksState> {
     }
   }
 
-  Future<void> fetchTasksCreatedBy(String userId) async {
-    emit(
-      state.copyWith(
-        tasksCreatedByMeStatus: TasksStatus.loading,
-        clearTasksCreatedByMeError: true,
-      ),
-    );
+  Future<void> fetchTasksCreatedBy(String userId, {bool silent = false}) async {
+    if (!silent) {
+      emit(
+        state.copyWith(
+          tasksCreatedByMeStatus: TasksStatus.loading,
+          clearTasksCreatedByMeError: true,
+        ),
+      );
+    }
 
     try {
       final tasks = await _tasksRepository.getTasksCreatedBy(userId);
@@ -66,8 +73,10 @@ class TasksCubit extends Cubit<TasksState> {
     }
   }
 
-  Future<void> fetchAllTasks() async {
-    emit(state.copyWith(status: TasksStatus.loading, clearError: true));
+  Future<void> fetchAllTasks({bool silent = false}) async {
+    if (!silent) {
+      emit(state.copyWith(status: TasksStatus.loading, clearError: true));
+    }
 
     try {
       final tasks = await _tasksRepository.getAllTasks();
