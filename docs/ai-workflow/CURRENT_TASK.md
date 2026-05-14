@@ -8,445 +8,303 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-No active task — BACKLOG #9 (mandatory app-update) merged and validated 2026-05-14.
+**BACKLOG #12 — Progressive Deadline Reminder Notifications**
+Branch: `feat/progressive-reminders` (created from `dev` 2026-05-14)
 
-Next: Shorebird feasibility audit (BACKLOG #10) or stabilization triage (BACKLOG #11), per owner direction.
-
----
-
-## Branch
-
-`feat/mandatory-app-update` (created from `dev` 2026-05-14)
+Extend `sendTaskDeadlineReminders` from a single 24h reminder to a 72h + 24h progressive pattern. Fix the existing timezone bug in the same PR. Also fix the same-day check bug in `sendOverdueTaskEscalations`. Scope: `functions/index.js` + translation JSON files only.
 
 ---
 
 ## Locked planning decisions
 
-1. **No new packages** — `package_info_plus` and `url_launcher` are already in `pubspec.yaml`. `dart:io` `Platform` is stdlib.
-2. **Version source** — Firestore `config/app_settings` doc. Fields: `minimumAndroidVersion`, `minimumIosVersion` (semver strings), `androidStoreUrl`, `iosStoreUrl` (strings). Store URLs in the doc so TestFlight links / Play Store listings can be updated without a binary push.
-3. **Fail-open** — any error during the check (network unavailable, doc missing, field missing, parse failure, `url_launcher` failure) must never block the user. The version check gate is: `required: false` on any exception path.
-4. **Check location** — `SplashScreen` before `checkAuthStatus()`, in the existing `addPostFrameCallback`. No new Cubit.
-5. **No new Cubit** — `AppUpdateService` is a plain singleton with one async method. One-shot gate, not reactive UI state.
-6. **`UpdateRequiredScreen`** — non-dismissible (`PopScope(canPop: false)`). No `AppBar` leading/back button. If `launchUrl` fails, the screen stays blocked and the user retries by tapping again. No bypass flow of any kind.
-7. **Firestore rules** — new `match /config/{configId}` block: `allow read: if true; allow write: if isAdmin();`. Public read is intentional — no sensitive data, check must fire before auth.
-8. **Semver comparison** — split on `.`, parse each segment with `int.tryParse ?? 0`, compare as `[major, minor, patch]` tuple. Equal version = not below = pass through.
-9. **3 translation keys × 2 locales** → 245/245 parity.
-10. **`config/app_settings` doc must be created manually** in the Firestore console before the feature gates anything. Until the doc exists, fail-open means no one is blocked. Documented in `docs/release-checklist.md`.
-11. **Soft-update mode** (banner, not block) — explicitly out of scope.
-12. **`firebase deploy --only firestore:rules`** required after merge.
+1. **Thresholds** — 72h + 24h. No 48h threshold in this PR to avoid notification fatigue.
+2. **Deduplication fields** — Two server-written Timestamp fields on the task doc: `reminderSent72hAt` and `reminderSent24hAt`. Mirrors the existing `lastOverdueReminderAt` / `lastOverdueEscalationAt` pattern on `sendOverdueTaskEscalations`.
+3. **Timezone bug fix** — Fix in this PR. Both `sendTaskDeadlineReminders` query windows and the same-day guard on `sendOverdueTaskEscalations` must use the existing `ymdInJerusalem` / `jerusalemMidnightAsUTC` helpers, not raw `new Date()`.
+4. **Notification targets** — Employee (assignee) only. Admins are not notified before the deadline.
+5. **New i18n key** — `task_deadline_72h_body` added to: `functions/index.js` i18n table, `assets/translations/en.json`, `assets/translations/ar.json`. Reuse `task_deadline_title` and `task_deadline_tomorrow_body` (24h) unchanged.
+6. **PR scope** — `functions/index.js` + translation JSON files only. No new Dart files, no `TaskModel` changes, no `pubspec.yaml` changes, no UI changes.
+7. **Shorebird eligibility** — Not patch-eligible (functions change). Requires `firebase deploy --only functions` after merge.
 
 ---
 
 ## 1. Architecture (read this before any code)
 
-### 1.1 The fail-open invariant
+### 1.1 Existing function landscape
 
-Every exception path in `AppUpdateService.checkUpdate()` must return `(required: false, storeUrl: null)`. This covers:
+Two daily Cloud Functions interact with `dueDate`:
 
-- `FirebaseFirestore` throws (network unavailable, permission error)
-- Doc snapshot does not exist (`doc.exists == false`)
-- Version field is null, empty, or malformed
-- `int.tryParse` returns null on a non-numeric segment
-- `Platform.isAndroid` / `Platform.isIOS` behavior in unexpected environments
-
-**Do not** let any of these propagate to the caller as an exception. The `try-catch` in `checkUpdate()` is the sole safety net — wrap the entire method body.
-
-### 1.2 The no-bypass invariant
-
-`UpdateRequiredScreen` must never allow the user to continue using the app:
-
-- `PopScope(canPop: false)` prevents Android back gesture.
-- No `Navigator.pop`, `Navigator.pushReplacement`, or any other navigation away from this screen.
-- If `launchUrl` returns `false` or throws, show no error dialog — the user simply taps again. The screen remains.
-- No "skip" or "later" button. No timer that auto-dismisses. No tap-outside-to-dismiss.
-
-### 1.3 The semver invariant
-
-`"1.10.0" > "1.9.0"` is false under lexicographic string comparison. Always compare as integer tuples:
-
-```dart
-bool _isBelow(String installed, String minimum) {
-  final i = _parse(installed);
-  final m = _parse(minimum);
-  for (int j = 0; j < 3; j++) {
-    if (i[j] < m[j]) return true;
-    if (i[j] > m[j]) return false;
-  }
-  return false; // equal = not below minimum
-}
-
-List<int> _parse(String version) {
-  final parts = version.split('.');
-  return List.generate(3, (i) => int.tryParse(parts.elementAtOrNull(i) ?? '') ?? 0);
-}
-```
-
----
-
-## 2. `AppUpdateService`
-
-**File:** `lib/core/services/app_update_service.dart` (new, ~55 lines)
-
-```dart
-import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import '../constants/firebase_paths.dart';
-
-class AppUpdateService {
-  AppUpdateService._();
-  static final AppUpdateService instance = AppUpdateService._();
-
-  Future<({bool required, String? storeUrl})> checkUpdate() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      final doc = await FirebaseFirestore.instance
-          .collection(FirebasePaths.config)
-          .doc(FirebasePaths.appSettings)
-          .get();
-
-      if (!doc.exists) return (required: false, storeUrl: null);
-
-      final data = doc.data()!;
-      final isAndroid = Platform.isAndroid;
-
-      final minimumVersion = (isAndroid
-              ? data['minimumAndroidVersion']
-              : data['minimumIosVersion']) as String? ??
-          '0.0.0';
-      final storeUrl = (isAndroid
-          ? data['androidStoreUrl']
-          : data['iosStoreUrl']) as String?;
-
-      final required = _isBelow(info.version, minimumVersion);
-      return (required: required, storeUrl: required ? storeUrl : null);
-    } catch (_) {
-      return (required: false, storeUrl: null);
-    }
-  }
-
-  bool _isBelow(String installed, String minimum) {
-    final i = _parse(installed);
-    final m = _parse(minimum);
-    for (int j = 0; j < 3; j++) {
-      if (i[j] < m[j]) return true;
-      if (i[j] > m[j]) return false;
-    }
-    return false;
-  }
-
-  List<int> _parse(String version) {
-    final parts = version.split('.');
-    return List.generate(
-      3,
-      (i) => int.tryParse(parts.elementAtOrNull(i) ?? '') ?? 0,
-    );
-  }
-}
-```
-
-Notes:
-- `dart:io` `Platform` is safe on Android and iOS. The service is never called on web.
-- `PackageInfo.fromPlatform()` returns `version` as the semver string (e.g. `"1.1.0"`), matching the Firestore field format.
-- The Firestore read uses the default offline persistence cache. On first cold start with no network and no cached doc: `doc.exists == false` → fail-open.
-
----
-
-## 3. Firestore `config/app_settings` document
-
-**Collection:** `config`
-**Document ID:** `app_settings`
-
-Fields to create manually in the Firestore console before rollout:
-
-| Field | Type | Example value | Notes |
+| Function | Schedule | Covers | Dedup field |
 |---|---|---|---|
-| `minimumAndroidVersion` | string | `"1.1.0"` | Set to current shipped version initially so no one is blocked |
-| `minimumIosVersion` | string | `"1.1.0"` | Same |
-| `androidStoreUrl` | string | `"https://play.google.com/store/apps/details?id=<package_id>"` | Use `https://` form, not `market://` — universally compatible |
-| `iosStoreUrl` | string | `"https://testflight.apple.com/join/<invite_code>"` | TestFlight invite link; update here when link changes |
+| `sendTaskDeadlineReminders` | `0 9 * * *` Asia/Jerusalem | Pre-deadline: "due tomorrow" (24h) — **buggy timezone math** | None today |
+| `sendOverdueTaskEscalations` | `0 10 * * *` Asia/Jerusalem | Post-deadline: overdue escalation | `lastOverdueReminderAt`, `lastOverdueEscalationAt` on task doc |
 
-**To force a mandatory update:** bump `minimumAndroidVersion` or `minimumIosVersion` to the new required version. Takes effect on next app cold start — no binary push needed.
+### 1.2 The timezone bug (must fix)
 
----
+`sendTaskDeadlineReminders` computes the query window with raw JS `new Date()`:
 
-## 4. Splash screen changes
+```js
+// BUGGY — runs in UTC Cloud Functions environment; NOT Asia/Jerusalem wall-clock
+const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+const tomorrowStart = tomorrow;
+const tomorrowEnd = new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+```
 
-**File:** `lib/features/splash/presentation/screens/splash_screen.dart` (delta: ~15 lines)
+`ymdInJerusalem` and `jerusalemMidnightAsUTC` helpers already exist in the file (used by `generateRecurringTaskInstances`). The fix is to use them:
 
-Replace the single `checkAuthStatus` call with a `_checkVersionThenAuth()` helper:
+```js
+// CORRECT — Jerusalem wall-clock window
+const nowJer = ymdInJerusalem(now);
+const tomorrowMidnightUtc = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 1);
+const tomorrowEndUtc = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 2);
+```
 
-```dart
-@override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!mounted) return;
-    _checkVersionThenAuth();
-  });
+The same-day dedup check in `sendOverdueTaskEscalations` uses raw JS date methods:
+
+```js
+// BUGGY — raw UTC
+const sameDay = (ts) => {
+  const d = ts.toDate();
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth() === now.getMonth() &&
+         d.getDate() === now.getDate();
+};
+```
+
+Fix: use `sameDayJerusalem(ts.toDate(), now)` — this helper also already exists in the file.
+
+### 1.3 Deduplication invariant
+
+Each threshold must fire at most once per task per calendar day (Jerusalem wall-clock). The guard is:
+
+```js
+// Before sending the 72h reminder:
+if (task.reminderSent72hAt && sameDayJerusalem(task.reminderSent72hAt.toDate(), now)) {
+  continue; // already sent today
 }
 
-Future<void> _checkVersionThenAuth() async {
-  final result = await AppUpdateService.instance.checkUpdate();
-  if (!mounted) return;
-  if (result.required) {
-    Navigator.pushReplacementNamed(
-      context,
-      RouteNames.updateRequired,
-      arguments: result.storeUrl,
-    );
-    return;
-  }
-  context.read<AuthCubit>().checkAuthStatus(
-    languageCode: context.locale.languageCode,
-  );
-}
+// After sending, write back:
+await db.collection('tasks').doc(taskId).update({ reminderSent72hAt: admin.firestore.FieldValue.serverTimestamp() });
 ```
 
-**Read the actual splash screen before implementing** — match the exact existing method name and parameter for `checkAuthStatus`. The `BlocListener` in `build` and the rest of the splash UI are unchanged.
+Fields are absent on existing task docs (no migration needed — `undefined` / `null` → no same-day match → sends correctly on first trigger).
+
+### 1.4 `dueDate` semantics
+
+`TaskModel.dueDate` is semantically date-only. The app treats it as end-of-day in Asia/Jerusalem. A task with `dueDate = 2026-05-20` is considered due at 23:59:59 Jerusalem on that date.
+
+- **72h window**: `dueDate` falls in the Jerusalem calendar day that is exactly 3 days from today: `[dayAfterTomorrow midnight UTC, day+3 midnight UTC)`.
+- **24h window**: `dueDate` falls in the Jerusalem calendar day that is exactly 1 day from today (tomorrow): `[tomorrow midnight UTC, day+2 midnight UTC)`.
+
+Both windows must use Jerusalem midnight boundaries computed via `jerusalemMidnightAsUTC`.
 
 ---
 
-## 5. `UpdateRequiredScreen`
+## 2. `sendTaskDeadlineReminders` — full rewrite spec
 
-**File:** `lib/features/update/presentation/screens/update_required_screen.dart` (new, ~75 lines)
+**File:** `functions/index.js` — replace the existing `sendTaskDeadlineReminders` function body.
 
-```dart
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/constants/app_sizes.dart';
+### 2.1 Schedule
 
-class UpdateRequiredScreen extends StatelessWidget {
-  final String? storeUrl;
-  const UpdateRequiredScreen({super.key, this.storeUrl});
+Unchanged: `schedule: "0 9 * * *"`, `timeZone: "Asia/Jerusalem"`.
 
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/images/logo.png', width: 80),
-                const SizedBox(height: AppSizes.lg),
-                Text(
-                  'update_required_title'.tr(),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.md),
-                Text(
-                  'update_required_message'.tr(),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.xl),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: storeUrl == null ? null : () => _openStore(storeUrl!),
-                    child: Text('update_now'.tr()),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+### 2.2 Query windows (two separate Firestore queries)
 
-  Future<void> _openStore(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication)
-        .catchError((_) => false);
-  }
-}
+```js
+const now = new Date();
+const nowJer = ymdInJerusalem(now);
+
+// 72h window: tasks due in exactly 3 days (Jerusalem calendar day)
+const in72hStart = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 3);
+const in72hEnd   = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 4);
+
+// 24h window: tasks due in exactly 1 day (Jerusalem calendar day)
+const in24hStart = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 1);
+const in24hEnd   = jerusalemMidnightAsUTC(nowJer.year, nowJer.month, nowJer.day + 2);
 ```
 
-Notes:
-- `PopScope(canPop: false)` is the Flutter 3.12+ API. If the project's Flutter SDK is older, use `WillPopScope(onWillPop: () async => false, ...)` instead. Check `pubspec.yaml` `environment.sdk` before choosing.
-- Button `onPressed: null` when `storeUrl` is null — disabled, but user is still fully blocked. No bypass.
-- `_openStore` catches all errors silently. Screen stays. User retries by tapping.
+Run both Firestore queries in parallel:
+
+```js
+const [snap72h, snap24h] = await Promise.all([
+  db.collection('tasks')
+    .where('status', '!=', 'completed')
+    .where('dueDate', '>=', in72hStart)
+    .where('dueDate', '<', in72hEnd)
+    .get(),
+  db.collection('tasks')
+    .where('status', '!=', 'completed')
+    .where('dueDate', '>=', in24hStart)
+    .where('dueDate', '<', in24hEnd)
+    .get(),
+]);
+```
+
+### 2.3 Processing loop for each threshold
+
+Process the two result sets independently. For each task in each set:
+
+1. **Dedup guard** — check `reminderSent72hAt` (or `reminderSent24hAt`) for same-day Jerusalem match via `sameDayJerusalem`. If already sent today, skip.
+2. **Fetch assignee** — `db.collection('users').doc(task.assignedTo).get()`. If doc missing or user inactive, skip.
+3. **Send FCM** — reuse existing `sendFCMNotification` helper with appropriate i18n string (`task_deadline_72h_body` or `task_deadline_tomorrow_body`).
+4. **Write in-app notification** — reuse `createInAppNotification` helper.
+5. **Update dedup field** — `db.collection('tasks').doc(taskId).update({ reminderSent72hAt: admin.firestore.FieldValue.serverTimestamp() })`.
+
+Wrap the per-task logic in try/catch so a single failure does not abort the rest of the batch.
+
+### 2.4 i18n strings to use
+
+| Key | Threshold | Usage |
+|---|---|---|
+| `task_deadline_title` | both | Reuse existing — no change |
+| `task_deadline_72h_body` | 72h | **New** — e.g. "Your task '{taskTitle}' is due in 3 days" |
+| `task_deadline_tomorrow_body` | 24h | Reuse existing — no change |
 
 ---
 
-## 6. Routing
+## 3. `sendOverdueTaskEscalations` — same-day check fix
 
-**`lib/core/routes/route_names.dart`** — add:
+**File:** `functions/index.js` — targeted fix only; no logic change.
 
-```dart
-static const String updateRequired = '/update-required';
+Find the existing same-day check that uses raw JS date methods and replace with `sameDayJerusalem`:
+
+```js
+// BEFORE (buggy):
+const isSameDayReminderSent = task.lastOverdueReminderAt &&
+  task.lastOverdueReminderAt.toDate().getFullYear() === now.getFullYear() &&
+  task.lastOverdueReminderAt.toDate().getMonth() === now.getMonth() &&
+  task.lastOverdueReminderAt.toDate().getDate() === now.getDate();
+
+// AFTER (correct):
+const isSameDayReminderSent = task.lastOverdueReminderAt &&
+  sameDayJerusalem(task.lastOverdueReminderAt.toDate(), now);
 ```
 
-**`lib/core/routes/app_router.dart`** — add case before `default:`:
-
-```dart
-case RouteNames.updateRequired:
-  return MaterialPageRoute(
-    builder: (_) => UpdateRequiredScreen(
-      storeUrl: settings.arguments as String?,
-    ),
-    settings: settings,
-  );
-```
-
-Import: `import '../../features/update/presentation/screens/update_required_screen.dart';`
+Apply the same fix to `lastOverdueEscalationAt` same-day check.
 
 ---
 
-## 7. Firestore rules delta
+## 4. New translation key
 
-Add inside `match /databases/{database}/documents { ... }`, after the `task_templates` block:
+### `functions/index.js` i18n table
 
-```
-match /config/{configId} {
-  allow read: if true;
-  allow write: if isAdmin();
-}
-```
+Add under the existing deadline keys:
 
-`allow read: if true` is intentional — no sensitive data, must be readable before auth.
-
----
-
-## 8. `FirebasePaths` constants
-
-**`lib/core/constants/firebase_paths.dart`** — add:
-
-```dart
-static const String config = 'config';
-static const String appSettings = 'app_settings';
+```js
+task_deadline_72h_body: {
+  en: "Your task '{taskTitle}' is due in 3 days.",
+  ar: "مهمتك '{taskTitle}' تستحق خلال 3 أيام.",
+},
 ```
 
----
+### `assets/translations/en.json`
 
-## 9. Translations
-
-Add 3 keys × 2 locales. Current parity: 242/242. Target: 245/245.
-
-**`assets/translations/en.json`** — append:
+Add:
 
 ```json
-"update_required_title": "Update Required",
-"update_required_message": "A new version of the app is required to continue. Please update and reopen.",
-"update_now": "Update Now"
+"task_deadline_72h_body": "Your task '{taskTitle}' is due in 3 days."
 ```
 
-**`assets/translations/ar.json`** — append:
+### `assets/translations/ar.json`
+
+Add:
 
 ```json
-"update_required_title": "تحديث مطلوب",
-"update_required_message": "إصدار جديد من التطبيق مطلوب للمتابعة. يرجى التحديث وإعادة الفتح.",
-"update_now": "تحديث الآن"
+"task_deadline_72h_body": "مهمتك '{taskTitle}' تستحق خلال 3 أيام."
 ```
+
+Current translation parity: 245/245. Target after this PR: 246/246.
 
 Verify:
 ```bash
 python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
+# Expected: 246 246 []
 ```
-Expected: `245 245 []`
 
 ---
 
-## 10. Affected files
+## 5. Firestore rules
 
-| File | Change | Type |
-|---|---|---|
-| `lib/core/services/app_update_service.dart` | New singleton | New, ~55 lines |
-| `lib/core/constants/firebase_paths.dart` | +2 constants | +2 lines |
-| `lib/features/splash/presentation/screens/splash_screen.dart` | `_checkVersionThenAuth` helper | ~15 line delta |
-| `lib/features/update/presentation/screens/update_required_screen.dart` | New screen | New, ~75 lines |
-| `lib/core/routes/route_names.dart` | +1 constant | +1 line |
-| `lib/core/routes/app_router.dart` | +1 case + import | +6 line delta |
-| `firestore.rules` | `config/` block | +4 line delta |
-| `assets/translations/en.json` | +3 keys | +3 lines |
-| `assets/translations/ar.json` | +3 keys | +3 lines |
-| `docs/release-checklist.md` | `config/app_settings` creation + `firebase deploy` steps | +8 lines |
-
-**Zero changes to:** `pubspec.yaml`, `main.dart`, `app.dart`, Cloud Functions, any existing cubit, any task/auth/notification screen, `AppDrawer`.
+No change needed. `reminderSent72hAt` and `reminderSent24hAt` are written by Cloud Functions (admin SDK, bypasses rules). The existing `onlyAllowedTaskStatusFieldsChanged` guard on client writes already blocks clients from writing unknown fields — no update required.
 
 ---
 
-## 11. Quality gates
+## 6. Affected files
+
+| File | Change |
+|---|---|
+| `functions/index.js` | Rewrite `sendTaskDeadlineReminders` (72h + 24h, timezone fix, dedup fields); fix same-day check in `sendOverdueTaskEscalations`; add `task_deadline_72h_body` to i18n table |
+| `assets/translations/en.json` | +1 key (`task_deadline_72h_body`) |
+| `assets/translations/ar.json` | +1 key (`task_deadline_72h_body`) |
+
+**Zero changes to:** any `.dart` file, `pubspec.yaml`, `firestore.rules`, `main.dart`, any cubit, any screen, any model, any test.
+
+---
+
+## 7. Quality gates
 
 ```bash
-flutter analyze          # zero warnings
-flutter test             # all existing tests green (no new unit tests — Platform.isAndroid
-                         # throws in test context; cover via smoke tests instead)
-cd functions && npm run lint  # clean (no CF changes, confirming no regression)
+cd functions && npm run lint          # zero warnings
 python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
-# Expected: 245 245 []
+# Expected: 246 246 []
+flutter analyze                       # zero warnings (no Dart changes; confirm no regression)
+flutter test                          # all green (no Dart changes; confirm no regression)
+```
+
+Post-merge deployment (not a quality gate, but required):
+```bash
+firebase deploy --only functions
 ```
 
 ---
 
-## 12. Smoke tests
+## 8. Smoke tests
 
-| # | Environment | Test |
+| # | Test | Expected |
 |---|---|---|
-| 1 | real device | Installed `1.1.0`, doc minimum `1.1.0` → normal launch, no block |
-| 2 | real device | Installed `1.1.0`, minimum bumped to `1.2.0` → cold start shows `UpdateRequiredScreen` |
-| 3 | real device | Tap "Update Now" → correct store opens (Play Store on Android, TestFlight on iOS) |
-| 4 | real device | Android back gesture on `UpdateRequiredScreen` → screen stays, no exit |
-| 5 | real device | Arabic locale → `UpdateRequiredScreen` in Arabic, RTL correct |
-| 6 | emulator | Airplane mode, doc not cached → fail-open, normal splash |
-| 7 | emulator | `config/app_settings` doc does not exist → fail-open, normal splash |
-| 8 | emulator | `storeUrl` field absent, update required → `UpdateRequiredScreen` shows, button disabled |
-| 9 | emulator | Minimum `"1.10.0"`, installed `"1.9.0"` → blocked (tuple comparison, not string) |
-| 10 | emulator | Minimum `"1.1.0"`, installed `"1.1.0"` → pass through (equal = not below) |
-| 11 | Firestore console | Admin bumps minimum → next cold start affected users are blocked |
+| 1 | Task due 3 days from now, function runs → FCM sent to assignee | Notification received; `reminderSent72hAt` written on task doc |
+| 2 | Same task, function runs again same day → no duplicate FCM | No second notification; `reminderSent72hAt` already set |
+| 3 | Task due tomorrow, function runs → FCM sent to assignee | Notification received; `reminderSent24hAt` written on task doc |
+| 4 | Same task, function runs again same day → no duplicate | No second notification |
+| 5 | Task due in 3 days AND due tomorrow (two separate tasks) → both FCM sent | Two notifications; each task's dedup field set independently |
+| 6 | Task already completed → no reminder sent | No notification for either threshold |
+| 7 | Task due in 3 days, assignee user doc missing → function continues without crash | Remaining tasks processed normally |
+| 8 | Overdue task, `lastOverdueReminderAt` set to today (Jerusalem) → no duplicate escalation | Escalation skipped; Jerusalem-aware same-day check correct |
+| 9 | Arabic-locale assignee → 72h notification body in Arabic | `task_deadline_72h_body` Arabic string used |
 
 ---
 
-## 13. Definition of Done
+## 9. Definition of Done
 
-- [ ] `AppUpdateService` at `lib/core/services/app_update_service.dart`; entire body in try-catch; all exception paths return `(required: false, storeUrl: null)`.
-- [ ] `FirebasePaths.config` and `FirebasePaths.appSettings` added.
-- [ ] `SplashScreen._checkVersionThenAuth()` fires before `checkAuthStatus()`; `BlocListener` and splash UI unchanged.
-- [ ] `UpdateRequiredScreen`: `PopScope(canPop: false)` present; button disabled when `storeUrl` null; `_openStore` catches all errors silently; no navigation out.
-- [ ] `RouteNames.updateRequired` and `AppRouter` case registered.
-- [ ] Firestore rules `config/` block added.
-- [ ] Translation parity `245 245 []`.
-- [ ] `docs/release-checklist.md` updated with `config/app_settings` creation step and `firebase deploy --only firestore:rules` step.
+- [ ] `sendTaskDeadlineReminders` rewritten with 72h + 24h threshold windows using `jerusalemMidnightAsUTC`.
+- [ ] `reminderSent72hAt` and `reminderSent24hAt` dedup fields written to task doc after each send; same-day Jerusalem guard prevents duplicates.
+- [ ] Timezone bug in `sendTaskDeadlineReminders` query windows fixed (uses `ymdInJerusalem` + `jerusalemMidnightAsUTC`, not raw `new Date()`).
+- [ ] Same-day check bug in `sendOverdueTaskEscalations` fixed (`sameDayJerusalem` used for both `lastOverdueReminderAt` and `lastOverdueEscalationAt`).
+- [ ] `task_deadline_72h_body` added to `functions/index.js` i18n table (en + ar).
+- [ ] `task_deadline_72h_body` added to `assets/translations/en.json` and `assets/translations/ar.json`; parity `246 246 []`.
+- [ ] `cd functions && npm run lint` clean.
 - [ ] `flutter analyze` clean; `flutter test` green.
-- [ ] No changes outside files listed in §10.
-- [ ] Workflow docs updated (SESSION_LOG, BACKLOG #9 Done, CURRENT_TASK reset).
-- [ ] PR title: `feat(app): add mandatory app-update gate with Firestore version config`.
+- [ ] No changes outside files listed in §6.
+- [ ] Workflow docs updated (SESSION_LOG, BACKLOG #12 Done, CURRENT_TASK reset).
+- [ ] PR title: `feat(notifications): add 72h progressive deadline reminder and fix timezone bug`.
+- [ ] `firebase deploy --only functions` executed post-merge (not a CI gate, but required).
 
 ---
 
-## 14. Risks
+## 10. Out of scope
 
-- **`Platform.isAndroid` in unit tests** — throws `UnsupportedError` in test context. Do not write unit tests that exercise the platform branch. Cover with smoke tests #1–#3.
-- **`config/app_settings` doc absent on first deploy** — fail-open is correct; feature is inert until the admin creates the doc. Release checklist update is the mitigation.
-- **Firestore offline cache staleness** — if a user has a cached doc from when the minimum was lower, they pass through until next online cold start. Accepted limitation; the gate fires correctly once online.
-- **`market://` scheme on Android** — use `https://play.google.com/store/...` form in `androidStoreUrl`, not `market://`. The `https://` form works universally; `market://` fails if Play Store is not the default handler.
-- **`PopScope` Flutter version** — `PopScope` requires Flutter 3.12+. Check `environment.sdk` in `pubspec.yaml`. If older, use `WillPopScope(onWillPop: () async => false, ...)`.
-
----
-
-## 15. Out of scope
-
-- Soft-update mode (banner, dismissible)
-- Admin UI for version management (Firestore console is sufficient)
-- Web platform support (`dart:io` `Platform` not available on web)
-- Mid-session update checks (cold-start gate only)
-- Shorebird patch vs store-build semantics (BACKLOG #10 audit)
+- 48h threshold (explicitly deferred to avoid notification fatigue)
+- Admin pre-deadline notifications
+- Flutter UI changes of any kind
+- Shorebird patch (functions change → ineligible)
+- `firestore.rules` changes
+- `pubspec.yaml` changes
 
 ---
 
-## 16. Workflow doc updates required on completion
+## 11. Workflow doc updates required on completion
 
 | File | Change |
 |---|---|
 | `CURRENT_TASK.md` | Reset to "No active task" |
-| `BACKLOG.md` | Mark item #9 Done with completion date and quality gate results |
+| `BACKLOG.md` | Mark item #12 Done with completion date and quality gate results |
 | `SESSION_LOG.md` | Append implementation entry at top |
-| `docs/release-checklist.md` | Add `config/app_settings` creation step + `firebase deploy --only firestore:rules` |
