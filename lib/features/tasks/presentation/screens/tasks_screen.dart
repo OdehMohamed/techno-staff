@@ -43,18 +43,22 @@ class _TasksScreenState extends State<TasksScreen> {
     super.dispose();
   }
 
-  void _loadTasks() {
+  Future<void> _loadTasks({bool silent = false}) async {
     final authState = context.read<AuthCubit>().state;
     final user = authState.user;
 
     if (user == null) return;
 
     if (user.role == 'admin') {
-      context.read<TasksCubit>().fetchAllTasks();
-      context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
+      await Future.wait([
+        context.read<TasksCubit>().fetchAllTasks(silent: silent),
+        context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
+      ]);
     } else {
-      context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
-      context.read<TasksCubit>().fetchTasksCreatedBy(user.id);
+      await Future.wait([
+        context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
+        context.read<TasksCubit>().fetchTasksCreatedBy(user.id, silent: silent),
+      ]);
     }
   }
 
@@ -349,14 +353,44 @@ class _TasksScreenState extends State<TasksScreen> {
     required AppUser? currentUser,
     required bool isAdmin,
   }) {
-    if (status == TasksStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
+    return RefreshIndicator(
+      onRefresh: () => _loadTasks(silent: true),
+      child: _buildTasksTabBody(
+        status: status,
+        errorKey: errorKey,
+        tasks: tasks,
+        currentUser: currentUser,
+        isAdmin: isAdmin,
+      ),
+    );
+  }
+
+  Widget _buildTasksTabBody({
+    required TasksStatus status,
+    required String? errorKey,
+    required List<TaskModel> tasks,
+    required AppUser? currentUser,
+    required bool isAdmin,
+  }) {
+    if (status == TasksStatus.loading && tasks.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 200),
+          Center(child: CircularProgressIndicator()),
+        ],
+      );
     }
 
     if (status == TasksStatus.error) {
-      return EmptyStateWidget(
-        icon: Icons.error_outline,
-        titleKey: errorKey ?? 'unknown_error',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          EmptyStateWidget(
+            icon: Icons.error_outline,
+            titleKey: errorKey ?? 'unknown_error',
+          ),
+        ],
       );
     }
 
@@ -364,15 +398,25 @@ class _TasksScreenState extends State<TasksScreen> {
 
     if (filteredTasks.isEmpty) {
       if (tasks.isNotEmpty && _filters.hasActiveFilters) {
-        return const EmptyStateWidget(
-          icon: Icons.search_off,
-          titleKey: 'no_matching_tasks',
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            EmptyStateWidget(
+              icon: Icons.search_off,
+              titleKey: 'no_matching_tasks',
+            ),
+          ],
         );
       }
 
-      return const EmptyStateWidget(
-        icon: Icons.task_alt_outlined,
-        titleKey: 'no_tasks_found',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          EmptyStateWidget(
+            icon: Icons.task_alt_outlined,
+            titleKey: 'no_tasks_found',
+          ),
+        ],
       );
     }
 
@@ -424,6 +468,7 @@ class _TasksScreenState extends State<TasksScreen> {
     required bool isAdmin,
   }) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: tasks.length,
       separatorBuilder: (_, __) => const SizedBox(height: AppSizes.md),
       itemBuilder: (context, index) {

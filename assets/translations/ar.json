@@ -245,5 +245,6 @@
   "weekday_thu": "الخميس",
   "weekday_fri": "الجمعة",
   "weekday_sat": "السبت",
-  "weekday_sun": "الأحد"
+  "weekday_sun": "الأحد",
+  "no_internet_connection": "لا يوجد اتصال بالإنترنت"
 }

@@ -29,7 +29,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DashboardCubit>().loadAdminStats();
+      _loadData();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthCubit>().state.user;
@@ -37,6 +37,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         context.read<NotificationsCubit>().listenToNotifications(user.id);
       }
     });
+  }
+
+  Future<void> _loadData({bool silent = false}) async {
+    await context.read<DashboardCubit>().loadAdminStats(silent: silent);
   }
 
   @override
@@ -67,14 +71,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             constraints: const BoxConstraints(maxWidth: 1100),
             child: BlocBuilder<DashboardCubit, DashboardState>(
               builder: (context, state) {
-                if (state.status == DashboardStatus.loading) {
+                if (state.status == DashboardStatus.initial) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _loadData();
+                  });
+                }
+
+                final isInitialLoad =
+                    state.status == DashboardStatus.loading &&
+                    state.stats.isEmpty;
+                if (isInitialLoad) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (state.status == DashboardStatus.error) {
-                  return const EmptyStateWidget(
-                    icon: Icons.error_outline,
-                    titleKey: 'failed_to_load_dashboard',
+                  return RefreshIndicator(
+                    onRefresh: () => _loadData(silent: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        EmptyStateWidget(
+                          icon: Icons.error_outline,
+                          titleKey: 'failed_to_load_dashboard',
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -88,10 +110,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ? 0
                     : ((completedTasks / totalTasks) * 100).round();
 
-                return SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                return RefreshIndicator(
+                  onRefresh: () => _loadData(silent: true),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       SectionHeader(
                         title: 'admin_dashboard'.tr(),
                         subtitle: 'dashboard_admin_subtitle'.tr(),
@@ -506,7 +531,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             );
                           },
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },

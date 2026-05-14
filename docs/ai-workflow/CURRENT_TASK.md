@@ -8,37 +8,11 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-**v1.1.0 stabilization: offline connectivity guard + pull-to-refresh**
+No active task — v1.1.0 ready for release cut.
 
-Branch: `feat/connectivity-and-refresh` (created from `dev` after PR #29 squash-merge, 2026-05-14).
+Latest completed item: offline connectivity banner + pull-to-refresh on key screens (`feat/connectivity-and-refresh`).
 
-These are the two remaining v1.1.0 blockers before cutting the testing release:
-
-1. **Offline guard** — a top banner that appears whenever the device has no network connection, so testers never silently interact with stale Firestore cache data.
-2. **Pull-to-refresh** — manual refresh gesture on the four highest-traffic screens, implemented without full-screen loading flashes.
-
-Both are client-only. Zero changes to Firestore rules, Cloud Functions, data models, routing, or existing cubit state shape (other than adding an optional `silent` parameter to fetch methods).
-
----
-
-## Branch
-
-`feat/connectivity-and-refresh` (created from `dev` 2026-05-14)
-
----
-
-## Locked planning decisions
-
-1. **Package:** `connectivity_plus ^6.x` (Flutter team official; no location permission needed). Reports network presence, not true internet reachability — sufficient for our Firebase use case.
-2. **Overlay mechanism:** `MaterialApp.builder` Stack, NOT a route push. The overlay sits above all routes without touching the navigation stack.
-3. **Overlay style:** top-anchored red banner with localized text. Lightweight — no modal, no blocking interaction.
-4. **No auto-refresh on reconnect** in this PR. When the banner disappears, the user pulls to refresh manually.
-5. **Silent refresh parameter:** `{bool silent = false}` added to all cubit fetch methods called from pull-to-refresh. When `silent: true`, the loading status emit is skipped — existing data stays visible during refresh.
-6. **Empty/error states are wrapped in a single-item `ListView`** inside every `RefreshIndicator` so the drag gesture always activates (a non-scrollable widget blocks the indicator).
-7. **Screens in scope:** `TasksScreen`, `EmployeeHomeScreen`, `AdminDashboardScreen`, `EmployeesScreen`.
-8. **Screens out of scope:** `TaskDetailsScreen`, `TaskDetailsLoaderScreen`, all form screens, `ReportsScreen`, `NotificationsScreen` (already has it), `RecurringTasksScreen` (already has it), settings/auth/about screens.
-9. **One translation key:** `no_internet_connection` × 2 locales.
-10. **No backend changes** of any kind.
+See `BACKLOG.md` for follow-up work and `NEXT_STEPS.md` for deferred ideas.
 
 ---
 

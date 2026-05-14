@@ -1,3 +1,12 @@
+## 2026-05-14 — GitHub Copilot (GPT-5.4) — Implement connectivity banner and pull-to-refresh
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feat/connectivity-and-refresh`
+- **Goal**: Implement the locked v1.1.0 stabilization spec: offline connectivity banner plus pull-to-refresh on the four highest-traffic screens without loading flashes.
+- **Outcome**: Added `connectivity_plus` and `ConnectivityService`, wired an app-wide `MaterialApp.builder` red offline banner overlay, added silent refresh parameters to `TasksCubit`, `DashboardCubit`, and `EmployeesCubit`, and shipped pull-to-refresh on `TasksScreen`, `EmployeeHomeScreen`, `AdminDashboardScreen`, and `EmployeesScreen` with proper initial-load guards and scrollable empty/error states. Quality gates passed: `flutter analyze` clean, `flutter test` 6/6 passed, `cd functions && npm run lint` clean, translation parity `242 242 []`.
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `lib/core/services/connectivity_service.dart`, `lib/app/app.dart`, `lib/features/tasks/presentation/cubit/tasks_cubit.dart`, `lib/features/dashboard/presentation/cubit/dashboard_cubit.dart`, `lib/features/employees/presentation/cubit/employees_cubit.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/employee/presentation/screens/employee_home_screen.dart`, `lib/features/admin/presentation/screens/admin_dashboard_screen.dart`, `lib/features/employees/presentation/screens/employees_screen.dart`, `assets/translations/en.json`, `assets/translations/ar.json`, workflow docs.
+- **Follow-ups**: Push branch when GitHub connectivity is available, open PR with the locked title, then cut the v1.1.0 testing release after merge.
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — Plan feat/connectivity-and-refresh (offline guard + pull-to-refresh)
 
 - **Agent**: Claude Code (Sonnet 4.6) — acting as lead / architect (planning only, no implementation code).

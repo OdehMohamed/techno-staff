@@ -54,14 +54,24 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
             constraints: const BoxConstraints(maxWidth: 1100),
             child: BlocBuilder<EmployeesCubit, EmployeesState>(
               builder: (context, state) {
-                if (state.status == EmployeesStatus.loading) {
+                if (state.status == EmployeesStatus.loading &&
+                    state.employees.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (state.status == EmployeesStatus.error) {
-                  return EmptyStateWidget(
-                    icon: Icons.error_outline,
-                    titleKey: state.errorMessage ?? 'unknown_error',
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<EmployeesCubit>().fetchEmployees(silent: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        EmptyStateWidget(
+                          icon: Icons.error_outline,
+                          titleKey: state.errorMessage ?? 'unknown_error',
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -72,9 +82,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                     .toList();
 
                 if (visibleEmployees.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.group_off_outlined,
-                    titleKey: 'no_employees_found',
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<EmployeesCubit>().fetchEmployees(silent: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        EmptyStateWidget(
+                          icon: Icons.group_off_outlined,
+                          titleKey: 'no_employees_found',
+                        ),
+                      ],
+                    ),
                   );
                 }
 
@@ -87,18 +106,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           .tr(),
                     ),
                     Expanded(
-                      child: ListView.separated(
-                        itemCount: visibleEmployees.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: AppSizes.md),
-                        itemBuilder: (context, index) {
-                          final employee = visibleEmployees[index];
+                      child: RefreshIndicator(
+                        onRefresh: () => context
+                            .read<EmployeesCubit>()
+                            .fetchEmployees(silent: true),
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: visibleEmployees.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSizes.md),
+                          itemBuilder: (context, index) {
+                            final employee = visibleEmployees[index];
 
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeInOut,
-                            child: AppCard(
-                              child: Row(
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeInOut,
+                              child: AppCard(
+                                child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   CircleAvatar(
@@ -173,8 +197,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                 ],
                               ),
                             ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],

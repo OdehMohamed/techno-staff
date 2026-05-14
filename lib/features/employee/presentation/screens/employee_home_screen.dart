@@ -29,11 +29,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthCubit>().state.user;
-      if (user != null) {
-        context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
-        context.read<DashboardCubit>().loadEmployeeStats(user.id);
-      }
+      _loadData();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -42,6 +38,16 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         context.read<NotificationsCubit>().listenToNotifications(user.id);
       }
     });
+  }
+
+  Future<void> _loadData({bool silent = false}) async {
+    final user = context.read<AuthCubit>().state.user;
+    if (user == null) return;
+
+    await Future.wait([
+      context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
+      context.read<DashboardCubit>().loadEmployeeStats(user.id, silent: silent),
+    ]);
   }
 
   @override
@@ -64,28 +70,41 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 return BlocBuilder<TasksCubit, TasksState>(
                   builder: (context, tasksState) {
                     if (user != null &&
-                        tasksState.tasksAssignedToMeStatus ==
-                            TasksStatus.initial) {
+                        (tasksState.tasksAssignedToMeStatus == TasksStatus.initial ||
+                            dashboardState.status == DashboardStatus.initial)) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (!mounted) return;
-                        context.read<TasksCubit>().fetchTasksAssignedTo(
-                          user.id,
-                        );
+                        _loadData();
                       });
                     }
 
-                    if (dashboardState.status == DashboardStatus.loading ||
+                    final isInitialLoad =
+                        dashboardState.status == DashboardStatus.loading &&
+                        dashboardState.stats.isEmpty &&
                         tasksState.tasksAssignedToMeStatus ==
-                            TasksStatus.loading) {
+                            TasksStatus.loading &&
+                        tasksState.tasksAssignedToMe.isEmpty;
+
+                    if (isInitialLoad) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    if (dashboardState.status == DashboardStatus.error ||
-                        tasksState.tasksAssignedToMeStatus ==
-                            TasksStatus.error) {
-                      return const EmptyStateWidget(
-                        icon: Icons.error_outline,
-                        titleKey: 'failed_to_load_dashboard',
+                    final hasError =
+                        dashboardState.status == DashboardStatus.error ||
+                        tasksState.tasksAssignedToMeStatus == TasksStatus.error;
+
+                    if (hasError) {
+                      return RefreshIndicator(
+                        onRefresh: () => _loadData(silent: true),
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            EmptyStateWidget(
+                              icon: Icons.error_outline,
+                              titleKey: 'failed_to_load_dashboard',
+                            ),
+                          ],
+                        ),
                       );
                     }
 
@@ -100,10 +119,13 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                         ? 0
                         : ((completedTasks / totalTasks) * 100).round();
 
-                    return SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    return RefreshIndicator(
+                      onRefresh: () => _loadData(silent: true),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           SectionHeader(
                             title: 'employee_home'.tr(),
                             subtitle: user == null
@@ -242,7 +264,8 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                                 );
                               }).toList(),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },

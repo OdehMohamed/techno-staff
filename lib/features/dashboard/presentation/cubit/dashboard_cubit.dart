@@ -10,8 +10,10 @@ class DashboardCubit extends Cubit<DashboardState> {
     : _dashboardRepository = dashboardRepository,
       super(const DashboardState());
 
-  Future<void> loadAdminStats() async {
-    emit(state.copyWith(status: DashboardStatus.loading, clearError: true));
+  Future<void> loadAdminStats({bool silent = false}) async {
+    if (!silent) {
+      emit(state.copyWith(status: DashboardStatus.loading, clearError: true));
+    }
 
     try {
       final stats = await _dashboardRepository.getAdminStats(
@@ -39,8 +41,10 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
-  Future<void> loadEmployeeStats(String userId) async {
-    emit(state.copyWith(status: DashboardStatus.loading, clearError: true));
+  Future<void> loadEmployeeStats(String userId, {bool silent = false}) async {
+    if (!silent) {
+      emit(state.copyWith(status: DashboardStatus.loading, clearError: true));
+    }
 
     try {
       final stats = await _dashboardRepository.getEmployeeStats(userId);

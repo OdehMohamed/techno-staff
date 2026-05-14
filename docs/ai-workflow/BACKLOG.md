@@ -124,10 +124,11 @@ _None yet._
 #### 8. Offline connectivity guard + pull-to-refresh — `feat/connectivity-and-refresh`
 
 - **Priority**: Should-fix (v1.1.0 stabilization)
-- **Status**: In progress
+- **Status**: Done
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.1.0
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — shipped `connectivity_plus` + `ConnectivityService`, `MaterialApp.builder` offline banner overlay, silent refresh fetch parameters in `TasksCubit` / `DashboardCubit` / `EmployeesCubit`, pull-to-refresh on `TasksScreen`, `EmployeeHomeScreen`, `AdminDashboardScreen`, and `EmployeesScreen`, and 1 new translation key × 2 locales (`242 242 []`). Quality gates: `flutter analyze` clean, `flutter test` 6/6 passed, `cd functions && npm run lint` clean.
 - **Planned**: 2026-05-14 (branch `feat/connectivity-and-refresh`, created from `dev` after PR #29 squash-merge)
 - **Description**: Two v1.1.0 pre-release stabilization items shipped together. (1) **Offline guard**: top-anchored red banner via `MaterialApp.builder` Stack overlay (NOT a route push). Powered by `connectivity_plus ^6.x` singleton `ConnectivityService` with `Stream<bool>`. Banner is informational only — does not block navigation, disable buttons, or intercept Firestore writes. (2) **Pull-to-refresh**: `RefreshIndicator` on `TasksScreen` (per-tab, due to `TabBarView` incompatibility), `EmployeeHomeScreen`, `AdminDashboardScreen`, `EmployeesScreen`. Silent refresh via `{bool silent = false}` on cubit fetch methods to avoid full-screen spinner flash during refresh. Initial load guard: full-screen spinner only when data list is empty. Empty/error states wrapped in `ListView` so drag gesture always reaches the indicator. 1 new translation key `no_internet_connection` × 2 locales → 242/242 parity. Zero changes to Firestore rules, Cloud Functions, data models, routing, or existing state shape. Spec in `CURRENT_TASK.md`.
 - **Acceptance criteria**: (1) Airplane mode triggers red banner; banner disappears on reconnect. (2) Pull-to-refresh on all 4 screens updates data without full-screen loading flash. (3) Empty/error states on all 4 screens are still draggable. (4) `flutter analyze` clean, `flutter test` all green, translation parity `242 242 []`.
