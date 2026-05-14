@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — Merge PR #31 feat/mandatory-app-update
+
+- **Agent**: Claude Code (Sonnet 4.6).
+- **Branch**: `dev` (squash-merge of `feat/mandatory-app-update`).
+- **Goal**: Squash-merge PR #31 after runtime validation, update workflow docs, clean up branch.
+- **Outcome**: Squash-merged at `b15e86a`. Remote branch deleted. BACKLOG #9 marked Done. CURRENT_TASK reset. `dev` pushed to remote.
+- **Files touched**: `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Owner decides: Shorebird feasibility audit (BACKLOG #10) or stabilization/reminder/UI cycle (BACKLOG #11–#13) next.
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — Plan feat/mandatory-app-update (BACKLOG #9)
 
 - **Agent**: Claude Code (Sonnet 4.6) — lead / architect (planning only, no implementation code).

@@ -8,13 +8,9 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-**Mandatory app-update system (v1.2 BACKLOG #9)**
+No active task — BACKLOG #9 (mandatory app-update) merged and validated 2026-05-14.
 
-Branch: `feat/mandatory-app-update` (created from `dev` post-v1.1.0, 2026-05-14).
-
-On cold start, the app checks a minimum supported version stored in a Firestore `config/app_settings` doc. If the installed version is below the minimum, the user is shown a non-dismissible `UpdateRequiredScreen` with a direct link to the store. Any infrastructure failure (network down, doc missing, parse error) fails open — never blocks users for configuration reasons.
-
-This is a **production safety valve**: once live, the minimum version can be bumped in the Firestore console at any time to force users off a bad build without a code push.
+Next: Shorebird feasibility audit (BACKLOG #10) or stabilization triage (BACKLOG #11), per owner direction.
 
 ---
 

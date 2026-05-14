@@ -144,10 +144,11 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 9. Mandatory app-update system — `feat/mandatory-app-update`
 
 - **Priority**: Should-fix (operational safety valve)
-- **Status**: In progress — planning round 2026-05-14
+- **Status**: Done — 2026-05-14
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — shipped `AppUpdateService` singleton (fail-open Firestore version check, semver tuple comparison), `UpdateRequiredScreen` (non-dismissible, `PopScope(canPop:false)`, store deep-link via `url_launcher`), `SplashScreen._checkVersionThenAuth()` hook before `checkAuthStatus()`, `config/` Firestore rules block (public read), `RouteNames.updateRequired` + `AppRouter` case, 3 translation keys × 2 locales (245/245 parity), `docs/release-checklist.md` update. `firebase deploy --only firestore:rules` executed. `config/app_settings` doc created in Firestore console. Runtime-validated: pass-through, force-update block, non-dismissible navigation, Android store link, iOS null-url disabled button. Quality gates: `flutter analyze` clean, `flutter test` green.
 - **Description**: On app startup, fetch a minimum supported version from a Firestore `config/app_settings` doc (`minimumAndroidVersion` / `minimumIosVersion` string fields). If the installed version is below minimum, block app usage with a non-dismissible update UI that deep-links to Google Play (Android) or TestFlight/App Store (iOS). Version comparison uses tuple semver logic (not string comparison). Blocking UI appears before or during splash, before any auth gate. Soft-update mode (banner, not block) is a future extension — out of scope for this PR. Firestore `config/app_settings` chosen over Firebase Remote Config (already in stack, no new service, admin-editable from Firestore console).
 - **Acceptance criteria**: (1) Device with version below minimum is blocked on cold start with update UI and correct store link. (2) Device with version at or above minimum passes through normally. (3) Firestore doc update takes effect on next app cold start (no binary push needed). (4) `flutter analyze` clean, `flutter test` green.
 
