@@ -58,12 +58,12 @@ _See `BACKLOG.md` v1.2 section for the locked ordered roadmap._
 
 ## Architecture
 
-### Shorebird — patch-eligible vs store-build-required release distinction
+### Shorebird — verify asset/translation patching behaviour
 
 - **Category**: Architecture / Release
-- **Why now**: If Shorebird is adopted (pending feasibility audit in BACKLOG item #10), the release checklist needs explicit criteria for when a patch is sufficient vs when a full store binary is required.
-- **Sketch**: Patch-eligible = Dart-only change, no plugin native layer touched, no new permissions, no new platform channels. Store-build-required = anything else. The mandatory update system (BACKLOG item #9) version bump always requires a store build.
-- **Open questions**: Depends entirely on the outcome of the Shorebird feasibility audit. Promote to BACKLOG only if audit recommends adoption.
+- **Why now**: BACKLOG #10 audit (2026-05-14) could not confirm whether Shorebird patches include asset file changes (e.g. `assets/translations/*.json`). If assets cannot be patched, any translation key addition or change requires a full store binary even if the Dart code is otherwise unchanged.
+- **Sketch**: On the first Shorebird-enabled build: create a patch that modifies one translation value only (no Dart code change). Verify the change reaches a device without a store update. Record the result in `docs/release-checklist.md`.
+- **Open questions**: None — this is a one-time empirical test, not a design decision.
 
 ## UI / UX Enhancements
 

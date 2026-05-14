@@ -155,12 +155,12 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 10. Shorebird feasibility audit — (planning only, no branch yet)
 
 - **Priority**: Should-fix (release strategy decision)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: Done — 2026-05-14 (decision: conditional adoption)
+- **Owner**: Claude Code (Sonnet 4.6) — audit; Mohamed Odeh — decision
 - **Target release**: N/A (audit only)
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — full audit across free-tier limits, Dart-only patch surface, FCM compatibility (ANR bug #695 confirmed fixed), Crashlytics integration (adequate via custom key for testing phase), iOS App Store compliance (guideline 3.3.1b), obfuscation status (iOS requires Flutter 3.41.2+, current install 3.35.7), private-repo CI limitation (free tier excludes it — manual CLI), operational workflow change, longevity risk. Decision: **conditional adoption**. Patch-eligibility checklist and Shorebird release flow added to `docs/release-checklist.md`. Decision recorded in `DECISIONS_LOG.md`.
 - **Description**: Dedicated read-only audit (no implementation) covering: free-tier constraints (5,000 active devices/month, 1 app), Dart-only patch surface and what that excludes (`firebase_messaging` background isolate, `local_auth` biometric, FCM token setup, `flutter_local_notifications` channel config), Crashlytics symbol mapping compatibility with patched builds, iOS App Store / TestFlight policy compliance, rollback behavior, and explicit semantics for how Shorebird patches and the mandatory update system coexist (patch = Dart-only silent fix; mandatory update = breaking change requiring a full binary). Decision gates release strategy for all subsequent features.
-- **Acceptance criteria**: Written decision in `DECISIONS_LOG.md` — adopt or reject with specific constraints documented. If adopted: release checklist updated to distinguish patch-eligible from store-build-required changes.
 
 #### 11. Stabilization — real-world usage triage (ongoing)
 

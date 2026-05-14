@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — Shorebird feasibility audit (BACKLOG #10)
+
+- **Agent**: Claude Code (Sonnet 4.6) — lead / architect (read-only audit, no implementation).
+- **Branch**: N/A (audit only; no code changes).
+- **Goal**: Determine whether Shorebird code push is viable for this project and, if so, under what constraints.
+- **Outcome**: Decision: **conditional adoption**. Shorebird adopted as supplemental Dart-only patch channel on the free tier. Store releases remain the primary release path. Key findings: free tier = 5,000 patch installs/month (sufficient for testing-phase group); FCM ANR issue (Shorebird #695) confirmed fixed; Crashlytics works via custom patch-number key; iOS App Store compliant (guideline 3.3.1b); iOS obfuscation requires Flutter 3.41.2+ (current 3.35.7 — acceptable for testing phase); private repo CI excluded from free tier (manual CLI workflow); longevity risk acknowledged. Two systems confirmed complementary: mandatory update gate = binary required; Shorebird = Dart-only silent fix. Patch-eligibility checklist and Shorebird release flows written into `docs/release-checklist.md`. Decision and constraints recorded in `DECISIONS_LOG.md`. BACKLOG #10 marked Done.
+- **Files touched**: `docs/ai-workflow/DECISIONS_LOG.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/NEXT_STEPS.md`, `docs/release-checklist.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Stabilization triage pass (BACKLOG #11) — first formal triage of v1.1.0 tester feedback. Then progressive reminders + UI/UX (BACKLOG #12–#13). Shorebird adoption itself requires a new store binary (initial setup PR) before first patch can be shipped.
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — Merge PR #31 feat/mandatory-app-update
 
 - **Agent**: Claude Code (Sonnet 4.6).
