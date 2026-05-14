@@ -43,10 +43,7 @@ class TasksCubit extends Cubit<TasksState> {
     }
   }
 
-  Future<void> fetchTasksCreatedBy(
-    String userId, {
-    bool silent = false,
-  }) async {
+  Future<void> fetchTasksCreatedBy(String userId, {bool silent = false}) async {
     if (!silent) {
       emit(
         state.copyWith(

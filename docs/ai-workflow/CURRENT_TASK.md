@@ -23,6 +23,7 @@ See `BACKLOG.md` for follow-up work and `NEXT_STEPS.md` for deferred ideas.
 The offline banner is **read-only context, not a gate**. It does not block navigation, disable buttons, or intercept writes. Firebase's offline write queue is left intact — Firestore will sync queued writes when connectivity returns. The banner's sole purpose is to inform the user that data may be stale and that network-dependent actions may fail.
 
 **Do not:**
+
 - Push a `NoInternetScreen` onto the navigation stack (breaks FCM deep links, AuthCubit routing, and form state)
 - Disable any buttons or form fields while offline
 - Intercept Firestore reads/writes
@@ -67,6 +68,7 @@ class ConnectivityService {
 ```
 
 Notes:
+
 - `onConnectivityChanged` emits `List<ConnectivityResult>` in `connectivity_plus ^6.x` (changed from a single value in v5).
 - The stream maps the list to `true` if any result is not `none` — handles multi-network devices (WiFi + cellular) correctly.
 - No singleton state for current connectivity — the `StreamBuilder` in `app.dart` handles initial state from the stream's first event.
@@ -121,6 +123,7 @@ MaterialApp(
 ```
 
 Implementation notes:
+
 - `initialData: true` so the banner is hidden on app start — it only appears after the first offline event from the stream.
 - `MediaQuery.of(context).viewPadding.top` accounts for the status bar / notch so the banner starts below the OS status bar.
 - `Material` widget is required for `Text` to render correctly outside a `Scaffold` context.
@@ -363,20 +366,20 @@ Run `flutter pub get` after adding.
 
 ## 8. Affected files
 
-| File | Change | Type |
-|---|---|---|
-| `pubspec.yaml` | Add `connectivity_plus: ^6.0.0` | +1 dep |
-| `lib/core/services/connectivity_service.dart` | New singleton stream wrapper | New, ~25 lines |
-| `lib/app/app.dart` | Add `StreamBuilder` + `MaterialApp.builder` overlay | ~25 line delta |
-| `lib/features/tasks/presentation/cubit/tasks_cubit.dart` | `{bool silent = false}` on 3 fetch methods | ~6 line delta |
-| `lib/features/dashboard/presentation/cubit/dashboard_cubit.dart` | `{bool silent = false}` on 2 methods | ~4 line delta |
-| `lib/features/employees/presentation/cubit/employees_cubit.dart` | `{bool silent = false}` on `fetchEmployees` | ~2 line delta |
-| `lib/features/tasks/presentation/screens/tasks_screen.dart` | `_loadTasks` silent param + `RefreshIndicator` per tab + `ListView`-wrap all states | ~50 line delta |
-| `lib/features/employee/presentation/screens/employee_home_screen.dart` | `_loadData` helper + `RefreshIndicator` + initial-load guard | ~25 line delta |
-| `lib/features/admin/presentation/screens/admin_dashboard_screen.dart` | `_loadData` helper + `RefreshIndicator` + initial-load guard | ~20 line delta |
-| `lib/features/employees/presentation/screens/employees_screen.dart` | `RefreshIndicator` + `ListView`-wrap states | ~15 line delta |
-| `assets/translations/en.json` | 1 new key | +1 line |
-| `assets/translations/ar.json` | 1 new key | +1 line |
+| File                                                                   | Change                                                                              | Type           |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------- |
+| `pubspec.yaml`                                                         | Add `connectivity_plus: ^6.0.0`                                                     | +1 dep         |
+| `lib/core/services/connectivity_service.dart`                          | New singleton stream wrapper                                                        | New, ~25 lines |
+| `lib/app/app.dart`                                                     | Add `StreamBuilder` + `MaterialApp.builder` overlay                                 | ~25 line delta |
+| `lib/features/tasks/presentation/cubit/tasks_cubit.dart`               | `{bool silent = false}` on 3 fetch methods                                          | ~6 line delta  |
+| `lib/features/dashboard/presentation/cubit/dashboard_cubit.dart`       | `{bool silent = false}` on 2 methods                                                | ~4 line delta  |
+| `lib/features/employees/presentation/cubit/employees_cubit.dart`       | `{bool silent = false}` on `fetchEmployees`                                         | ~2 line delta  |
+| `lib/features/tasks/presentation/screens/tasks_screen.dart`            | `_loadTasks` silent param + `RefreshIndicator` per tab + `ListView`-wrap all states | ~50 line delta |
+| `lib/features/employee/presentation/screens/employee_home_screen.dart` | `_loadData` helper + `RefreshIndicator` + initial-load guard                        | ~25 line delta |
+| `lib/features/admin/presentation/screens/admin_dashboard_screen.dart`  | `_loadData` helper + `RefreshIndicator` + initial-load guard                        | ~20 line delta |
+| `lib/features/employees/presentation/screens/employees_screen.dart`    | `RefreshIndicator` + `ListView`-wrap states                                         | ~15 line delta |
+| `assets/translations/en.json`                                          | 1 new key                                                                           | +1 line        |
+| `assets/translations/ar.json`                                          | 1 new key                                                                           | +1 line        |
 
 **Zero changes to:** Firestore rules, `functions/index.js`, any data model, any route, `TasksState`, `TaskDetailsScreen`, `ReportsScreen`, any form screen, any auth/settings screen.
 
@@ -474,9 +477,9 @@ Annotated with whether the project owner or agent can run them.
 
 ## 14. Workflow doc updates required
 
-| File | Change |
-|---|---|
-| `CURRENT_TASK.md` | Reset to "No active task — v1.1.0 ready for release cut" when PR merges |
-| `BACKLOG.md` | Mark connectivity-and-refresh item Done with completion date and quality gate results |
-| `SESSION_LOG.md` | Append implementation entry at the top |
+| File               | Change                                                                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `CURRENT_TASK.md`  | Reset to "No active task — v1.1.0 ready for release cut" when PR merges                                                                  |
+| `BACKLOG.md`       | Mark connectivity-and-refresh item Done with completion date and quality gate results                                                    |
+| `SESSION_LOG.md`   | Append implementation entry at the top                                                                                                   |
 | `DECISIONS_LOG.md` | Append: "`MaterialApp.builder` overlay chosen over route-push for offline guard — avoids FCM deep-link interference and form state loss" |

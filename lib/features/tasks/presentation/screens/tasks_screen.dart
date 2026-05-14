@@ -52,11 +52,17 @@ class _TasksScreenState extends State<TasksScreen> {
     if (user.role == 'admin') {
       await Future.wait([
         context.read<TasksCubit>().fetchAllTasks(silent: silent),
-        context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
+        context.read<TasksCubit>().fetchTasksAssignedTo(
+          user.id,
+          silent: silent,
+        ),
       ]);
     } else {
       await Future.wait([
-        context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
+        context.read<TasksCubit>().fetchTasksAssignedTo(
+          user.id,
+          silent: silent,
+        ),
         context.read<TasksCubit>().fetchTasksCreatedBy(user.id, silent: silent),
       ]);
     }

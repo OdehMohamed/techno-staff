@@ -117,420 +117,426 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      SectionHeader(
-                        title: 'admin_dashboard'.tr(),
-                        subtitle: 'dashboard_admin_subtitle'.tr(),
-                      ),
-                      Row(
-                        children: [
-                          _FilterChip(
-                            label: 'today'.tr(),
-                            selected: state.filter == DashboardFilter.today,
-                            onTap: () => context
-                                .read<DashboardCubit>()
-                                .changeFilter(DashboardFilter.today),
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterChip(
-                            label: 'week'.tr(),
-                            selected: state.filter == DashboardFilter.week,
-                            onTap: () => context
-                                .read<DashboardCubit>()
-                                .changeFilter(DashboardFilter.week),
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterChip(
-                            label: 'month'.tr(),
-                            selected: state.filter == DashboardFilter.month,
-                            onTap: () => context
-                                .read<DashboardCubit>()
-                                .changeFilter(DashboardFilter.month),
-                          ),
-                        ],
-                      ),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 900;
-                          final isMedium = constraints.maxWidth >= 600;
-
-                          if (isWide) {
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'employees'.tr(),
-                                    value: employeesCount.toString(),
-                                    icon: Icons.group_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'total_tasks'.tr(),
-                                    value: totalTasks.toString(),
-                                    icon: Icons.task_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'completed_tasks'.tr(),
-                                    value: completedTasks.toString(),
-                                    icon: Icons.check_circle_outline,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          if (isMedium) {
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'employees'.tr(),
-                                    value: employeesCount.toString(),
-                                    icon: Icons.group_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'total_tasks'.tr(),
-                                    value: totalTasks.toString(),
-                                    icon: Icons.task_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'completed_tasks'.tr(),
-                                    value: completedTasks.toString(),
-                                    icon: Icons.check_circle_outline,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              _DashboardStatCard(
-                                title: 'employees'.tr(),
-                                value: employeesCount.toString(),
-                                icon: Icons.group_outlined,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _DashboardStatCard(
-                                title: 'total_tasks'.tr(),
-                                value: totalTasks.toString(),
-                                icon: Icons.task_outlined,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _DashboardStatCard(
-                                title: 'completed_tasks'.tr(),
-                                value: completedTasks.toString(),
-                                icon: Icons.check_circle_outline,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-
-                      SectionHeader(
-                        title: 'tasks_overview'.tr(),
-                        subtitle: 'tasks_overview_subtitle'.tr(),
-                      ),
-
-                      const SizedBox(height: AppSizes.md),
-
-                      DashboardPieChart(
-                        completed: state.stats['completedTasks'] ?? 0,
-                        inProgress: state.stats['inProgressTasks'] ?? 0,
-                        pending: state.stats['pendingTasks'] ?? 0,
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        SectionHeader(
+                          title: 'admin_dashboard'.tr(),
+                          subtitle: 'dashboard_admin_subtitle'.tr(),
+                        ),
+                        Row(
                           children: [
-                            Text(
-                              '${'completion_rate'.tr()}: $completionRate%',
-                              style: Theme.of(context).textTheme.titleLarge,
+                            _FilterChip(
+                              label: 'today'.tr(),
+                              selected: state.filter == DashboardFilter.today,
+                              onTap: () => context
+                                  .read<DashboardCubit>()
+                                  .changeFilter(DashboardFilter.today),
                             ),
-                            const SizedBox(height: AppSizes.md),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                minHeight: 10,
-                                value: totalTasks == 0
-                                    ? 0
-                                    : completedTasks / totalTasks,
-                              ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'week'.tr(),
+                              selected: state.filter == DashboardFilter.week,
+                              onTap: () => context
+                                  .read<DashboardCubit>()
+                                  .changeFilter(DashboardFilter.week),
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterChip(
+                              label: 'month'.tr(),
+                              selected: state.filter == DashboardFilter.month,
+                              onTap: () => context
+                                  .read<DashboardCubit>()
+                                  .changeFilter(DashboardFilter.month),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'delivery_performance'.tr(),
-                        subtitle: 'delivery_performance_subtitle'.tr(),
-                      ),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 700;
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 900;
+                            final isMedium = constraints.maxWidth >= 600;
 
-                          if (isWide) {
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'completed_on_time'.tr(),
-                                    value: completedOnTime.toString(),
-                                    icon: Icons.timer_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'completed_late'.tr(),
-                                    value: completedLate.toString(),
-                                    icon: Icons.event_busy_outlined,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _DashboardStatCard(
-                                    title: 'open_overdue'.tr(),
-                                    value: overdueOpenTasks.toString(),
-                                    icon: Icons.warning_amber_outlined,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              _DashboardStatCard(
-                                title: 'completed_on_time'.tr(),
-                                value: completedOnTime.toString(),
-                                icon: Icons.timer_outlined,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _DashboardStatCard(
-                                title: 'completed_late'.tr(),
-                                value: completedLate.toString(),
-                                icon: Icons.event_busy_outlined,
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _DashboardStatCard(
-                                title: 'open_overdue'.tr(),
-                                value: overdueOpenTasks.toString(),
-                                icon: Icons.warning_amber_outlined,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'team_performance'.tr(),
-                        subtitle: 'team_performance_subtitle'.tr(),
-                      ),
-
-                      const SizedBox(height: AppSizes.md),
-
-                      DashboardBarChart(
-                        topCompleted:
-                            (state.extraStats['topCompleted'] ?? 0) as int,
-                        topActive: (state.extraStats['topActive'] ?? 0) as int,
-                      ),
-
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'team_insights'.tr(),
-                        subtitle: 'team_insights_subtitle'.tr(),
-                      ),
-
-                      const SizedBox(height: AppSizes.md),
-
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 700;
-
-                          if (isWide) {
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: _TeamInsightCard(
-                                    title: 'top_performer'.tr(),
-                                    name:
-                                        (state.extraStats['topPerformer'] ??
-                                                '-')
-                                            .toString(),
-                                    count:
-                                        (state.extraStats['topCompleted'] ?? 0)
-                                            as int,
-                                    icon: Icons.emoji_events_outlined,
-                                    countLabel: 'completed_tasks', // ✅
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.md),
-                                Expanded(
-                                  child: _TeamInsightCard(
-                                    title: 'most_active'.tr(),
-                                    name:
-                                        (state.extraStats['mostActive'] ?? '-')
-                                            .toString(),
-                                    count:
-                                        (state.extraStats['topActive'] ?? 0)
-                                            as int,
-                                    icon: Icons.local_fire_department_outlined,
-                                    countLabel: 'active_tasks', // ✅
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              _TeamInsightCard(
-                                title: 'top_performer'.tr(),
-                                name: (state.extraStats['topPerformer'] ?? '-')
-                                    .toString(),
-                                count:
-                                    (state.extraStats['topCompleted'] ?? 0)
-                                        as int,
-                                icon: Icons.emoji_events_outlined,
-                                countLabel: 'completed_tasks', // ✅
-                              ),
-                              const SizedBox(height: AppSizes.md),
-                              _TeamInsightCard(
-                                title: 'most_active'.tr(),
-                                name: (state.extraStats['mostActive'] ?? '-')
-                                    .toString(),
-                                count:
-                                    (state.extraStats['topActive'] ?? 0) as int,
-                                icon: Icons.local_fire_department_outlined,
-                                countLabel: 'active_tasks', // ✅
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'tasks_trend'.tr(),
-                        subtitle: 'tasks_trend_subtitle'.tr(),
-                      ),
-
-                      const SizedBox(height: AppSizes.md),
-
-                      DashboardLineChart(data: state.trends),
-
-                      const SizedBox(height: AppSizes.xl),
-                      SectionHeader(
-                        title: 'recent_activity'.tr(),
-                        subtitle: 'recent_activity_subtitle'.tr(),
-                      ),
-
-                      const SizedBox(height: AppSizes.md),
-
-                      if (state.activities.isEmpty)
-                        const EmptyStateWidget(
-                          icon: Icons.history,
-                          titleKey: 'no_recent_activity',
-                        )
-                      else
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: state.activities.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: AppSizes.sm),
-                          itemBuilder: (context, index) {
-                            final activity = state.activities[index];
-
-                            final action = activity['action'];
-                            final name = activity['performedByName'] ?? '';
-                            final task = activity['taskTitle'] ?? '';
-                            final newStatus = activity['newStatus'] ?? '';
-                            final performedAt = activity['performedAt'];
-
-                            DateTime? activityTime;
-                            if (performedAt != null) {
-                              activityTime = performedAt.toDate();
-                            }
-
-                            String text;
-
-                            if (action == 'created') {
-                              text = '$name ${'created_task'.tr()} "$task"';
-                            } else if (action == 'status_changed') {
-                              text =
-                                  '$name ${'changed_status'.tr()} "$task" ${'to'.tr()} ${newStatus.toString().tr()}';
-                            } else if (action == 'overdue_escalation') {
-                              text =
-                                  '${'overdue_task_escalation'.tr()} "$task"';
-                            } else {
-                              text = '$name $action "$task"';
-                            }
-
-                            return AppCard(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            if (isWide) {
+                              return Row(
                                 children: [
-                                  Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(12),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'employees'.tr(),
+                                      value: employeesCount.toString(),
+                                      icon: Icons.group_outlined,
                                     ),
-                                    child: const Icon(Icons.history),
                                   ),
                                   const SizedBox(width: AppSizes.md),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          text,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyLarge,
-                                        ),
-                                        if (activityTime != null) ...[
-                                          const SizedBox(height: AppSizes.xs),
-                                          Text(
-                                            DateFormat(
-                                              'yyyy-MM-dd • HH:mm',
-                                            ).format(activityTime),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                          ),
-                                        ],
-                                      ],
+                                    child: _DashboardStatCard(
+                                      title: 'total_tasks'.tr(),
+                                      value: totalTasks.toString(),
+                                      icon: Icons.task_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'completed_tasks'.tr(),
+                                      value: completedTasks.toString(),
+                                      icon: Icons.check_circle_outline,
                                     ),
                                   ),
                                 ],
-                              ),
+                              );
+                            }
+
+                            if (isMedium) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'employees'.tr(),
+                                      value: employeesCount.toString(),
+                                      icon: Icons.group_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'total_tasks'.tr(),
+                                      value: totalTasks.toString(),
+                                      icon: Icons.task_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'completed_tasks'.tr(),
+                                      value: completedTasks.toString(),
+                                      icon: Icons.check_circle_outline,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                _DashboardStatCard(
+                                  title: 'employees'.tr(),
+                                  value: employeesCount.toString(),
+                                  icon: Icons.group_outlined,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                _DashboardStatCard(
+                                  title: 'total_tasks'.tr(),
+                                  value: totalTasks.toString(),
+                                  icon: Icons.task_outlined,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                _DashboardStatCard(
+                                  title: 'completed_tasks'.tr(),
+                                  value: completedTasks.toString(),
+                                  icon: Icons.check_circle_outline,
+                                ),
+                              ],
                             );
                           },
                         ),
+                        const SizedBox(height: AppSizes.xl),
+
+                        SectionHeader(
+                          title: 'tasks_overview'.tr(),
+                          subtitle: 'tasks_overview_subtitle'.tr(),
+                        ),
+
+                        const SizedBox(height: AppSizes.md),
+
+                        DashboardPieChart(
+                          completed: state.stats['completedTasks'] ?? 0,
+                          inProgress: state.stats['inProgressTasks'] ?? 0,
+                          pending: state.stats['pendingTasks'] ?? 0,
+                        ),
+                        const SizedBox(height: AppSizes.xl),
+                        AppCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${'completion_rate'.tr()}: $completionRate%',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: AppSizes.md),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  minHeight: 10,
+                                  value: totalTasks == 0
+                                      ? 0
+                                      : completedTasks / totalTasks,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.xl),
+                        SectionHeader(
+                          title: 'delivery_performance'.tr(),
+                          subtitle: 'delivery_performance_subtitle'.tr(),
+                        ),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 700;
+
+                            if (isWide) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'completed_on_time'.tr(),
+                                      value: completedOnTime.toString(),
+                                      icon: Icons.timer_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'completed_late'.tr(),
+                                      value: completedLate.toString(),
+                                      icon: Icons.event_busy_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _DashboardStatCard(
+                                      title: 'open_overdue'.tr(),
+                                      value: overdueOpenTasks.toString(),
+                                      icon: Icons.warning_amber_outlined,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                _DashboardStatCard(
+                                  title: 'completed_on_time'.tr(),
+                                  value: completedOnTime.toString(),
+                                  icon: Icons.timer_outlined,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                _DashboardStatCard(
+                                  title: 'completed_late'.tr(),
+                                  value: completedLate.toString(),
+                                  icon: Icons.event_busy_outlined,
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                _DashboardStatCard(
+                                  title: 'open_overdue'.tr(),
+                                  value: overdueOpenTasks.toString(),
+                                  icon: Icons.warning_amber_outlined,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSizes.xl),
+                        SectionHeader(
+                          title: 'team_performance'.tr(),
+                          subtitle: 'team_performance_subtitle'.tr(),
+                        ),
+
+                        const SizedBox(height: AppSizes.md),
+
+                        DashboardBarChart(
+                          topCompleted:
+                              (state.extraStats['topCompleted'] ?? 0) as int,
+                          topActive:
+                              (state.extraStats['topActive'] ?? 0) as int,
+                        ),
+
+                        const SizedBox(height: AppSizes.xl),
+                        SectionHeader(
+                          title: 'team_insights'.tr(),
+                          subtitle: 'team_insights_subtitle'.tr(),
+                        ),
+
+                        const SizedBox(height: AppSizes.md),
+
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 700;
+
+                            if (isWide) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _TeamInsightCard(
+                                      title: 'top_performer'.tr(),
+                                      name:
+                                          (state.extraStats['topPerformer'] ??
+                                                  '-')
+                                              .toString(),
+                                      count:
+                                          (state.extraStats['topCompleted'] ??
+                                                  0)
+                                              as int,
+                                      icon: Icons.emoji_events_outlined,
+                                      countLabel: 'completed_tasks', // ✅
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSizes.md),
+                                  Expanded(
+                                    child: _TeamInsightCard(
+                                      title: 'most_active'.tr(),
+                                      name:
+                                          (state.extraStats['mostActive'] ??
+                                                  '-')
+                                              .toString(),
+                                      count:
+                                          (state.extraStats['topActive'] ?? 0)
+                                              as int,
+                                      icon:
+                                          Icons.local_fire_department_outlined,
+                                      countLabel: 'active_tasks', // ✅
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                _TeamInsightCard(
+                                  title: 'top_performer'.tr(),
+                                  name:
+                                      (state.extraStats['topPerformer'] ?? '-')
+                                          .toString(),
+                                  count:
+                                      (state.extraStats['topCompleted'] ?? 0)
+                                          as int,
+                                  icon: Icons.emoji_events_outlined,
+                                  countLabel: 'completed_tasks', // ✅
+                                ),
+                                const SizedBox(height: AppSizes.md),
+                                _TeamInsightCard(
+                                  title: 'most_active'.tr(),
+                                  name: (state.extraStats['mostActive'] ?? '-')
+                                      .toString(),
+                                  count:
+                                      (state.extraStats['topActive'] ?? 0)
+                                          as int,
+                                  icon: Icons.local_fire_department_outlined,
+                                  countLabel: 'active_tasks', // ✅
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSizes.xl),
+                        SectionHeader(
+                          title: 'tasks_trend'.tr(),
+                          subtitle: 'tasks_trend_subtitle'.tr(),
+                        ),
+
+                        const SizedBox(height: AppSizes.md),
+
+                        DashboardLineChart(data: state.trends),
+
+                        const SizedBox(height: AppSizes.xl),
+                        SectionHeader(
+                          title: 'recent_activity'.tr(),
+                          subtitle: 'recent_activity_subtitle'.tr(),
+                        ),
+
+                        const SizedBox(height: AppSizes.md),
+
+                        if (state.activities.isEmpty)
+                          const EmptyStateWidget(
+                            icon: Icons.history,
+                            titleKey: 'no_recent_activity',
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: state.activities.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: AppSizes.sm),
+                            itemBuilder: (context, index) {
+                              final activity = state.activities[index];
+
+                              final action = activity['action'];
+                              final name = activity['performedByName'] ?? '';
+                              final task = activity['taskTitle'] ?? '';
+                              final newStatus = activity['newStatus'] ?? '';
+                              final performedAt = activity['performedAt'];
+
+                              DateTime? activityTime;
+                              if (performedAt != null) {
+                                activityTime = performedAt.toDate();
+                              }
+
+                              String text;
+
+                              if (action == 'created') {
+                                text = '$name ${'created_task'.tr()} "$task"';
+                              } else if (action == 'status_changed') {
+                                text =
+                                    '$name ${'changed_status'.tr()} "$task" ${'to'.tr()} ${newStatus.toString().tr()}';
+                              } else if (action == 'overdue_escalation') {
+                                text =
+                                    '${'overdue_task_escalation'.tr()} "$task"';
+                              } else {
+                                text = '$name $action "$task"';
+                              }
+
+                              return AppCard(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(Icons.history),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            text,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge,
+                                          ),
+                                          if (activityTime != null) ...[
+                                            const SizedBox(height: AppSizes.xs),
+                                            Text(
+                                              DateFormat(
+                                                'yyyy-MM-dd • HH:mm',
+                                              ).format(activityTime),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
