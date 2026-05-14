@@ -9,8 +9,10 @@ class EmployeesCubit extends Cubit<EmployeesState> {
     : _employeesRepository = employeesRepository,
       super(const EmployeesState());
 
-  Future<void> fetchEmployees() async {
-    emit(state.copyWith(status: EmployeesStatus.loading, clearError: true));
+  Future<void> fetchEmployees({bool silent = false}) async {
+    if (!silent) {
+      emit(state.copyWith(status: EmployeesStatus.loading, clearError: true));
+    }
 
     try {
       final employees = await _employeesRepository.getEmployees();

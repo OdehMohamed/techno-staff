@@ -1,11 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/cubit/theme_cubit.dart';
 import '../../../../core/theme/cubit/theme_state.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,7 +21,26 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDeleting = false;
 
+  Future<void> _persistLanguageCode(String languageCode) async {
+    final currentUser = context.read<AuthCubit>().state.user;
+
+    if (currentUser == null) return;
+
+    final resolvedLanguageCode = languageCode == 'ar' ? 'ar' : 'en';
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebasePaths.users)
+          .doc(currentUser.id)
+          .update({FirebasePaths.languageCode: resolvedLanguageCode});
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+    }
+  }
+
   Future<void> _handleDeleteAccount() async {
+    final cubit = context.read<AuthCubit>();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -40,20 +63,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (!mounted) return;
+    if (!context.mounted) return;
     if (confirmed != true) return;
 
     setState(() => _isDeleting = true);
-    // Capture cubit before the async boundary
-    final cubit = context.read<AuthCubit>();
 
     try {
       await cubit.deleteAccount();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('account_deleted'.tr())));
+      if (!context.mounted) return;
+      if (_isDeleting) {
+        setState(() => _isDeleting = false);
+      }
     } catch (_) {
       if (!mounted) return;
+      if (!context.mounted) return;
       setState(() => _isDeleting = false);
       ScaffoldMessenger.of(
         context,
@@ -66,11 +90,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final locale = context.locale;
     final currentLanguageCode = locale.languageCode;
 
-    return Scaffold(
-      appBar: AppBar(title: Text('settings'.tr())),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSizes.md),
-        children: [
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status &&
+          current.status == AuthStatus.unauthenticated,
+      listener: (context, state) {
+        if (_isDeleting) {
+          setState(() => _isDeleting = false);
+        }
+
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          RouteNames.login,
+          (_) => false,
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text('settings'.tr())),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSizes.md),
+          children: [
           Text('language'.tr(), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSizes.sm),
           Card(
@@ -81,8 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 if (value == 'en') {
                   await context.setLocale(const Locale('en'));
+                  if (!context.mounted) return;
+                  await _persistLanguageCode('en');
+                  if (!context.mounted) return;
                 } else if (value == 'ar') {
                   await context.setLocale(const Locale('ar'));
+                  if (!context.mounted) return;
+                  await _persistLanguageCode('ar');
+                  if (!context.mounted) return;
                 }
               },
               child: Column(
@@ -154,6 +198,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text('edit_profile'.tr()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(RouteNames.editProfile),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: Text('change_password'.tr()),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      Navigator.of(context)
+                          .pushNamed(RouteNames.changePassword),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: Icon(
                     Icons.delete_forever,
                     color: Theme.of(context).colorScheme.error,
@@ -177,7 +238,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

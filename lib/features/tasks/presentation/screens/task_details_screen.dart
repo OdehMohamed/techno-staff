@@ -12,7 +12,10 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../cubit/task_logs_cubit.dart';
 import '../cubit/task_logs_state.dart';
 import '../cubit/tasks_cubit.dart';
+import '../cubit/tasks_state.dart';
 import '../../data/models/task_model.dart';
+import '../widgets/countdown_chip.dart';
+import '../widgets/countdown_clock_provider.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
@@ -33,9 +36,27 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     });
   }
 
+  TaskModel _findTask(TasksState state) {
+    for (final list in [
+      state.tasks,
+      state.tasksAssignedToMe,
+      state.tasksCreatedByMe,
+    ]) {
+      for (final candidate in list) {
+        if (candidate.id == widget.task.id) return candidate;
+      }
+    }
+    return widget.task;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final task = widget.task;
+    // Subscribe to TasksCubit so increment / edit emissions update this
+    // screen in place. Falls back to the constructor argument when the task
+    // isn't in any of the cubit's lists (e.g. first frame before any fetch).
+    final task = context.select<TasksCubit, TaskModel>(
+      (cubit) => _findTask(cubit.state),
+    );
     final currentUser = context.read<AuthCubit>().state.user;
 
     final canEditOrDelete =
@@ -81,8 +102,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         ),
                         TextButton(
                           style: TextButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(dialogContext).colorScheme.error,
+                            foregroundColor: Theme.of(
+                              dialogContext,
+                            ).colorScheme.error,
                           ),
                           onPressed: () {
                             Navigator.pop(dialogContext, true);
@@ -105,9 +127,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   );
 
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('task_deleted'.tr())),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('task_deleted'.tr())));
                   Navigator.pop(context, true);
                 } catch (_) {
                   if (!context.mounted) return;
@@ -120,176 +142,223 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSizes.md),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          task.title,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: AppSizes.sm),
-                        Text(
-                          task.description,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                        const SizedBox(height: AppSizes.lg),
-                        Wrap(
-                          spacing: AppSizes.sm,
-                          runSpacing: AppSizes.sm,
-                          children: [
-                            StatusBadge(status: task.status),
-                            PriorityBadge(priority: task.priority),
+      body: CountdownClockProvider(
+        dueDates: [task.dueDate],
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.md),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: AppSizes.sm),
+                          Text(
+                            task.description,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: AppSizes.lg),
+                          Wrap(
+                            spacing: AppSizes.sm,
+                            runSpacing: AppSizes.sm,
+                            children: [
+                              StatusBadge(status: task.status),
+                              PriorityBadge(priority: task.priority),
+                              if (task.isCounter) const _CounterTypeBadge(),
+                            ],
+                          ),
+                          if (task.isCounter) ...[
+                            const SizedBox(height: AppSizes.lg),
+                            Text(
+                              'progress'.tr(),
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: AppSizes.sm),
+                            _CounterProgressRow(
+                              task: task,
+                              onIncrement:
+                                  (currentUser != null &&
+                                      task.assignedTo == currentUser.id &&
+                                      task.currentCount <
+                                          (task.targetCount ?? 0))
+                                  ? () {
+                                      context
+                                          .read<TasksCubit>()
+                                          .incrementTaskCounter(
+                                            taskId: task.id,
+                                            isAdmin:
+                                                currentUser.role == 'admin',
+                                            currentUserId: currentUser.id,
+                                            currentUserName: currentUser.name,
+                                          );
+                                    }
+                                  : null,
+                            ),
+                            const SizedBox(height: AppSizes.lg),
                           ],
-                        ),
-                        const SizedBox(height: AppSizes.xl),
-                        _DetailsRow(
-                          label: 'assigned_to'.tr(),
-                          value: task.assignedToName,
-                        ),
-                        const SizedBox(height: AppSizes.sm),
-                        _DetailsRow(
-                          label: 'assigned_by'.tr(),
-                          value: task.assignedByName,
-                        ),
-                        const SizedBox(height: AppSizes.sm),
-                        _DetailsRow(
-                          label: 'due_date'.tr(),
-                          value: DateFormat('yyyy-MM-dd').format(task.dueDate),
-                        ),
-                        const SizedBox(height: AppSizes.sm),
-                        _DetailsRow(
-                          label: 'created_at'.tr(),
-                          value: DateFormat(
-                            'yyyy-MM-dd HH:mm',
-                          ).format(task.createdAt),
-                        ),
-                        if (task.updatedAt != null) ...[
+                          const SizedBox(height: AppSizes.xl),
+                          _DetailsRow(
+                            label: 'assigned_to'.tr(),
+                            value: task.assignedToName,
+                          ),
                           const SizedBox(height: AppSizes.sm),
                           _DetailsRow(
-                            label: 'updated_at'.tr(),
-                            value: DateFormat(
-                              'yyyy-MM-dd HH:mm',
-                            ).format(task.updatedAt!),
+                            label: 'assigned_by'.tr(),
+                            value: task.assignedByName,
                           ),
-                        ],
-                        if (task.completedAt != null) ...[
                           const SizedBox(height: AppSizes.sm),
-                          _DetailsRow(
-                            label: 'completed_at'.tr(),
-                            value: DateFormat(
-                              'yyyy-MM-dd HH:mm',
-                            ).format(task.completedAt!),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.xl),
-                  SectionHeader(
-                    title: 'activity_log'.tr(),
-                    subtitle: 'activity_log_subtitle'.tr(),
-                  ),
-                  BlocBuilder<TaskLogsCubit, TaskLogsState>(
-                    builder: (context, state) {
-                      if (state.status == TaskLogsStatus.loading) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(AppSizes.lg),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-
-                      if (state.status == TaskLogsStatus.error) {
-                        return const EmptyStateWidget(
-                          icon: Icons.history_toggle_off,
-                          titleKey: 'failed_to_load_task_logs',
-                        );
-                      }
-
-                      if (state.logs.isEmpty) {
-                        return const EmptyStateWidget(
-                          icon: Icons.history,
-                          titleKey: 'no_activity_logs_found',
-                        );
-                      }
-
-                      return Column(
-                        children: state.logs.map((log) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: AppSizes.md),
-                            child: AppCard(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.12),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.history),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _buildLogTitle(log.action).tr(),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium,
-                                        ),
-                                        const SizedBox(height: AppSizes.xs),
-                                        Text(
-                                          _buildLogDescription(
-                                            performedByName:
-                                                log.performedByName,
-                                            previousStatus: log.previousStatus,
-                                            newStatus: log.newStatus,
-                                          ),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
-                                        ),
-                                        if (log.performedAt != null) ...[
-                                          const SizedBox(height: AppSizes.xs),
-                                          Text(
-                                            DateFormat(
-                                              'yyyy-MM-dd HH:mm',
-                                            ).format(log.performedAt!),
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                          Wrap(
+                            spacing: AppSizes.sm,
+                            runSpacing: AppSizes.sm,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
+                              CountdownChip(
+                                dueDate: task.dueDate,
+                                isCompleted: task.status == 'completed',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSizes.sm),
+                          _DetailsRow(
+                            label: 'created_at'.tr(),
+                            value: DateFormat(
+                              'yyyy-MM-dd HH:mm',
+                            ).format(task.createdAt),
+                          ),
+                          if (task.updatedAt != null) ...[
+                            const SizedBox(height: AppSizes.sm),
+                            _DetailsRow(
+                              label: 'updated_at'.tr(),
+                              value: DateFormat(
+                                'yyyy-MM-dd HH:mm',
+                              ).format(task.updatedAt!),
+                            ),
+                          ],
+                          if (task.completedAt != null) ...[
+                            const SizedBox(height: AppSizes.sm),
+                            _DetailsRow(
+                              label: 'completed_at'.tr(),
+                              value: DateFormat(
+                                'yyyy-MM-dd HH:mm',
+                              ).format(task.completedAt!),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.xl),
+                    SectionHeader(
+                      title: 'activity_log'.tr(),
+                      subtitle: 'activity_log_subtitle'.tr(),
+                    ),
+                    BlocBuilder<TaskLogsCubit, TaskLogsState>(
+                      builder: (context, state) {
+                        if (state.status == TaskLogsStatus.loading) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(AppSizes.lg),
+                              child: CircularProgressIndicator(),
                             ),
                           );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ],
+                        }
+
+                        if (state.status == TaskLogsStatus.error) {
+                          return const EmptyStateWidget(
+                            icon: Icons.history_toggle_off,
+                            titleKey: 'failed_to_load_task_logs',
+                          );
+                        }
+
+                        if (state.logs.isEmpty) {
+                          return const EmptyStateWidget(
+                            icon: Icons.history,
+                            titleKey: 'no_activity_logs_found',
+                          );
+                        }
+
+                        return Column(
+                          children: state.logs.map((log) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSizes.md,
+                              ),
+                              child: AppCard(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary
+                                            .withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.history),
+                                    ),
+                                    const SizedBox(width: AppSizes.md),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _buildLogTitle(log.action).tr(),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: AppSizes.xs),
+                                          Text(
+                                            _buildLogDescription(
+                                              performedByName:
+                                                  log.performedByName,
+                                              previousStatus:
+                                                  log.previousStatus,
+                                              newStatus: log.newStatus,
+                                            ),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium,
+                                          ),
+                                          if (log.performedAt != null) ...[
+                                            const SizedBox(height: AppSizes.xs),
+                                            Text(
+                                              DateFormat(
+                                                'yyyy-MM-dd HH:mm',
+                                              ).format(log.performedAt!),
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -336,6 +405,76 @@ class _DetailsRow extends StatelessWidget {
       children: [
         Text('$label:', style: Theme.of(context).textTheme.titleMedium),
         Text(value, style: Theme.of(context).textTheme.bodyLarge),
+      ],
+    );
+  }
+}
+
+class _CounterTypeBadge extends StatelessWidget {
+  const _CounterTypeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.numbers, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            'task_type_counter'.tr(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CounterProgressRow extends StatelessWidget {
+  final TaskModel task;
+  final VoidCallback? onIncrement;
+
+  const _CounterProgressRow({required this.task, required this.onIncrement});
+
+  @override
+  Widget build(BuildContext context) {
+    final target = task.targetCount ?? 0;
+    final current = task.currentCount.clamp(0, target);
+    final ratio = target == 0 ? 0.0 : current / target;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${'progress'.tr()}: $current / $target',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: onIncrement,
+              tooltip: 'increment'.tr(),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(value: ratio, minHeight: 8),
+        ),
       ],
     );
   }

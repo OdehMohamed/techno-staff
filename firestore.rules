@@ -50,6 +50,7 @@ service cloud.firestore {
           'completedAt',
           'updatedBy',
           'updatedByName',
+          'currentCount',
         ]);
     }
 
@@ -70,7 +71,7 @@ service cloud.firestore {
 
       allow update: if isAdmin() || (
         isCurrentUser(userId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken', 'languageCode', 'name'])
       );
 
       allow delete: if isAdmin();
@@ -102,6 +103,13 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
       allow create, delete: if false;
+    }
+
+    match /task_templates/{templateId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.assignedBy == request.auth.uid;
+      allow update: if isAdmin() && request.resource.data.assignedBy == resource.data.assignedBy;
+      allow delete: if isAdmin();
     }
   }
 }

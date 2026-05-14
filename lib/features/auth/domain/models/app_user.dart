@@ -26,4 +26,14 @@ class AppUser {
   Map<String, dynamic> toMap() {
     return {'email': email, 'name': name, 'role': role, 'isActive': isActive};
   }
+
+  AppUser copyWith({String? id, String? email, String? name, String? role, bool? isActive}) {
+    return AppUser(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      isActive: isActive ?? this.isActive,
+    );
+  }
 }

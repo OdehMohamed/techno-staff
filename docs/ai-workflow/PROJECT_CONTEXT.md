@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-04-30
+> Last updated: 2026-05-08
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -29,7 +29,7 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 | Charts              | `fl_chart` `^1.2.0`                          |
 | PDF                 | `pdf` `^3.12.0`, `printing` `^5.14.3`        |
 | Local notifications | `flutter_local_notifications` `^20.1.0`      |
-| Utilities           | `uuid`, `intl`, `path_provider`              |
+| Utilities           | `uuid`, `intl`, `path_provider`, `shared_preferences` |
 
 ### Backend (Firebase)
 
@@ -75,22 +75,22 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | Feature         | Role(s)  | Purpose                                                                                                                                                                                         |
 | --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `splash`        | all      | Boot + initial auth-state routing                                                                                                                                                               |
-| `auth`          | all      | Login, sign-out, FCM token registration                                                                                                                                                         |
+| `auth`          | all      | Login, sign-out, FCM token registration on sign-in, FCM token cleanup on sign-out/account deletion, and automatic unauthenticated-state emission when Firebase invalidates the session server-side |
 | `admin`         | admin    | Admin home shell                                                                                                                                                                                |
 | `employee`      | employee | Employee home shell                                                                                                                                                                             |
 | `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)                                                                                                                                |
-| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), client-side search/filter/sort, details, create/edit/delete by creator or admin, status updates (assignee) |
+| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), client-side search/filter/sort, live countdown chip on list/details via adaptive screen-level ticker, counter task type with target/current count progress, details, create/edit/delete by creator or admin, status updates (assignee) |
 | `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                                                                                                                                     |
 | `reports`       | admin    | Reporting + PDF export                                                                                                                                                                          |
 | `notifications` | all      | In-app notification feed with swipe-to-read and grouping                                                                                                                                        |
-| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account                                                                                                   |
+| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account, edit profile (name), change password |
 
 ## 5. Firestore Data Model
 
 | Collection                       | Client write access                                                                                                                                              | Notes                                                                                                |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users/{uid}`                    | admin: full; employee: own `fcmToken` only                                                                                                                       | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, createdAt }` |
-| `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability                     |
+| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` + `name` only                                                                                                      | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }` |
+| `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability; shape includes `taskType`, optional `targetCount`, and `currentCount` for counter tasks |
 | `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions                                                               |
 | `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed                                                                                 |
 
@@ -110,7 +110,10 @@ Single file: `functions/index.js` (Node 22).
 | `sendOverdueTaskEscalations`   | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
 | `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
 | `deleteUserAccount`            | callable (authenticated user)      | Delete caller's Firestore data + Firebase Auth account atomically                   |
+| `revokeUserSessions`          | callable (any signed-in user)      | Revokes all refresh tokens for the caller; used after password change to force other devices to re-authenticate |
 | `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
+
+FCM push senders now localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).
 
 ## 7. Notifications Pipeline
 

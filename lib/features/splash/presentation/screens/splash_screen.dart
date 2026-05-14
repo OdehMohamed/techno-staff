@@ -20,7 +20,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AuthCubit>().checkAuthStatus();
+      context.read<AuthCubit>().checkAuthStatus(
+        languageCode: context.locale.languageCode,
+      );
     });
   }
 

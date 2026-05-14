@@ -14,6 +14,8 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../../data/models/task_model.dart';
 import '../cubit/tasks_cubit.dart';
 import '../cubit/tasks_state.dart';
+import '../widgets/countdown_chip.dart';
+import '../widgets/countdown_clock_provider.dart';
 import '../widgets/task_filter_bottom_sheet.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -41,18 +43,28 @@ class _TasksScreenState extends State<TasksScreen> {
     super.dispose();
   }
 
-  void _loadTasks() {
+  Future<void> _loadTasks({bool silent = false}) async {
     final authState = context.read<AuthCubit>().state;
     final user = authState.user;
 
     if (user == null) return;
 
     if (user.role == 'admin') {
-      context.read<TasksCubit>().fetchAllTasks();
-      context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
+      await Future.wait([
+        context.read<TasksCubit>().fetchAllTasks(silent: silent),
+        context.read<TasksCubit>().fetchTasksAssignedTo(
+          user.id,
+          silent: silent,
+        ),
+      ]);
     } else {
-      context.read<TasksCubit>().fetchTasksAssignedTo(user.id);
-      context.read<TasksCubit>().fetchTasksCreatedBy(user.id);
+      await Future.wait([
+        context.read<TasksCubit>().fetchTasksAssignedTo(
+          user.id,
+          silent: silent,
+        ),
+        context.read<TasksCubit>().fetchTasksCreatedBy(user.id, silent: silent),
+      ]);
     }
   }
 
@@ -134,6 +146,19 @@ class _TasksScreenState extends State<TasksScreen> {
     }
 
     return filtered;
+  }
+
+  List<DateTime> _collectVisibleDueDates(TasksState state, bool isAdmin) {
+    final lists = <List<TaskModel>>[
+      state.tasks,
+      state.tasksAssignedToMe,
+      state.tasksCreatedByMe,
+    ];
+    return [
+      for (final list in lists)
+        for (final task in list)
+          if (task.status != 'completed') task.dueDate,
+    ];
   }
 
   Widget _buildSearchAndFiltersBar() {
@@ -221,11 +246,19 @@ class _TasksScreenState extends State<TasksScreen> {
                   }
                 }
 
+                final visibleDueDates = _collectVisibleDueDates(state, isAdmin);
+
                 if (isAdmin) {
-                  return _buildAdminTabs(state, user);
+                  return CountdownClockProvider(
+                    dueDates: visibleDueDates,
+                    child: _buildAdminTabs(state, user),
+                  );
                 }
 
-                return _buildEmployeeTabs(state, user);
+                return CountdownClockProvider(
+                  dueDates: visibleDueDates,
+                  child: _buildEmployeeTabs(state, user),
+                );
               },
             ),
           ),
@@ -326,14 +359,44 @@ class _TasksScreenState extends State<TasksScreen> {
     required AppUser? currentUser,
     required bool isAdmin,
   }) {
-    if (status == TasksStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
+    return RefreshIndicator(
+      onRefresh: () => _loadTasks(silent: true),
+      child: _buildTasksTabBody(
+        status: status,
+        errorKey: errorKey,
+        tasks: tasks,
+        currentUser: currentUser,
+        isAdmin: isAdmin,
+      ),
+    );
+  }
+
+  Widget _buildTasksTabBody({
+    required TasksStatus status,
+    required String? errorKey,
+    required List<TaskModel> tasks,
+    required AppUser? currentUser,
+    required bool isAdmin,
+  }) {
+    if (status == TasksStatus.loading && tasks.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 200),
+          Center(child: CircularProgressIndicator()),
+        ],
+      );
     }
 
     if (status == TasksStatus.error) {
-      return EmptyStateWidget(
-        icon: Icons.error_outline,
-        titleKey: errorKey ?? 'unknown_error',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          EmptyStateWidget(
+            icon: Icons.error_outline,
+            titleKey: errorKey ?? 'unknown_error',
+          ),
+        ],
       );
     }
 
@@ -341,15 +404,25 @@ class _TasksScreenState extends State<TasksScreen> {
 
     if (filteredTasks.isEmpty) {
       if (tasks.isNotEmpty && _filters.hasActiveFilters) {
-        return const EmptyStateWidget(
-          icon: Icons.search_off,
-          titleKey: 'no_matching_tasks',
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            EmptyStateWidget(
+              icon: Icons.search_off,
+              titleKey: 'no_matching_tasks',
+            ),
+          ],
         );
       }
 
-      return const EmptyStateWidget(
-        icon: Icons.task_alt_outlined,
-        titleKey: 'no_tasks_found',
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          EmptyStateWidget(
+            icon: Icons.task_alt_outlined,
+            titleKey: 'no_tasks_found',
+          ),
+        ],
       );
     }
 
@@ -401,6 +474,7 @@ class _TasksScreenState extends State<TasksScreen> {
     required bool isAdmin,
   }) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: tasks.length,
       separatorBuilder: (_, __) => const SizedBox(height: AppSizes.md),
       itemBuilder: (context, index) {
@@ -447,49 +521,65 @@ class _TasksScreenState extends State<TasksScreen> {
                     runSpacing: AppSizes.sm,
                     children: [
                       PriorityBadge(priority: task.priority),
-                      _InfoChip(
-                        icon: Icons.calendar_today_outlined,
-                        label:
-                            '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                      if (task.isCounter) const _CounterTypeBadge(),
+                      CountdownChip(
+                        dueDate: task.dueDate,
+                        isCompleted: task.status == 'completed',
                       ),
                     ],
                   ),
                   if (currentUser != null &&
                       task.assignedTo == currentUser.id) ...[
                     const SizedBox(height: AppSizes.lg),
-                    DropdownButtonFormField<String>(
-                      initialValue: task.status,
-                      decoration: InputDecoration(
-                        labelText: 'update_status'.tr(),
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'pending',
-                          child: Text('pending'.tr()),
+                    if (task.isCounter)
+                      _CounterProgressRow(
+                        task: task,
+                        onIncrement:
+                            task.currentCount >= (task.targetCount ?? 0)
+                            ? null
+                            : () {
+                                context.read<TasksCubit>().incrementTaskCounter(
+                                  taskId: task.id,
+                                  isAdmin: isAdmin,
+                                  currentUserId: currentUser.id,
+                                  currentUserName: currentUser.name,
+                                );
+                              },
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: task.status,
+                        decoration: InputDecoration(
+                          labelText: 'update_status'.tr(),
                         ),
-                        DropdownMenuItem(
-                          value: 'in_progress',
-                          child: Text('in_progress'.tr()),
-                        ),
-                        DropdownMenuItem(
-                          value: 'completed',
-                          child: Text('completed'.tr()),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
+                        items: [
+                          DropdownMenuItem(
+                            value: 'pending',
+                            child: Text('pending'.tr()),
+                          ),
+                          DropdownMenuItem(
+                            value: 'in_progress',
+                            child: Text('in_progress'.tr()),
+                          ),
+                          DropdownMenuItem(
+                            value: 'completed',
+                            child: Text('completed'.tr()),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
 
-                        context.read<TasksCubit>().updateTaskStatus(
-                          taskId: task.id,
-                          status: value,
-                          isAdmin: isAdmin,
-                          currentUserId: currentUser.id,
-                          currentUserName: currentUser.name,
-                        );
-                      },
-                    ),
+                          context.read<TasksCubit>().updateTaskStatus(
+                            taskId: task.id,
+                            status: value,
+                            isAdmin: isAdmin,
+                            currentUserId: currentUser.id,
+                            currentUserName: currentUser.name,
+                          );
+                        },
+                      ),
                   ],
                 ],
               ),
@@ -501,24 +591,72 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
+class _CounterTypeBadge extends StatelessWidget {
+  const _CounterTypeBadge();
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [Icon(icon, size: 16), const SizedBox(width: 6), Text(label)],
+        children: [
+          Icon(Icons.numbers, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            'task_type_counter'.tr(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _CounterProgressRow extends StatelessWidget {
+  final TaskModel task;
+  final VoidCallback? onIncrement;
+
+  const _CounterProgressRow({required this.task, required this.onIncrement});
+
+  @override
+  Widget build(BuildContext context) {
+    final target = task.targetCount ?? 0;
+    final current = task.currentCount.clamp(0, target);
+    final ratio = target == 0 ? 0.0 : current / target;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${'progress'.tr()}: $current / $target',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            IconButton.filledTonal(
+              onPressed: onIncrement,
+              tooltip: 'increment'.tr(),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(value: ratio, minHeight: 8),
+        ),
+      ],
     );
   }
 }

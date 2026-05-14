@@ -20,6 +20,101 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-14 — MaterialApp.builder overlay for offline connectivity state
+
+- **Decision**: Show offline state with a `MaterialApp.builder` `Stack` overlay banner instead of pushing a dedicated offline route.
+- **Reason**: A route-push approach would interfere with FCM deep links, auth-driven navigation, and in-progress form state. The offline requirement is informational only, so it should not take over navigation or block interaction.
+- **Impact**: Connectivity state is now a lightweight top-of-app UI layer that preserves existing routes, button behavior, and Firestore offline queue behavior. Users can continue navigating and acting while the banner indicates that data may be stale.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: `lib/app/app.dart`, `lib/core/services/connectivity_service.dart`, `docs/ai-workflow/BACKLOG.md` item 8, PR `feat/connectivity-and-refresh`.
+
+## 2026-05-09 — Counter task type with derived completion via persisted status field
+
+- **Decision**: Introduce a second task variant (`taskType: 'counter'`) with flat optional fields on `tasks` documents (`targetCount`, `currentCount`), and enforce a strict persistence contract: every write that changes `currentCount` must atomically persist derived `status` and matching `completedAt` in the same write/transaction.
+- **Reason**: The existing downstream pipeline (dashboard/report aggregates, deadline filters, countdown visibility, completion notifications, and `task_logs`) already treats persisted `status` as the completion truth. Keeping `status` authoritative avoids branching Cloud Functions and all downstream consumers by task type.
+- **Locked decisions**: (1) flat fields on the existing collection (no nested map/subcollection); (2) locked mapping `0 -> pending`, `0<n<target -> in_progress`, `n>=target -> completed`; (3) no manual status override for counter tasks; (4) `taskType` immutable after create; (5) `targetCount` in 1..999 and `currentCount` in 0..target; (6) no decrement action on employee cards; (7) simple Firestore rules mask widening only (`currentCount` added for assignee status updates); (8) subtle counter-type visual indicator chip; (9) hide edit-screen status dropdown for counter tasks; (10) backward compatibility defaults missing `taskType` to `standard`.
+- **Persistence contract**: Count writes and status writes are inseparable. Transaction path derives from post-increment count and writes `currentCount`, derived `status`, `completedAt`, `updatedAt`, `updatedBy`, and `updatedByName` together. Edit-screen counter saves clamp `currentCount` to target, derive status with the same helper, and persist status/completedAt in the same full update.
+- **Impact**: Counter progress and completion now flow through the same status-based behavior as standard tasks with no Cloud Function changes, no dashboard/report refactors, and no new dependencies. Firestore rules changed by one key in the assignee mask; operationally, rules must be deployed before using increment in production.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/features/tasks/data/models/task_model.dart`, `lib/features/tasks/data/repositories/tasks_repository.dart`, `lib/features/tasks/presentation/screens/edit_task_screen.dart`, `firestore.rules`, `docs/ai-workflow/BACKLOG.md` item 6, PR #6 (`feat/counter-tasks`).
+
+## 2026-05-09 — Adaptive screen-level countdown ticker for task deadlines
+
+- **Decision**: Implement task-deadline countdowns with one `CountdownClockProvider` per consuming screen (`TasksScreen`, `TaskDetailsScreen`) and a leaf-only `CountdownChip` subscriber. Countdowns target `endOfDay(dueDate)`, not the stored midnight timestamp and not a new time-of-day field.
+- **Reason**: The feature's main risk is rebuild churn, not label formatting. A per-card timer or a screen-level `setState()` on every tick would scale poorly on long task lists. Reusing the date-only model also keeps countdown semantics aligned with the existing overdue logic in dashboard, reports, and Cloud Functions reminder paths.
+- **Locked rules**: (1) count to `endOfDay(dueDate)`; (2) keep a minimal `CountdownChip` widget instead of extracting a `TaskCard`; (3) keep Hindu-Arabic numerals (`1234`) in Arabic for v1.1 consistency; (4) use a single adaptive screen-level ticker per consuming screen, never per-card and never global; (5) bind ticking rebuilds to the `CountdownChip` leaf via `ValueListenableBuilder`, leaving parent `AppCard` / `InkWell` / list builders stable; (6) treat overdue as a derived red-tinted chip state, without changing `StatusBadge`; (7) give `task_details_screen.dart` the same chip with its own provider instance.
+- **Impact**: The tasks list and task details screen now show live countdown chips with three visual states (default, warning, overdue). The provider owns exactly one `Timer.periodic`, recomputes cadence when visible due dates change, pauses on app background states, resumes on foreground, and exposes the current time through a `ValueListenable`. No repository, model, rule, or Cloud Function changes were required.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: `lib/features/tasks/presentation/widgets/countdown_clock_provider.dart`, `lib/features/tasks/presentation/widgets/countdown_chip.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/screens/task_details_screen.dart`, `docs/ai-workflow/BACKLOG.md` item 5, PR #5 (`feat/task-countdown-timer`).
+
+## 2026-05-08 — Stop iterating on automatic cross-device session invalidation in v1.1
+
+- **Decision**: Treat the current PR #26 implementation (server-side `revokeUserSessions` + client `authStateChanges` listener) as the final v1.1 state for cross-device session invalidation. Do not add Firestore-tickle, custom token-refresh listeners, polling heuristics, or any further timing workarounds. Document the behavior as best-effort eventual invalidation (seconds → up to ~1h worst case) rather than chase deterministic immediate invalidation.
+- **Reason**: Real-device validation showed the implementation is architecturally correct — refresh tokens are revoked server-side, the client listener is wired, the lifecycle is sound — but practical UX timing is governed by Firebase Auth ID-token refresh cadence and Firebase SDK background-state policies that we do not control. Further iterations would mean adding speculative complexity to compensate for platform-internal behavior, which is the kind of code that ages badly. We are still in Closed Testing / TestFlight, password change itself works correctly, the larger v1.1 roadmap (F3.A countdown, F3.C target tasks, F3.B recurring tasks) is the higher-leverage spend, and a future user-triggered "Sign out of all other devices" Settings action (deterministic by construction) is a much cleaner surface if we ever need stronger session-management UX or get a compliance ask.
+- **Impact**: PR #26 ships and merges with the current implementation. The PR body and v1.1 release notes describe the behavior as best-effort eventual cross-device invalidation. The "Sign out of all other devices" idea is captured in `NEXT_STEPS.md` for a future release. No further engineering cycles on this in v1.1.
+- **Trigger to revisit**: A real user complaint about the timing, an Apple/Google compliance requirement, or a security incident. Until then this decision stands.
+- **Owner**: Project owner (Mohamed) + Claude Code (Opus 4.7) lead.
+- **Related**: `NEXT_STEPS.md` (Security Improvements), 2026-05-08 decision "Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens", 2026-05-08 decision "AuthCubit reacts to server-initiated session invalidation via authStateChanges", PR #26 (`feat/account-settings`).
+
+## 2026-05-08 — Cross-device session invalidation via Cloud Function admin.revokeRefreshTokens
+
+- **Decision**: Add a callable Cloud Function `revokeUserSessions` that invokes `admin.auth().revokeRefreshTokens(request.auth.uid)` after a successful password change, and keep the client-side `authStateChanges()` listener as the reaction layer. Also tolerate the iOS-only `apns-token-not-set` race in `AuthCubit._setupFCM` without logging it to Crashlytics.
+- **Reason**: Real-device validation corrected an earlier assumption: current Firebase Auth `updatePassword` does not revoke refresh tokens for other active sessions, so the first supplement's listener had no revocation event to observe. Server-side revocation is therefore required to force eventual re-authentication on other devices. The APNS race is benign on first iOS launch and would otherwise flood Crashlytics.
+- **Impact**: After password change, all refresh tokens for the caller are revoked and other signed-in devices route back to login on their next token refresh or Firestore-triggered refresh attempt. The client call is best-effort only: revocation failures are logged to Crashlytics and do not undo a successful password change. iOS first-launch APNS registration races no longer generate noisy Crashlytics events while other Firebase exceptions still do.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `functions/index.js`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
+## 2026-05-08 — AuthCubit reacts to server-initiated session invalidation via authStateChanges
+
+- **Decision**: Subscribe `AuthCubit` to `FirebaseAuth.instance.authStateChanges()` in the cubit constructor, guard the listener with `state.status != AuthStatus.authenticated` then `firebaseUser != null`, and emit `unauthenticated` only when the SDK reports `null` while the cubit currently believes it is authenticated.
+- **Reason**: Real-device validation of PR #26 exposed a latent architectural gap: cross-device password change, account deletion, admin disable, or token revocation never reached UI state because `AuthCubit` only emitted `unauthenticated` on explicit local sign-out / deletion paths. `authStateChanges()` is the narrowest stream that covers sign-in, sign-out, and SDK-detected session invalidation without the extra churn of `idTokenChanges()` or `userChanges()`.
+- **Impact**: Devices logged into the same account now route back to login after a server-initiated session invalidation is detected during token refresh. Same-device explicit sign-out and delete-account remain correct and idempotent because duplicate `unauthenticated` emissions are benign.
+- **Owner**: GitHub Copilot (GPT-5.4).
+- **Related**: PR #26 (`feat/account-settings`), `lib/features/auth/presentation/cubit/auth_cubit.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #4.
+
+## 2026-05-08 — Theme persistence is local-only and hydrated before first frame
+
+- **Decision**: Persist `ThemeCubit` mode (`system`/`light`/`dark`) locally via `shared_preferences` and hydrate it in `main()` before `runApp()`. `ThemeCubit` writes are best-effort and non-blocking: emit first, then persist, logging failures to Crashlytics.
+- **Reason**: Testers reported theme reset on every launch. Hydrating before app bootstrap avoids cold-start flicker and keeps UX deterministic. Firestore sync was deferred because cross-device theme sync is not required for v1.1 and would add backend/schema/rules complexity.
+- **Impact**: `ThemeCubit` now receives `prefs` + `initialMode`; startup resolves persisted mode defensively (missing/invalid values fall back to `system`); persistence failures do not block visible theme toggling.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/core/theme/cubit/theme_cubit.dart`, `lib/main.dart`, `pubspec.yaml`, `BACKLOG.md` → v1.1 PR #3.
+
+## 2026-05-07 — Server-side localization for FCM push notifications via users/{uid}.languageCode
+
+- **Decision**: Localize FCM push `notification.title` and `notification.body` in Cloud Functions using a server-side translation table keyed by each recipient's `users/{uid}.languageCode` (`en`/`ar`, fallback `en`). This was applied to all task push senders and both reminder/escalation test callables.
+- **Reason**: In-app notifications were already localized client-side, but system-tray push payloads were hardcoded English. Server-side localization keeps payload behavior deterministic and avoids coupling push rendering to client app version/state.
+- **Locked table**: The approved EN/AR translation table in `CURRENT_TASK.md` was shipped verbatim with no key or wording changes.
+- **Impact**: Recipients now receive push text in their chosen language once `languageCode` is present; missing/invalid values safely default to English. Client persists `languageCode` on sign-in/auth-check and locale changes (best-effort with Crashlytics logging), and rules now allow self-updating `languageCode` alongside `fcmToken`.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `functions/index.js`, `firestore.rules`, `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `lib/core/constants/firebase_paths.dart`, `BACKLOG.md` → v1.1 PR #2.
+
+## 2026-05-07 — FCM token lifecycle — cleared on signout and account deletion
+
+- **Decision**: Clear FCM tokens on both sign-out and successful account deletion in the client auth lifecycle. `AuthCubit.signOut()` now best-effort deletes `users/{uid}.fcmToken` and calls `FirebaseMessaging.deleteToken()` before signing out. `AuthCubit.deleteAccount()` now best-effort deletes the device token, then explicitly signs out and emits `unauthenticated` after callable success.
+- **Reason**: Closed-testing reports showed notification leakage after logout (stale Firestore/device token) and a stuck delete-account spinner caused by relying on passive auth-listener behavior without explicit unauthenticated emission.
+- **Impact**: Sign-out and delete-account now self-heal notification targeting on shared devices and reliably route users back to login via unauthenticated state. Cleanup remains best-effort and non-blocking: failures are logged via `FirebaseCrashlytics.recordError(e, stack)` and do not block sign-out/deletion success.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `lib/features/auth/presentation/cubit/auth_cubit.dart`, `lib/features/settings/presentation/screens/settings_screen.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `BACKLOG.md` → v1.1 PR #1.
+
+## 2026-05-01 — Android release signing — strict, key.properties-driven (no debug fallback)
+
+- **Decision**: Configure `android/app/build.gradle.kts` to require a real signing keystore for every release build. `signingConfigs.create("release")` reads credentials from `android/key.properties` (gitignored). If the file is absent, `flutter build apk --release` / `flutter build appbundle --release` fails hard — no silent fallback to debug keys.
+- **Reason**: The Flutter scaffolding left a TODO comment and a `signingConfig = signingConfigs.getByName("debug")` fallback in `buildTypes.release`. Google Play Console rejects APKs/AABs signed with Android's debug key on every track (internal, closed, open). Silently succeeding with a debug key would produce an upload that Play Console rejects, which is worse than a clear build-time failure.
+- **Alternatives rejected**: (1) Keeping debug-key fallback for CI convenience — rejected because no CI pipeline exists yet; risk outweighs convenience. (2) Hardcoding keystore path in `build.gradle.kts` — rejected because it would require committing credentials or embedding a machine-specific path.
+- **Impact**: `flutter build apk --release` and `flutter build appbundle --release` fail with a clear Gradle error when `android/key.properties` is absent. Debug builds (`flutter run`, `flutter build apk --debug`) are entirely unaffected. Project owner must create `~/upload-keystore.jks` and `android/key.properties` once before their first Play Console upload (instructions in `docs/release-checklist.md`).
+- **iOS out of scope**: iOS distribution signing is configured in Xcode UI — no change to Xcode signing settings in this PR.
+- **Owner**: GitHub Copilot (Claude Sonnet 4.6).
+- **Related**: `android/app/build.gradle.kts`, `docs/release-checklist.md`, `BACKLOG.md` → Pre-build polish (v1.0.1 stores).
+
+## 2026-05-01 — Pre-build app icons via flutter_launcher_icons
+
+- **Decision**: Generate launcher icons from `assets/icon/app_icon.png` using `flutter_launcher_icons` (`flutter_launcher_icons: ^0.14.4`) with `android: true`, `ios: true`, `image_path: "assets/icon/app_icon.png"`, and `remove_alpha_ios: true`.
+- **Reason**: This is the standard, low-risk way to regenerate all required Android mipmap icons and the iOS `AppIcon.appiconset` from a single source asset while keeping output deterministic.
+- **Impact**: Android launcher mipmaps and iOS AppIcon assets are regenerated for v1.0.1 store polish; no adaptive icon customization is introduced in v1.0.x.
+- **Owner**: GitHub Copilot (GPT-5.3-Codex).
+- **Related**: `BACKLOG.md` → Pre-build polish (v1.0.1 stores), `pubspec.yaml`, `ios/Runner/Assets.xcassets/AppIcon.appiconset/`, `android/app/src/main/res/mipmap-*/ic_launcher.png`.
+
 ## 2026-04-30 — Crashlytics + Firebase minor bumps + release artifacts for v1.0.0
 
 - **Decision**: Keep Crashlytics integration intentionally minimal for v1.0.0: global handlers in `main.dart` (`FlutterError.onError`, `PlatformDispatcher.instance.onError`) plus `setUserIdentifier` on auth sign-in/sign-out. No `runZonedGuarded`, no per-catch `recordError`, no custom keys in cubits.

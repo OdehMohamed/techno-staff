@@ -40,7 +40,12 @@ _Empty._
 
 ## Security Improvements
 
-_Empty._
+### Manual "Sign out of all other devices" Settings action
+
+- **Category**: Security
+- **Why now**: PR #26 (account settings) added server-side `revokeUserSessions` + a client `authStateChanges` listener so password change attempts to invalidate other-device sessions. Real-device validation in v1.1 showed the automatic flow is reliably architecturally correct but not reliably deterministic in practice — Firebase Auth ID-token refresh cadence and SDK background-state policies make propagation timing user-visible (seconds → up to ~1h). We stopped iterating on the automatic flow for v1.1 (see `DECISIONS_LOG.md`, 2026-05-08). A user-triggered manual action is the deterministic counterpart if we ever need stronger session-management UX or get a compliance ask.
+- **Sketch**: Settings → Account tile "Sign out of all other devices" → confirmation dialog → calls the existing `revokeUserSessions` callable → Crashlytics on failure. The current device's session continues normally because the revocation only invalidates *other* refresh tokens at the next refresh; the local ID token keeps working until natural expiry. No new Cloud Function — reuses what PR #26 already shipped.
+- **Open questions**: (a) Do we surface confirmation feedback ("Other sessions will sign out within ~1 hour")? (b) Do we add the same wording to the password-change success state to set expectations there too? (c) Trigger an explicit local-token refresh after revocation so the current device immediately re-mints, reducing the worst-case lag for the OTHER devices that actively touch Firestore?
 
 ## Testing Priorities
 

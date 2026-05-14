@@ -7,6 +7,236 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+const i18n = {
+  en: {
+    task_assigned_title: "New Task Assigned",
+    task_assigned_body: "{by} assigned you: {task}",
+    task_completed_title: "Task Completed ✅",
+    task_completed_body: "{task}",
+    task_deadline_title: "Task Reminder ⏰",
+    task_deadline_today_body: "Your task is due today: {task}",
+    task_deadline_tomorrow_body: "Your task is due tomorrow: {task}",
+    task_overdue_title: "Overdue Task ⚠️",
+    task_overdue_body: "Your task is overdue: {task}",
+    task_overdue_escalation_title: "Overdue Task Escalation 🚨",
+    task_overdue_escalation_body: "{employee}'s task is overdue: {task}",
+  },
+  ar: {
+    task_assigned_title: "تم إسناد مهمة جديدة",
+    task_assigned_body: "{by} أسند إليك: {task}",
+    task_completed_title: "تم إنجاز المهمة ✅",
+    task_completed_body: "{task}",
+    task_deadline_title: "تذكير بالمهمة ⏰",
+    task_deadline_today_body: "مهمتك مستحقة اليوم: {task}",
+    task_deadline_tomorrow_body: "مهمتك مستحقة غداً: {task}",
+    task_overdue_title: "مهمة متأخرة ⚠️",
+    task_overdue_body: "مهمتك متأخرة: {task}",
+    task_overdue_escalation_title: "تصعيد مهمة متأخرة 🚨",
+    task_overdue_escalation_body: "مهمة {employee} متأخرة: {task}",
+  },
+};
+
+function localize(key, args, languageCode) {
+  const lang = languageCode === "ar" ? i18n.ar : i18n.en;
+  const template = lang[key] || i18n.en[key] || "";
+  return template.replace(/\{(\w+)\}/g, (_, k) =>
+    args && args[k] != null ? args[k] : "",
+  );
+}
+
+// ─── Asia/Jerusalem helpers ───────────────────────────────────────────────────
+
+function ymdInJerusalem(date) {
+  // Returns "YYYY-MM-DD" in Asia/Jerusalem wall-clock.
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date); // en-CA gives ISO-like YYYY-MM-DD
+}
+
+function jerusalemOffsetForDate(date) {
+  // Compute Asia/Jerusalem UTC offset for the given date as ±HH:MM.
+  const tzFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    timeZoneName: "longOffset",
+  });
+  const parts = tzFormatter.formatToParts(date);
+  const tz = parts.find((p) => p.type === "timeZoneName").value; // e.g. "GMT+3"
+  const match = tz.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return "+00:00";
+  const sign = match[1];
+  const hh = match[2].padStart(2, "0");
+  const mm = (match[3] || "00").padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
+function jerusalemMidnightAsUTC(date) {
+  // Returns the JS Date representing 00:00 Asia/Jerusalem on date's calendar day.
+  const ymd = ymdInJerusalem(date);
+  const offset = jerusalemOffsetForDate(date); // e.g. "+03:00"
+  return new Date(`${ymd}T00:00:00${offset}`);
+}
+
+function sameDayJerusalem(a, b) {
+  return ymdInJerusalem(a) === ymdInJerusalem(b);
+}
+
+function jerusalemDayOfWeek(date) {
+  // 1=Mon ... 7=Sun (matches Dart DateTime.weekday).
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    weekday: "short",
+  });
+  const map = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  return map[formatter.format(date)];
+}
+
+function jerusalemDayOfMonth(date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    day: "numeric",
+  });
+  return parseInt(formatter.format(date), 10);
+}
+
+function jerusalemLastDayOfMonth(date) {
+  // Last calendar day of the month containing `date` in Asia/Jerusalem.
+  const ymd = ymdInJerusalem(date); // "YYYY-MM-DD"
+  const [y, m] = ymd.split("-").map(Number);
+  // JS Date with day=0 of the next month gives the last day of month m.
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function shouldGenerateOn(recurrence, now) {
+  if (!recurrence || typeof recurrence !== "object") return false;
+  const type = recurrence.type;
+  if (type === "daily") return true;
+
+  if (type === "weekly") {
+    const days = recurrence.daysOfWeek;
+    if (!Array.isArray(days) || days.length === 0) return false;
+    return days.includes(jerusalemDayOfWeek(now));
+  }
+
+  if (type === "monthly") {
+    const dayOfMonth = recurrence.dayOfMonth;
+    if (typeof dayOfMonth !== "number" || dayOfMonth < 1 || dayOfMonth > 31) {
+      return false;
+    }
+    const lastDay = jerusalemLastDayOfMonth(now);
+    const targetDay = Math.min(dayOfMonth, lastDay); // monthly clamp
+    return jerusalemDayOfMonth(now) === targetDay;
+  }
+
+  return false;
+}
+
+// ─── Recurring task instance generator ───────────────────────────────────────
+
+exports.generateRecurringTaskInstances = onSchedule(
+  {
+    schedule: "0 6 * * *",
+    timeZone: "Asia/Jerusalem",
+  },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const now = new Date();
+      const todayYMD = ymdInJerusalem(now);
+      const todayDueDate = jerusalemMidnightAsUTC(now);
+
+      const snap = await db
+        .collection("task_templates")
+        .where("isActive", "==", true)
+        .get();
+
+      for (const templateDoc of snap.docs) {
+        try {
+          const template = templateDoc.data();
+          if (!shouldGenerateOn(template.recurrence, now)) continue;
+
+          // Support both legacy single-assignee and new multi-assignee templates.
+          const assigneeIds =
+            Array.isArray(template.assignedToIds) &&
+            template.assignedToIds.length > 0
+              ? template.assignedToIds
+              : template.assignedTo
+                ? [template.assignedTo]
+                : [];
+          const assigneeNames =
+            Array.isArray(template.assignedToNames) &&
+            template.assignedToNames.length > 0
+              ? template.assignedToNames
+              : template.assignedToName
+                ? [template.assignedToName]
+                : [];
+
+          if (assigneeIds.length === 0) continue;
+
+          for (let i = 0; i < assigneeIds.length; i++) {
+            const assigneeId = assigneeIds[i];
+            const assigneeName = assigneeNames[i] || "";
+            // One instance per (template, assignee, date) — deterministic ID is
+            // the sole idempotency gate; existence check is inside the transaction.
+            const instanceId = `${templateDoc.id}_${assigneeId}_${todayYMD}`;
+            const instanceRef = db.collection("tasks").doc(instanceId);
+
+            await db.runTransaction(async (txn) => {
+              const freshTemplate = await txn.get(templateDoc.ref);
+              if (!freshTemplate.exists) return;
+              const freshData = freshTemplate.data() || {};
+              if (freshData.isActive !== true) return;
+
+              const existingInstance = await txn.get(instanceRef);
+              if (existingInstance.exists) return; // already generated
+
+              const instance = {
+                title: freshData.title || "",
+                description: freshData.description || "",
+                assignedTo: assigneeId,
+                assignedToName: assigneeName,
+                assignedBy: freshData.assignedBy || "",
+                assignedByName: freshData.assignedByName || "",
+                priority: freshData.priority || "medium",
+                status: "pending",
+                taskType: freshData.taskType || "standard",
+                currentCount: 0,
+                dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
+                createdAt: admin.firestore.Timestamp.fromDate(now),
+                updatedAt: admin.firestore.Timestamp.fromDate(now),
+                completedAt: null,
+                templateId: templateDoc.id,
+              };
+              if (freshData.taskType === "counter" && freshData.targetCount) {
+                instance.targetCount = freshData.targetCount;
+              }
+
+              txn.set(instanceRef, instance);
+            });
+          }
+
+          // lastGeneratedAt is metadata only — written after all assignees are
+          // processed so a partial-run crash leaves it unset for the next retry.
+          await templateDoc.ref.update({
+            lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
+            updatedAt: admin.firestore.Timestamp.fromDate(now),
+          });
+        } catch (templateError) {
+          console.error(
+            `Error processing template ${templateDoc.id}:`,
+            templateError,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error generating recurring task instances:", error);
+    }
+  },
+);
+
 exports.createEmployeeUser = onCall(async (request) => {
   try {
     // 🔐 تحقق أن المستخدم مسجل دخول
@@ -111,6 +341,7 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
 
       const assignedUserData = assignedUserDoc.data() || {};
       const fcmToken = assignedUserData && assignedUserData.fcmToken;
+      const languageCode = assignedUserData.languageCode || "en";
 
       if (!fcmToken) {
         console.log("Assigned user has no FCM token.");
@@ -132,8 +363,12 @@ exports.sendTaskAssignedNotification = onDocumentCreated(
       const message = {
         token: fcmToken,
         notification: {
-          title: "New Task Assigned",
-          body: assignedByName + " assigned you: " + taskTitle,
+          title: localize("task_assigned_title", {}, languageCode),
+          body: localize(
+            "task_assigned_body",
+            { by: assignedByName, task: taskTitle },
+            languageCode,
+          ),
         },
         data: {
           taskId: event.params.taskId,
@@ -201,43 +436,38 @@ exports.sendTaskStatusNotification = onDocumentUpdated(
         .where("role", "==", "admin")
         .get();
 
-      const tokens = new Set();
       const adminUserIds = new Set();
 
       adminsSnapshot.forEach((doc) => {
-        const data = doc.data();
-
         adminUserIds.add(doc.id);
-
-        if (data.fcmToken) {
-          tokens.add(data.fcmToken);
-        }
       });
 
       if (assignedById && assignedById !== currentUserId) {
-        const creatorDoc = await db.collection("users").doc(assignedById).get();
-        const creatorData = creatorDoc.data();
-
-        if (creatorData && creatorData.fcmToken) {
-          tokens.add(creatorData.fcmToken);
-        }
-
         adminUserIds.add(assignedById);
       }
 
-      const tokensList = Array.from(tokens);
+      for (const userId of adminUserIds) {
+        const recipientDoc = await db.collection("users").doc(userId).get();
+        const recipientData = recipientDoc.data() || {};
+        const recipientToken = recipientData.fcmToken;
+        const languageCode = recipientData.languageCode || "en";
 
-      if (tokensList.length > 0) {
-        await admin.messaging().sendEachForMulticast({
-          tokens: tokensList,
-          notification: {
-            title: "Task Completed ✅",
-            body: after.title,
-          },
-          data: {
-            taskId: event.params.taskId,
-          },
-        });
+        if (recipientToken) {
+          await admin.messaging().send({
+            token: recipientToken,
+            notification: {
+              title: localize("task_completed_title", {}, languageCode),
+              body: localize(
+                "task_completed_body",
+                { task: after.title || "" },
+                languageCode,
+              ),
+            },
+            data: {
+              taskId: event.params.taskId,
+            },
+          });
+        }
       }
 
       for (const userId of adminUserIds) {
@@ -327,14 +557,19 @@ exports.sendTaskDeadlineReminders = onSchedule(
 
         const userData = userDoc.data() || {};
         const fcmToken = userData.fcmToken;
+        const languageCode = userData.languageCode || "en";
 
         if (!fcmToken) continue;
 
         await admin.messaging().send({
           token: fcmToken,
           notification: {
-            title: "Task Reminder ⏰",
-            body: "Your task is due tomorrow: " + taskTitle,
+            title: localize("task_deadline_title", {}, languageCode),
+            body: localize(
+              "task_deadline_tomorrow_body",
+              { task: taskTitle },
+              languageCode,
+            ),
           },
           data: {
             taskId: doc.id,
@@ -448,14 +683,19 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
 
       const userData = userDoc.data() || {};
       const fcmToken = userData.fcmToken;
+      const languageCode = userData.languageCode || "en";
 
       if (!fcmToken) continue;
 
       await admin.messaging().send({
         token: fcmToken,
         notification: {
-          title: "Task Reminder ⏰",
-          body: "Your task is due today: " + taskTitle,
+          title: localize("task_deadline_title", {}, languageCode),
+          body: localize(
+            "task_deadline_today_body",
+            { task: taskTitle },
+            languageCode,
+          ),
         },
         data: {
           taskId: doc.id,
@@ -569,13 +809,18 @@ exports.sendOverdueTaskEscalations = onSchedule(
           if (userDoc.exists) {
             const userData = userDoc.data() || {};
             const employeeToken = userData.fcmToken;
+            const languageCode = userData.languageCode || "en";
 
             if (employeeToken) {
               await admin.messaging().send({
                 token: employeeToken,
                 notification: {
-                  title: "Overdue Task ⚠️",
-                  body: "Your task is overdue: " + taskTitle,
+                  title: localize("task_overdue_title", {}, languageCode),
+                  body: localize(
+                    "task_overdue_body",
+                    { task: taskTitle },
+                    languageCode,
+                  ),
                 },
                 data: {
                   taskId: taskId,
@@ -612,20 +857,45 @@ exports.sendOverdueTaskEscalations = onSchedule(
 
         // 2) Notify admins
         if (adminTokens.length > 0 && !sameDayEscalation) {
-          await admin.messaging().sendEachForMulticast({
-            tokens: adminTokens,
-            notification: {
-              title: "Overdue Task Escalation 🚨",
-              body:
-                "Overdue task assigned to " + assignedToName + ": " + taskTitle,
-            },
-            data: {
-              taskId: taskId,
-              type: "task_overdue_escalation",
-            },
-          });
+          let sentToAnyAdmin = false;
 
-          adminsNotified = true;
+          for (const adminDoc of adminsSnapshot.docs) {
+            const adminUserDoc = await db
+              .collection("users")
+              .doc(adminDoc.id)
+              .get();
+            const adminUserData = adminUserDoc.data() || {};
+            const adminToken = adminUserData.fcmToken;
+            const languageCode = adminUserData.languageCode || "en";
+
+            if (!adminToken) {
+              continue;
+            }
+
+            await admin.messaging().send({
+              token: adminToken,
+              notification: {
+                title: localize(
+                  "task_overdue_escalation_title",
+                  {},
+                  languageCode,
+                ),
+                body: localize(
+                  "task_overdue_escalation_body",
+                  { employee: assignedToName, task: taskTitle },
+                  languageCode,
+                ),
+              },
+              data: {
+                taskId: taskId,
+                type: "task_overdue_escalation",
+              },
+            });
+
+            sentToAnyAdmin = true;
+          }
+
+          adminsNotified = sentToAnyAdmin;
         }
 
         for (const adminDoc of adminsSnapshot.docs) {
@@ -749,13 +1019,18 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
         if (userDoc.exists) {
           const userData = userDoc.data() || {};
           const employeeToken = userData.fcmToken;
+          const languageCode = userData.languageCode || "en";
 
           if (employeeToken) {
             await admin.messaging().send({
               token: employeeToken,
               notification: {
-                title: "Overdue Task ⚠️",
-                body: "Your task is overdue: " + taskTitle,
+                title: localize("task_overdue_title", {}, languageCode),
+                body: localize(
+                  "task_overdue_body",
+                  { task: taskTitle },
+                  languageCode,
+                ),
               },
               data: {
                 taskId: taskId,
@@ -782,20 +1057,41 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
       }
 
       if (adminTokens.length > 0) {
-        await admin.messaging().sendEachForMulticast({
-          tokens: adminTokens,
-          notification: {
-            title: "Overdue Task Escalation 🚨",
-            body:
-              "Overdue task assigned to " + assignedToName + ": " + taskTitle,
-          },
-          data: {
-            taskId: taskId,
-            type: "task_overdue_escalation",
-          },
-        });
+        for (const adminDoc of adminsSnapshot.docs) {
+          const adminUserDoc = await db
+            .collection("users")
+            .doc(adminDoc.id)
+            .get();
+          const adminUserData = adminUserDoc.data() || {};
+          const adminToken = adminUserData.fcmToken;
+          const languageCode = adminUserData.languageCode || "en";
 
-        sentCount += adminTokens.length;
+          if (!adminToken) {
+            continue;
+          }
+
+          await admin.messaging().send({
+            token: adminToken,
+            notification: {
+              title: localize(
+                "task_overdue_escalation_title",
+                {},
+                languageCode,
+              ),
+              body: localize(
+                "task_overdue_escalation_body",
+                { employee: assignedToName, task: taskTitle },
+                languageCode,
+              ),
+            },
+            data: {
+              taskId: taskId,
+              type: "task_overdue_escalation",
+            },
+          });
+
+          sentCount++;
+        }
       }
 
       await db.collection("task_logs").add({
@@ -903,6 +1199,19 @@ exports.deleteUserAccount = onCall(async (request) => {
     }
 
     throw new HttpsError("internal", error.message || "Something went wrong");
+  }
+});
+
+exports.revokeUserSessions = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+  try {
+    await admin.auth().revokeRefreshTokens(request.auth.uid);
+    return { success: true };
+  } catch (error) {
+    console.error("revokeUserSessions failed", error);
+    throw new HttpsError("internal", "Failed to revoke sessions");
   }
 });
 

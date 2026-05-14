@@ -6,6 +6,7 @@ import '../core/constants/app_strings.dart';
 import '../core/routes/app_navigator.dart';
 import '../core/routes/app_router.dart';
 import '../core/routes/route_names.dart';
+import '../core/services/connectivity_service.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/cubit/theme_cubit.dart';
 import '../core/theme/cubit/theme_state.dart';
@@ -59,6 +60,43 @@ class TechnoStaffApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) {
+              return StreamBuilder<bool>(
+                stream: ConnectivityService.instance.isConnectedStream,
+                initialData: true,
+                builder: (context, snapshot) {
+                  final isConnected = snapshot.data ?? true;
+                  return Stack(
+                    children: [
+                      child!,
+                      if (!isConnected)
+                        Positioned(
+                          top: MediaQuery.of(context).viewPadding.top,
+                          left: 0,
+                          right: 0,
+                          child: Material(
+                            color: Colors.red.shade700,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 6,
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'no_internet_connection'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
           );
         },
       ),
