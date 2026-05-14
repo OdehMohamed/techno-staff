@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — Multi-assignee supplement for PR #29 (F3.B)
+
+- **Agent**: Claude Code (Sonnet 4.6) — lead audit + implementation on `feat/recurring-tasks`.
+- **Branch**: `feat/recurring-tasks`
+- **Goal**: Extend recurring task templates from single-assignee to multi-assignee. Each selected employee gets an independent task instance per generation cycle.
+- **Outcome**: Supplement committed on the same branch before PR #29 merge. Locked decisions: `assignedToIds: List<String>` + `assignedToNames: List<String>` replace the scalar fields; deterministic instance ID becomes `${templateId}_${assigneeId}_${YYYY-MM-DD}`; `lastGeneratedAt` demoted to metadata-only (no longer the generation gate); deterministic instance existence is the sole idempotency gate; backward compat via `_parseStringList` fallback to legacy scalar fields; notifications, dashboards, reports, reminders, and Firestore rules unchanged. `flutter analyze` clean, `flutter test` 6/6, `npm run lint` clean.
+- **Files touched**: `lib/features/tasks/data/models/task_template_model.dart` (fields renamed to arrays + `_parseStringList` compat helper), `lib/features/tasks/presentation/screens/add_template_screen.dart` (single dropdown → `_EmployeeMultiPicker` chip picker), `lib/features/tasks/presentation/screens/edit_template_screen.dart` (same, plus deactivated-employee name preservation via `displayMap`), `lib/features/tasks/presentation/screens/recurring_tasks_screen.dart` (subtitle: `assignedToNames.join(', ')`), `functions/index.js` (`generateRecurringTaskInstances`: outer assignee loop, per-assignee transaction, `lastGeneratedAt` after-loop metadata write, per-template error isolation).
+- **Follow-ups**: PR #29 ready for merge. After merge: cut v1.1.0 release. Smoke tests #1-#15 from CURRENT_TASK.md require project owner on real device.
+
 ## 2026-05-09 — GitHub Copilot (Claude Sonnet 4.6) — Implement v1.1 F3.B recurring task templates
 
 - **Agent**: GitHub Copilot (Claude Sonnet 4.6) — implementing from the spec written in the planning session above.

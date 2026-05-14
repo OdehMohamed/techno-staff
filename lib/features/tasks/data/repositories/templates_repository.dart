@@ -39,17 +39,14 @@ class TemplatesRepository {
         .update(template.toMap());
   }
 
-  Future<void> setTemplateActive(
-    String templateId,
-    bool isActive,
-  ) async {
+  Future<void> setTemplateActive(String templateId, bool isActive) async {
     await _firestore
         .collection(FirebasePaths.taskTemplates)
         .doc(templateId)
         .update({
-      'isActive': isActive,
-      'updatedAt': Timestamp.fromDate(DateTime.now()),
-    });
+          'isActive': isActive,
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
   }
 
   Future<void> deleteTemplate(String templateId) async {

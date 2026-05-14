@@ -1,4 +1,5 @@
 # Current Task
+
 > Last updated: 2026-05-09
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
@@ -7,11 +8,11 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-No active task. v1.1 is feature-complete (F3.A countdown timer, F3.C counter tasks, F3.B recurring task templates all merged or in PR). Next step: cut v1.1.0 release.
+No active task. v1.1 is feature-complete. PR #29 (`feat/recurring-tasks`) carries the full F3.B implementation including the 2026-05-14 multi-assignee supplement and is ready for merge. Next step: squash-merge PR #29 into `dev`, then cut v1.1.0 release (dev → main PR, tag `v1.1.0`, store submission).
 
 See `BACKLOG.md` for open items and `NEXT_STEPS.md` for deferred ideas.
 
-Add a new admin-authored template object that produces a fresh task instance on a daily / weekly / monthly schedule. Templates live in a **separate `task_templates` collection** so the existing `tasks` collection stays semantically clean: `tasks` continues to represent only actionable runtime instances, and every existing consumer (dashboards, reports, FCM triggers, deadline reminders, overdue escalations, countdown chip, Firestore rules, task_logs) keeps working without per-type branches or template filters. Generation runs **server-only** in a new daily Cloud Function. Idempotency is layered: deterministic instance document IDs (`${templateId}_${YYYY-MM-DD}`) plus a `lastGeneratedAt` same-day guard on the template doc.
+Add a new admin-authored template object that produces a fresh task instance on a daily / weekly / monthly schedule. Templates live in a **separate `task_templates` collection** so the existing `tasks` collection stays semantically clean: `tasks` continues to represent only actionable runtime instances, and every existing consumer (dashboards, reports, FCM triggers, deadline reminders, overdue escalations, countdown chip, Firestore rules, task*logs) keeps working without per-type branches or template filters. Generation runs **server-only** in a new daily Cloud Function. Idempotency is layered: deterministic instance document IDs (`${templateId}*${YYYY-MM-DD}`) plus a `lastGeneratedAt` same-day guard on the template doc.
 
 The architectural risk in this feature is **leakage** — if templates ever land in the `tasks` collection (or if a single scheduler tick double-generates), then dashboards over-count, FCM duplicates, deadline-reminder sweeps target template configs as if they were real tasks, and reports show ghost rows. The spec leads with the isolation + idempotency invariants; UI / formatting details follow as application of those rules.
 
@@ -167,7 +168,7 @@ exports.generateRecurringTaskInstances = onSchedule(
     try {
       const db = admin.firestore();
       const now = new Date();
-      const todayYMD = ymdInJerusalem(now);          // helper, see §3.3
+      const todayYMD = ymdInJerusalem(now); // helper, see §3.3
       const todayDueDate = jerusalemMidnightAsUTC(now); // helper
 
       const snap = await db
@@ -366,6 +367,7 @@ match /task_templates/{templateId} {
 ```
 
 Locked decisions baked in:
+
 - Admin-only read (templates are a configuration surface; non-admins don't see them).
 - Admin-only create with `assignedBy == auth.uid` so the template author is the admin who created it.
 - Admin-only update with `assignedBy` immutability (matches the existing `tasks/` rule for `assignedBy`).
@@ -375,6 +377,7 @@ Locked decisions baked in:
 ### 4.2 No changes to the `tasks/{taskId}` block
 
 The existing rules apply unchanged to instances. Their `templateId` field is incidental — no rule references it. Specifically:
+
 - The assignee self-update mask remains the F3.C-widened mask (`status / updatedAt / completedAt / updatedBy / updatedByName / currentCount`). `templateId` is not in the mask, so an assignee cannot mutate it. ✓
 - Instance create comes from Admin SDK (server-only generation), so the existing `creatingOwnTask()` rule for client-created tasks doesn't gate it. ✓
 
@@ -445,6 +448,7 @@ Add `TemplatesCubit` to the global `MultiBlocProvider` in [app.dart](lib/app/app
 `lib/features/tasks/presentation/screens/add_template_screen.dart` and `.../edit_template_screen.dart`.
 
 Form fields:
+
 - Title (required, trim non-empty)
 - Description (required, trim non-empty)
 - Assigned to (employee dropdown, same source as `add_task_screen`)
@@ -460,6 +464,7 @@ Form fields:
 - `isActive` toggle (defaults true for add; editable for edit)
 
 Save:
+
 - Add: write a new template. Server fields (`createdAt`, `updatedAt`) set to `DateTime.now()`. `lastGeneratedAt: null`.
 - Edit: write the full template doc via `updateTemplate`. `assignedBy`, `assignedByName`, `taskType`, `createdAt` pass through unchanged (immutability invariants).
 
@@ -519,26 +524,26 @@ Translation parity check after edits: `python3 -c "..."` → `<n> <n> []`.
 
 ## 10. Affected files
 
-| File | Change | Approx. size |
-|---|---|---|
-| `lib/features/tasks/data/models/task_template_model.dart` | New file: `TaskTemplateModel` + `RecurrenceRule`. | ~120 lines |
-| `lib/features/tasks/data/models/task_model.dart` | Add `templateId: String?` field + `fromMap` / `toMap` / `copyWith`. | ~10 line delta |
-| `lib/features/tasks/data/repositories/templates_repository.dart` | New file: CRUD + `setTemplateActive`. | ~80 lines |
-| `lib/features/tasks/presentation/cubit/templates_cubit.dart` | New file. | ~80 lines |
-| `lib/features/tasks/presentation/cubit/templates_state.dart` | New file. | ~50 lines |
-| `lib/features/tasks/presentation/screens/recurring_tasks_screen.dart` | New file: list / pause / delete UI. | ~250 lines |
-| `lib/features/tasks/presentation/screens/add_template_screen.dart` | New file: full add form including recurrence picker. | ~280 lines |
-| `lib/features/tasks/presentation/screens/edit_template_screen.dart` | New file: full edit form, immutable taskType. | ~300 lines |
-| `lib/app/app.dart` | Register `TemplatesRepository` + `TemplatesCubit` in `MultiBlocProvider`. | ~6 line delta |
-| `lib/core/routes/route_names.dart` | Add `recurringTasks`, `addTemplate`, `editTemplate`. | ~3 lines |
-| `lib/core/routes/app_router.dart` | Add three route cases. | ~12 lines |
-| `lib/core/constants/firebase_paths.dart` | Add `taskTemplates = 'task_templates'`. | 1 line |
-| `lib/shared/widgets/app_drawer.dart` | Admin-only entry for "Recurring Tasks". | ~6 line delta |
-| `firestore.rules` | New `task_templates/{templateId}` rules block per §4.1. | ~6 lines |
-| `functions/index.js` | New `generateRecurringTaskInstances` `onSchedule` + helpers (`ymdInJerusalem`, `sameDayJerusalem`, `jerusalemDayOfWeek`, `jerusalemDayOfMonth`, `jerusalemLastDayOfMonth`, `jerusalemMidnightAsUTC`, `shouldGenerateOn`). | ~150 lines |
-| `assets/translations/en.json` | New keys (§9). | ~20 lines |
-| `assets/translations/ar.json` | Same keys translated. | ~20 lines |
-| `test/features/tasks/data/models/task_template_model_test.dart` | Optional: pure-function tests for `RecurrenceRule.fromMap` round-trip + `shouldGenerateOn` matchers (if porting the JS matcher to Dart for parity testing isn't worth it, defer entirely). | ~50 lines or skip |
+| File                                                                  | Change                                                                                                                                                                                                                    | Approx. size      |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `lib/features/tasks/data/models/task_template_model.dart`             | New file: `TaskTemplateModel` + `RecurrenceRule`.                                                                                                                                                                         | ~120 lines        |
+| `lib/features/tasks/data/models/task_model.dart`                      | Add `templateId: String?` field + `fromMap` / `toMap` / `copyWith`.                                                                                                                                                       | ~10 line delta    |
+| `lib/features/tasks/data/repositories/templates_repository.dart`      | New file: CRUD + `setTemplateActive`.                                                                                                                                                                                     | ~80 lines         |
+| `lib/features/tasks/presentation/cubit/templates_cubit.dart`          | New file.                                                                                                                                                                                                                 | ~80 lines         |
+| `lib/features/tasks/presentation/cubit/templates_state.dart`          | New file.                                                                                                                                                                                                                 | ~50 lines         |
+| `lib/features/tasks/presentation/screens/recurring_tasks_screen.dart` | New file: list / pause / delete UI.                                                                                                                                                                                       | ~250 lines        |
+| `lib/features/tasks/presentation/screens/add_template_screen.dart`    | New file: full add form including recurrence picker.                                                                                                                                                                      | ~280 lines        |
+| `lib/features/tasks/presentation/screens/edit_template_screen.dart`   | New file: full edit form, immutable taskType.                                                                                                                                                                             | ~300 lines        |
+| `lib/app/app.dart`                                                    | Register `TemplatesRepository` + `TemplatesCubit` in `MultiBlocProvider`.                                                                                                                                                 | ~6 line delta     |
+| `lib/core/routes/route_names.dart`                                    | Add `recurringTasks`, `addTemplate`, `editTemplate`.                                                                                                                                                                      | ~3 lines          |
+| `lib/core/routes/app_router.dart`                                     | Add three route cases.                                                                                                                                                                                                    | ~12 lines         |
+| `lib/core/constants/firebase_paths.dart`                              | Add `taskTemplates = 'task_templates'`.                                                                                                                                                                                   | 1 line            |
+| `lib/shared/widgets/app_drawer.dart`                                  | Admin-only entry for "Recurring Tasks".                                                                                                                                                                                   | ~6 line delta     |
+| `firestore.rules`                                                     | New `task_templates/{templateId}` rules block per §4.1.                                                                                                                                                                   | ~6 lines          |
+| `functions/index.js`                                                  | New `generateRecurringTaskInstances` `onSchedule` + helpers (`ymdInJerusalem`, `sameDayJerusalem`, `jerusalemDayOfWeek`, `jerusalemDayOfMonth`, `jerusalemLastDayOfMonth`, `jerusalemMidnightAsUTC`, `shouldGenerateOn`). | ~150 lines        |
+| `assets/translations/en.json`                                         | New keys (§9).                                                                                                                                                                                                            | ~20 lines         |
+| `assets/translations/ar.json`                                         | Same keys translated.                                                                                                                                                                                                     | ~20 lines         |
+| `test/features/tasks/data/models/task_template_model_test.dart`       | Optional: pure-function tests for `RecurrenceRule.fromMap` round-trip + `shouldGenerateOn` matchers (if porting the JS matcher to Dart for parity testing isn't worth it, defer entirely).                                | ~50 lines or skip |
 
 That's it. **Zero changes** to: `tasks_repository.dart`, `tasks_cubit.dart`, `tasks_state.dart`, `tasks_screen.dart`, `task_details_screen.dart`, `add_task_screen.dart`, `edit_task_screen.dart`, `task_filter_bottom_sheet.dart`, `dashboard_repository.dart`, `reports_repository.dart`, `pdf_report_service.dart`, `countdown_chip.dart`, `countdown_clock_provider.dart`, `status_badge.dart`, `priority_badge.dart`, any other shared widget, or any existing Cloud Function. The collection-isolation invariant is what enables this.
 
@@ -627,17 +632,17 @@ Smoke tests #1–#3, #6–#9, #11–#14 require real-device + multi-day timing w
 
 ## 15. Workflow doc updates required
 
-| File | Change | Who |
-|---|---|---|
-| `docs/ai-workflow/CURRENT_TASK.md` | Reset to "No active task" or to next planned task on completion. | Implementing agent |
-| `docs/ai-workflow/BACKLOG.md` | F3.B entry: change Status to `Done — YYYY-MM-DD`, add `**Completed**` line summarizing what shipped + automated quality-gate results + which smoke tests are deferred to project owner. | Implementing agent |
-| `docs/ai-workflow/SESSION_LOG.md` | Append new implementation entry at the top. Don't edit prior entries. | Implementing agent |
-| `docs/ai-workflow/DECISIONS_LOG.md` | Append: "Recurring tasks: separate `task_templates` collection with cron-driven server-only instance generation" — record the 14 locked planning decisions and the collection-isolation + idempotency invariants. | Implementing agent |
-| `docs/ai-workflow/PROJECT_CONTEXT.md` | §4 Modules: extend the `tasks` row to mention "recurring task templates with cron-driven instance generation (admin-only)". §5 Firestore data model: add a `task_templates/{templateId}` row with admin-only access and a `cron-generated instances; templates configure the schedule` note. §6 Cloud Functions table: add `generateRecurringTaskInstances` (`onSchedule 0 6 * * *` Asia/Jerusalem, role: scheduler, purpose: "Daily idempotent generator that creates `tasks/{templateId}_{YYYY-MM-DD}` instances from active recurring templates."). | Implementing agent |
-| `CHANGELOG.md` | Under `## [Unreleased]` → `### Added`: "Recurring task templates — admins can author daily / weekly / monthly templates that auto-generate fresh task instances each morning at 6am Asia/Jerusalem. Templates support standard and counter task types, can be paused / resumed without losing history, and clamp month-end edge cases (e.g. day 31 generates on Feb 28/29)." | Implementing agent |
-| `docs/release-checklist.md` | Add: post-merge ops include `firebase deploy --only functions:generateRecurringTaskInstances` and `firebase deploy --only firestore:rules`. | Implementing agent (small append) |
-| `docs/ai-workflow/RULES.md` | No change | — |
-| `docs/ai-workflow/NEXT_STEPS.md` | Add a "Manual generate-now callable" entry under Engineering and a "Recurring instance badge on task cards" entry under UI / UX (both deferred from F3.B v1.1 scope). | Implementing agent |
+| File                                  | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Who                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `docs/ai-workflow/CURRENT_TASK.md`    | Reset to "No active task" or to next planned task on completion.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Implementing agent                |
+| `docs/ai-workflow/BACKLOG.md`         | F3.B entry: change Status to `Done — YYYY-MM-DD`, add `**Completed**` line summarizing what shipped + automated quality-gate results + which smoke tests are deferred to project owner.                                                                                                                                                                                                                                                                                                                                                                | Implementing agent                |
+| `docs/ai-workflow/SESSION_LOG.md`     | Append new implementation entry at the top. Don't edit prior entries.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Implementing agent                |
+| `docs/ai-workflow/DECISIONS_LOG.md`   | Append: "Recurring tasks: separate `task_templates` collection with cron-driven server-only instance generation" — record the 14 locked planning decisions and the collection-isolation + idempotency invariants.                                                                                                                                                                                                                                                                                                                                      | Implementing agent                |
+| `docs/ai-workflow/PROJECT_CONTEXT.md` | §4 Modules: extend the `tasks` row to mention "recurring task templates with cron-driven instance generation (admin-only)". §5 Firestore data model: add a `task_templates/{templateId}` row with admin-only access and a `cron-generated instances; templates configure the schedule` note. §6 Cloud Functions table: add `generateRecurringTaskInstances` (`onSchedule 0 6 * * *` Asia/Jerusalem, role: scheduler, purpose: "Daily idempotent generator that creates `tasks/{templateId}_{YYYY-MM-DD}` instances from active recurring templates."). | Implementing agent                |
+| `CHANGELOG.md`                        | Under `## [Unreleased]` → `### Added`: "Recurring task templates — admins can author daily / weekly / monthly templates that auto-generate fresh task instances each morning at 6am Asia/Jerusalem. Templates support standard and counter task types, can be paused / resumed without losing history, and clamp month-end edge cases (e.g. day 31 generates on Feb 28/29)."                                                                                                                                                                           | Implementing agent                |
+| `docs/release-checklist.md`           | Add: post-merge ops include `firebase deploy --only functions:generateRecurringTaskInstances` and `firebase deploy --only firestore:rules`.                                                                                                                                                                                                                                                                                                                                                                                                            | Implementing agent (small append) |
+| `docs/ai-workflow/RULES.md`           | No change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | —                                 |
+| `docs/ai-workflow/NEXT_STEPS.md`      | Add a "Manual generate-now callable" entry under Engineering and a "Recurring instance badge on task cards" entry under UI / UX (both deferred from F3.B v1.1 scope).                                                                                                                                                                                                                                                                                                                                                                                  | Implementing agent                |
 
 ---
 

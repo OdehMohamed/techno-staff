@@ -154,61 +154,82 @@ exports.generateRecurringTaskInstances = onSchedule(
         .get();
 
       for (const templateDoc of snap.docs) {
-        const template = templateDoc.data();
-        if (!shouldGenerateOn(template.recurrence, now)) continue;
+        try {
+          const template = templateDoc.data();
+          if (!shouldGenerateOn(template.recurrence, now)) continue;
 
-        const instanceId = `${templateDoc.id}_${todayYMD}`;
-        const instanceRef = db.collection("tasks").doc(instanceId);
+          // Support both legacy single-assignee and new multi-assignee templates.
+          const assigneeIds =
+            Array.isArray(template.assignedToIds) &&
+            template.assignedToIds.length > 0
+              ? template.assignedToIds
+              : template.assignedTo
+                ? [template.assignedTo]
+                : [];
+          const assigneeNames =
+            Array.isArray(template.assignedToNames) &&
+            template.assignedToNames.length > 0
+              ? template.assignedToNames
+              : template.assignedToName
+                ? [template.assignedToName]
+                : [];
 
-        await db.runTransaction(async (txn) => {
-          const freshTemplate = await txn.get(templateDoc.ref);
-          if (!freshTemplate.exists) return;
-          const freshData = freshTemplate.data() || {};
-          if (freshData.isActive !== true) return;
+          if (assigneeIds.length === 0) continue;
 
-          const lastGen = freshData.lastGeneratedAt
-            ? freshData.lastGeneratedAt.toDate()
-            : null;
-          if (lastGen && sameDayJerusalem(lastGen, now)) return; // already generated today
+          for (let i = 0; i < assigneeIds.length; i++) {
+            const assigneeId = assigneeIds[i];
+            const assigneeName = assigneeNames[i] || "";
+            // One instance per (template, assignee, date) — deterministic ID is
+            // the sole idempotency gate; existence check is inside the transaction.
+            const instanceId = `${templateDoc.id}_${assigneeId}_${todayYMD}`;
+            const instanceRef = db.collection("tasks").doc(instanceId);
 
-          const existingInstance = await txn.get(instanceRef);
-          if (existingInstance.exists) {
-            // Recovery: deterministic-ID instance exists from a previous partial run.
-            // Backfill the template's lastGeneratedAt and skip the create.
-            txn.update(templateDoc.ref, {
-              lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
-              updatedAt: admin.firestore.Timestamp.fromDate(now),
+            await db.runTransaction(async (txn) => {
+              const freshTemplate = await txn.get(templateDoc.ref);
+              if (!freshTemplate.exists) return;
+              const freshData = freshTemplate.data() || {};
+              if (freshData.isActive !== true) return;
+
+              const existingInstance = await txn.get(instanceRef);
+              if (existingInstance.exists) return; // already generated
+
+              const instance = {
+                title: freshData.title || "",
+                description: freshData.description || "",
+                assignedTo: assigneeId,
+                assignedToName: assigneeName,
+                assignedBy: freshData.assignedBy || "",
+                assignedByName: freshData.assignedByName || "",
+                priority: freshData.priority || "medium",
+                status: "pending",
+                taskType: freshData.taskType || "standard",
+                currentCount: 0,
+                dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
+                createdAt: admin.firestore.Timestamp.fromDate(now),
+                updatedAt: admin.firestore.Timestamp.fromDate(now),
+                completedAt: null,
+                templateId: templateDoc.id,
+              };
+              if (freshData.taskType === "counter" && freshData.targetCount) {
+                instance.targetCount = freshData.targetCount;
+              }
+
+              txn.set(instanceRef, instance);
             });
-            return;
           }
 
-          const instance = {
-            title: freshData.title || "",
-            description: freshData.description || "",
-            assignedTo: freshData.assignedTo || "",
-            assignedToName: freshData.assignedToName || "",
-            assignedBy: freshData.assignedBy || "",
-            assignedByName: freshData.assignedByName || "",
-            priority: freshData.priority || "medium",
-            status: "pending",
-            taskType: freshData.taskType || "standard",
-            currentCount: 0,
-            dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
-            createdAt: admin.firestore.Timestamp.fromDate(now),
-            updatedAt: admin.firestore.Timestamp.fromDate(now),
-            completedAt: null,
-            templateId: templateDoc.id,
-          };
-          if (freshData.taskType === "counter" && freshData.targetCount) {
-            instance.targetCount = freshData.targetCount;
-          }
-
-          txn.set(instanceRef, instance);
-          txn.update(templateDoc.ref, {
+          // lastGeneratedAt is metadata only — written after all assignees are
+          // processed so a partial-run crash leaves it unset for the next retry.
+          await templateDoc.ref.update({
             lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
             updatedAt: admin.firestore.Timestamp.fromDate(now),
           });
-        });
+        } catch (templateError) {
+          console.error(
+            `Error processing template ${templateDoc.id}:`,
+            templateError,
+          );
+        }
       }
     } catch (error) {
       console.error("Error generating recurring task instances:", error);
@@ -839,7 +860,10 @@ exports.sendOverdueTaskEscalations = onSchedule(
           let sentToAnyAdmin = false;
 
           for (const adminDoc of adminsSnapshot.docs) {
-            const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+            const adminUserDoc = await db
+              .collection("users")
+              .doc(adminDoc.id)
+              .get();
             const adminUserData = adminUserDoc.data() || {};
             const adminToken = adminUserData.fcmToken;
             const languageCode = adminUserData.languageCode || "en";
@@ -851,7 +875,11 @@ exports.sendOverdueTaskEscalations = onSchedule(
             await admin.messaging().send({
               token: adminToken,
               notification: {
-                title: localize("task_overdue_escalation_title", {}, languageCode),
+                title: localize(
+                  "task_overdue_escalation_title",
+                  {},
+                  languageCode,
+                ),
                 body: localize(
                   "task_overdue_escalation_body",
                   { employee: assignedToName, task: taskTitle },
@@ -1030,7 +1058,10 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
 
       if (adminTokens.length > 0) {
         for (const adminDoc of adminsSnapshot.docs) {
-          const adminUserDoc = await db.collection("users").doc(adminDoc.id).get();
+          const adminUserDoc = await db
+            .collection("users")
+            .doc(adminDoc.id)
+            .get();
           const adminUserData = adminUserDoc.data() || {};
           const adminToken = adminUserData.fcmToken;
           const languageCode = adminUserData.languageCode || "en";
@@ -1042,7 +1073,11 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
           await admin.messaging().send({
             token: adminToken,
             notification: {
-              title: localize("task_overdue_escalation_title", {}, languageCode),
+              title: localize(
+                "task_overdue_escalation_title",
+                {},
+                languageCode,
+              ),
               body: localize(
                 "task_overdue_escalation_body",
                 { employee: assignedToName, task: taskTitle },

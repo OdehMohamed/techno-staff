@@ -24,7 +24,8 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
   late final TextEditingController _targetCountController;
   late final TextEditingController _dayOfMonthController;
 
-  late String _selectedEmployeeId;
+  late Set<String> _selectedEmployeeIds;
+  final Map<String, String> _employeeIdToName = {};
   late String _selectedPriority;
   late String _selectedRecurrenceType;
   late Set<int> _selectedDaysOfWeek;
@@ -42,11 +43,19 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
     _dayOfMonthController = TextEditingController(
       text: t.recurrence.dayOfMonth?.toString() ?? '',
     );
-    _selectedEmployeeId = t.assignedTo;
+    _selectedEmployeeIds = Set<String>.from(t.assignedToIds);
     _selectedPriority = t.priority;
     _selectedRecurrenceType = t.recurrence.type;
     _selectedDaysOfWeek = Set<int>.from(t.recurrence.daysOfWeek ?? []);
     _isActive = t.isActive;
+
+    // Seed names from template data so _save() can resolve names for
+    // employees who may no longer be in the live employees list.
+    for (var i = 0; i < t.assignedToIds.length; i++) {
+      if (i < t.assignedToNames.length) {
+        _employeeIdToName[t.assignedToIds[i]] = t.assignedToNames[i];
+      }
+    }
 
     context.read<EmployeesCubit>().fetchEmployees();
   }
@@ -62,16 +71,18 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedRecurrenceType == 'weekly' && _selectedDaysOfWeek.isEmpty) {
+    if (_selectedEmployeeIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('days_of_week_required'.tr())),
+        SnackBar(content: Text('employee_required'.tr())),
       );
       return;
     }
-
-    final employees = context.read<EmployeesCubit>().state.employees;
-    final selectedEmployee =
-        employees.firstWhere((e) => e.id == _selectedEmployeeId);
+    if (_selectedRecurrenceType == 'weekly' && _selectedDaysOfWeek.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('days_of_week_required'.tr())));
+      return;
+    }
 
     List<int>? daysOfWeek;
     int? dayOfMonth;
@@ -92,8 +103,10 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
     final updated = widget.template.copyWith(
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
-      assignedTo: _selectedEmployeeId,
-      assignedToName: selectedEmployee.name,
+      assignedToIds: _selectedEmployeeIds.toList(),
+      assignedToNames: _selectedEmployeeIds
+          .map((id) => _employeeIdToName[id] ?? '')
+          .toList(),
       priority: _selectedPriority,
       recurrence: recurrence,
       isActive: _isActive,
@@ -126,8 +139,18 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
             final employees = empState.employees;
             final isLoading =
                 empState.status == EmployeesStatus.loading && employees.isEmpty;
-            final assigneeExists =
-                employees.any((e) => e.id == _selectedEmployeeId);
+
+            // Keep name map current so _save() can resolve assignedToNames.
+            for (final e in employees) {
+              _employeeIdToName[e.id] = e.name;
+            }
+
+            // Merge live employees with any pre-selected employees no longer in
+            // the live list (e.g. deactivated), so their chips remain visible.
+            final displayMap = {for (final e in employees) e.id: e.name};
+            for (final id in _selectedEmployeeIds) {
+              displayMap.putIfAbsent(id, () => _employeeIdToName[id] ?? id);
+            }
 
             return Form(
               key: _formKey,
@@ -136,8 +159,7 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                 children: [
                   TextFormField(
                     controller: _titleController,
-                    decoration:
-                        InputDecoration(labelText: 'task_title'.tr()),
+                    decoration: InputDecoration(labelText: 'task_title'.tr()),
                     validator: (v) => v == null || v.trim().isEmpty
                         ? 'task_title_required'.tr()
                         : null,
@@ -145,49 +167,41 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                   const SizedBox(height: AppSizes.md),
                   TextFormField(
                     controller: _descriptionController,
-                    decoration:
-                        InputDecoration(labelText: 'description'.tr()),
+                    decoration: InputDecoration(labelText: 'description'.tr()),
                     maxLines: 3,
                     validator: (v) => v == null || v.trim().isEmpty
                         ? 'description_required'.tr()
                         : null,
                   ),
                   const SizedBox(height: AppSizes.md),
+                  Text(
+                    'assign_to'.tr(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
                   if (isLoading) const LinearProgressIndicator(),
-                  DropdownButtonFormField<String>(
-                    initialValue: assigneeExists ? _selectedEmployeeId : null,
-                    decoration:
-                        InputDecoration(labelText: 'assign_to'.tr()),
-                    isExpanded: true,
-                    items: employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(
-                              e.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedEmployeeId = v ?? _selectedEmployeeId),
-                    validator: (v) => v == null || v.isEmpty
-                        ? 'employee_required'.tr()
-                        : null,
+                  _EmployeeMultiPicker(
+                    employeeNames: displayMap,
+                    selectedIds: _selectedEmployeeIds,
+                    onChanged: (ids) => setState(() {
+                      _selectedEmployeeIds
+                        ..clear()
+                        ..addAll(ids);
+                    }),
                   ),
                   const SizedBox(height: AppSizes.md),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedPriority,
-                    decoration:
-                        InputDecoration(labelText: 'priority'.tr()),
+                    decoration: InputDecoration(labelText: 'priority'.tr()),
                     items: [
+                      DropdownMenuItem(value: 'low', child: Text('low'.tr())),
                       DropdownMenuItem(
-                          value: 'low', child: Text('low'.tr())),
-                      DropdownMenuItem(
-                          value: 'medium', child: Text('medium'.tr())),
-                      DropdownMenuItem(
-                          value: 'high', child: Text('high'.tr())),
+                        value: 'medium',
+                        child: Text('medium'.tr()),
+                      ),
+                      DropdownMenuItem(value: 'high', child: Text('high'.tr())),
                     ],
                     onChanged: (v) =>
                         setState(() => _selectedPriority = v ?? 'medium'),
@@ -195,30 +209,27 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                   const SizedBox(height: AppSizes.md),
                   // taskType is immutable after create
                   InputDecorator(
-                    decoration:
-                        InputDecoration(labelText: 'task_type'.tr()),
+                    decoration: InputDecoration(labelText: 'task_type'.tr()),
                     child: Text(
                       template.taskType == 'counter'
                           ? 'task_type_counter'.tr()
                           : 'task_type_standard'.tr(),
                     ),
                   ),
-                  if (template.isCounter &&
-                      template.targetCount != null) ...[
+                  if (template.isCounter && template.targetCount != null) ...[
                     const SizedBox(height: AppSizes.md),
                     TextFormField(
                       controller: _targetCountController,
                       keyboardType: TextInputType.number,
-                      decoration:
-                          InputDecoration(labelText: 'target_count'.tr()),
+                      decoration: InputDecoration(
+                        labelText: 'target_count'.tr(),
+                      ),
                       validator: (v) {
                         if (!template.isCounter) return null;
                         final raw = v?.trim() ?? '';
                         if (raw.isEmpty) return 'target_count_required'.tr();
                         final parsed = int.tryParse(raw);
-                        if (parsed == null ||
-                            parsed < 1 ||
-                            parsed > 999) {
+                        if (parsed == null || parsed < 1 || parsed > 999) {
                           return 'target_count_invalid_range'.tr();
                         }
                         return null;
@@ -228,18 +239,20 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                   const SizedBox(height: AppSizes.md),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedRecurrenceType,
-                    decoration:
-                        InputDecoration(labelText: 'recurrence'.tr()),
+                    decoration: InputDecoration(labelText: 'recurrence'.tr()),
                     items: [
                       DropdownMenuItem(
-                          value: 'daily',
-                          child: Text('recurrence_daily'.tr())),
+                        value: 'daily',
+                        child: Text('recurrence_daily'.tr()),
+                      ),
                       DropdownMenuItem(
-                          value: 'weekly',
-                          child: Text('recurrence_weekly'.tr())),
+                        value: 'weekly',
+                        child: Text('recurrence_weekly'.tr()),
+                      ),
                       DropdownMenuItem(
-                          value: 'monthly',
-                          child: Text('recurrence_monthly'.tr())),
+                        value: 'monthly',
+                        child: Text('recurrence_monthly'.tr()),
+                      ),
                     ],
                     onChanged: (v) => setState(() {
                       _selectedRecurrenceType = v ?? 'daily';
@@ -274,9 +287,7 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                           return null;
                         }
                         final parsed = int.tryParse(v?.trim() ?? '');
-                        if (parsed == null ||
-                            parsed < 1 ||
-                            parsed > 31) {
+                        if (parsed == null || parsed < 1 || parsed > 31) {
                           return 'day_of_month_invalid'.tr();
                         }
                         return null;
@@ -293,8 +304,7 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                   const SizedBox(height: AppSizes.lg),
                   BlocBuilder<TemplatesCubit, TemplatesState>(
                     builder: (context, state) {
-                      final saving =
-                          state.status == TemplatesStatus.loading;
+                      final saving = state.status == TemplatesStatus.loading;
                       return SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -316,14 +326,48 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
   }
 }
 
+class _EmployeeMultiPicker extends StatelessWidget {
+  final Map<String, String> employeeNames; // id → display name
+  final Set<String> selectedIds;
+  final ValueChanged<Set<String>> onChanged;
+
+  const _EmployeeMultiPicker({
+    required this.employeeNames,
+    required this.selectedIds,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (employeeNames.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: employeeNames.entries.map((entry) {
+        final isSelected = selectedIds.contains(entry.key);
+        return FilterChip(
+          label: Text(entry.value),
+          selected: isSelected,
+          onSelected: (val) {
+            final updated = Set<String>.from(selectedIds);
+            if (val) {
+              updated.add(entry.key);
+            } else {
+              updated.remove(entry.key);
+            }
+            onChanged(updated);
+          },
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _WeekdayPicker extends StatelessWidget {
   final Set<int> selected;
   final ValueChanged<Set<int>> onChanged;
 
-  const _WeekdayPicker({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _WeekdayPicker({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

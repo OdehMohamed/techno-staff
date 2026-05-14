@@ -82,8 +82,8 @@ class TaskTemplateModel {
   final String id;
   final String title;
   final String description;
-  final String assignedTo;
-  final String assignedToName;
+  final List<String> assignedToIds;
+  final List<String> assignedToNames;
   final String assignedBy;
   final String assignedByName;
   final String priority;
@@ -99,8 +99,8 @@ class TaskTemplateModel {
     required this.id,
     required this.title,
     required this.description,
-    required this.assignedTo,
-    required this.assignedToName,
+    required this.assignedToIds,
+    required this.assignedToNames,
     required this.assignedBy,
     required this.assignedByName,
     required this.priority,
@@ -115,13 +115,39 @@ class TaskTemplateModel {
 
   bool get isCounter => taskType == 'counter';
 
+  // Reads a List<String> from [key]; falls back to wrapping the scalar [legacyKey]
+  // for documents written before the multi-assignee supplement.
+  static List<String> _parseStringList(
+    Map<String, dynamic> data,
+    String key, {
+    String? legacyKey,
+  }) {
+    final raw = data[key];
+    if (raw is List && raw.isNotEmpty) {
+      return raw.whereType<String>().toList();
+    }
+    if (legacyKey != null) {
+      final legacy = data[legacyKey] as String?;
+      if (legacy != null && legacy.isNotEmpty) return [legacy];
+    }
+    return [];
+  }
+
   factory TaskTemplateModel.fromMap(String id, Map<String, dynamic> data) {
     return TaskTemplateModel(
       id: id,
       title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
-      assignedTo: data['assignedTo'] as String? ?? '',
-      assignedToName: data['assignedToName'] as String? ?? '',
+      assignedToIds: _parseStringList(
+        data,
+        'assignedToIds',
+        legacyKey: 'assignedTo',
+      ),
+      assignedToNames: _parseStringList(
+        data,
+        'assignedToNames',
+        legacyKey: 'assignedToName',
+      ),
       assignedBy: data['assignedBy'] as String? ?? '',
       assignedByName: data['assignedByName'] as String? ?? '',
       priority: data['priority'] as String? ?? 'medium',
@@ -145,8 +171,8 @@ class TaskTemplateModel {
     return {
       'title': title,
       'description': description,
-      'assignedTo': assignedTo,
-      'assignedToName': assignedToName,
+      'assignedToIds': assignedToIds,
+      'assignedToNames': assignedToNames,
       'assignedBy': assignedBy,
       'assignedByName': assignedByName,
       'priority': priority,
@@ -165,8 +191,8 @@ class TaskTemplateModel {
     String? id,
     String? title,
     String? description,
-    String? assignedTo,
-    String? assignedToName,
+    List<String>? assignedToIds,
+    List<String>? assignedToNames,
     String? assignedBy,
     String? assignedByName,
     String? priority,
@@ -184,8 +210,8 @@ class TaskTemplateModel {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      assignedTo: assignedTo ?? this.assignedTo,
-      assignedToName: assignedToName ?? this.assignedToName,
+      assignedToIds: assignedToIds ?? this.assignedToIds,
+      assignedToNames: assignedToNames ?? this.assignedToNames,
       assignedBy: assignedBy ?? this.assignedBy,
       assignedByName: assignedByName ?? this.assignedByName,
       priority: priority ?? this.priority,

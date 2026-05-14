@@ -43,10 +43,10 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () =>
             Navigator.pushNamed(context, RouteNames.addTemplate).then((_) {
-          if (context.mounted) {
-            context.read<TemplatesCubit>().fetchAll();
-          }
-        }),
+              if (context.mounted) {
+                context.read<TemplatesCubit>().fetchAll();
+              }
+            }),
         icon: const Icon(Icons.add),
         label: Text('add_template'.tr()),
       ),
@@ -69,8 +69,7 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.all(AppSizes.md),
               itemCount: state.templates.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: AppSizes.sm),
+              separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
               itemBuilder: (_, index) {
                 final template = state.templates[index];
                 return _TemplateListItem(
@@ -87,9 +86,10 @@ class _RecurringTasksScreenState extends State<RecurringTasksScreen> {
                     });
                   },
                   onToggleActive: () {
-                    context
-                        .read<TemplatesCubit>()
-                        .toggleActive(template.id, !template.isActive);
+                    context.read<TemplatesCubit>().toggleActive(
+                      template.id,
+                      !template.isActive,
+                    );
                   },
                   onDelete: () => _confirmDelete(context, template),
                 );
@@ -181,7 +181,7 @@ class _TemplateListItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(template.assignedToName),
+            Text(template.assignedToNames.join(', ')),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -218,15 +218,10 @@ class _TemplateListItem extends StatelessWidget {
             if (value == 'delete') onDelete();
           },
           itemBuilder: (_) => [
-            PopupMenuItem(
-              value: 'edit',
-              child: Text('edit'.tr()),
-            ),
+            PopupMenuItem(value: 'edit', child: Text('edit'.tr())),
             PopupMenuItem(
               value: 'toggle',
-              child: Text(
-                template.isActive ? 'pause'.tr() : 'resume'.tr(),
-              ),
+              child: Text(template.isActive ? 'pause'.tr() : 'resume'.tr()),
             ),
             PopupMenuItem(
               value: 'delete',
