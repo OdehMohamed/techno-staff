@@ -14,6 +14,15 @@ target is **v1.0.0**.
 
 ## Configuration items (one-time per release setup)
 
+- [ ] Create Firestore config doc for mandatory update gate: `config/app_settings`
+      with fields `minimumAndroidVersion`, `minimumIosVersion`,
+      `androidStoreUrl`, `iosStoreUrl`.
+- [ ] Deploy Firestore rules after update-gate changes:
+
+      ```
+      firebase deploy --only firestore:rules
+      ```
+
 - [ ] Replace placeholder `support@example.com` in `docs/privacy-policy.md`
       with the team's real support address.
 - [ ] Enable GitHub Pages: repo Settings -> Pages -> Source: Deploy from a

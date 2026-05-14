@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — Plan feat/mandatory-app-update (BACKLOG #9)
+
+- **Agent**: Claude Code (Sonnet 4.6) — lead / architect (planning only, no implementation code).
+- **Branch**: `feat/mandatory-app-update` (created from `dev` post-v1.1.0 sync, 2026-05-14).
+- **Goal**: Lock architecture-first spec for the mandatory app-update gate — production safety valve that blocks users on outdated builds via Firestore-driven version config.
+- **Outcome**: Ran code audit (splash flow, existing `package_info_plus` / `url_launcher` usage, Firestore rules, `FirebasePaths` pattern). Locked 12 planning decisions: no new packages; Firestore `config/app_settings` doc with `minimumAndroidVersion` / `minimumIosVersion` / `androidStoreUrl` / `iosStoreUrl`; fail-open on any infrastructure error; check in `SplashScreen` before `checkAuthStatus()`; no Cubit (plain `AppUpdateService` singleton); `UpdateRequiredScreen` non-dismissible (`PopScope(canPop: false)`); `launchUrl` failure leaves screen blocked, retry only, no bypass; public read rule for `config/`; semver tuple comparison; 3 translation keys → 245/245 parity; `config/app_settings` manual creation documented in release checklist; soft-update out of scope. Wrote complete `CURRENT_TASK.md` spec (16 sections): service pseudocode, Firestore doc shape, splash delta pseudocode, screen pseudocode, routing, rules delta, constants, translations, affected files table, quality gates, 11 smoke tests, DoD checklist, risks, out-of-scope list, workflow doc update table.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over on `feat/mandatory-app-update` from `CURRENT_TASK.md`. After merge: admin creates `config/app_settings` doc in Firestore console, runs `firebase deploy --only firestore:rules`, updates `docs/release-checklist.md`. Next planning round: BACKLOG #10 Shorebird feasibility audit.
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — v1.1.0 release cut + next cycle roadmap planning
 
 - **Agent**: Claude Code (Sonnet 4.6) — lead / architect.

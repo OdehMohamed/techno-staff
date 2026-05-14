@@ -246,5 +246,8 @@
   "weekday_fri": "الجمعة",
   "weekday_sat": "السبت",
   "weekday_sun": "الأحد",
-  "no_internet_connection": "لا يوجد اتصال بالإنترنت"
+  "no_internet_connection": "لا يوجد اتصال بالإنترنت",
+  "update_required_title": "تحديث مطلوب",
+  "update_required_message": "إصدار جديد من التطبيق مطلوب للمتابعة. يرجى التحديث وإعادة الفتح.",
+  "update_now": "تحديث الآن"
 }

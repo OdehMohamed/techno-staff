@@ -111,5 +111,10 @@ service cloud.firestore {
       allow update: if isAdmin() && request.resource.data.assignedBy == resource.data.assignedBy;
       allow delete: if isAdmin();
     }
+
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

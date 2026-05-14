@@ -8,478 +8,449 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-No active task — v1.1.0 ready for release cut.
+**Mandatory app-update system (v1.2 BACKLOG #9)**
 
-Latest completed item: offline connectivity banner + pull-to-refresh on key screens (`feat/connectivity-and-refresh`).
+Branch: `feat/mandatory-app-update` (created from `dev` post-v1.1.0, 2026-05-14).
 
-See `BACKLOG.md` for follow-up work and `NEXT_STEPS.md` for deferred ideas.
+On cold start, the app checks a minimum supported version stored in a Firestore `config/app_settings` doc. If the installed version is below the minimum, the user is shown a non-dismissible `UpdateRequiredScreen` with a direct link to the store. Any infrastructure failure (network down, doc missing, parse error) fails open — never blocks users for configuration reasons.
+
+This is a **production safety valve**: once live, the minimum version can be bumped in the Firestore console at any time to force users off a bad build without a code push.
+
+---
+
+## Branch
+
+`feat/mandatory-app-update` (created from `dev` 2026-05-14)
+
+---
+
+## Locked planning decisions
+
+1. **No new packages** — `package_info_plus` and `url_launcher` are already in `pubspec.yaml`. `dart:io` `Platform` is stdlib.
+2. **Version source** — Firestore `config/app_settings` doc. Fields: `minimumAndroidVersion`, `minimumIosVersion` (semver strings), `androidStoreUrl`, `iosStoreUrl` (strings). Store URLs in the doc so TestFlight links / Play Store listings can be updated without a binary push.
+3. **Fail-open** — any error during the check (network unavailable, doc missing, field missing, parse failure, `url_launcher` failure) must never block the user. The version check gate is: `required: false` on any exception path.
+4. **Check location** — `SplashScreen` before `checkAuthStatus()`, in the existing `addPostFrameCallback`. No new Cubit.
+5. **No new Cubit** — `AppUpdateService` is a plain singleton with one async method. One-shot gate, not reactive UI state.
+6. **`UpdateRequiredScreen`** — non-dismissible (`PopScope(canPop: false)`). No `AppBar` leading/back button. If `launchUrl` fails, the screen stays blocked and the user retries by tapping again. No bypass flow of any kind.
+7. **Firestore rules** — new `match /config/{configId}` block: `allow read: if true; allow write: if isAdmin();`. Public read is intentional — no sensitive data, check must fire before auth.
+8. **Semver comparison** — split on `.`, parse each segment with `int.tryParse ?? 0`, compare as `[major, minor, patch]` tuple. Equal version = not below = pass through.
+9. **3 translation keys × 2 locales** → 245/245 parity.
+10. **`config/app_settings` doc must be created manually** in the Firestore console before the feature gates anything. Until the doc exists, fail-open means no one is blocked. Documented in `docs/release-checklist.md`.
+11. **Soft-update mode** (banner, not block) — explicitly out of scope.
+12. **`firebase deploy --only firestore:rules`** required after merge.
 
 ---
 
 ## 1. Architecture (read this before any code)
 
-### 1.1 The connectivity invariant
+### 1.1 The fail-open invariant
 
-The offline banner is **read-only context, not a gate**. It does not block navigation, disable buttons, or intercept writes. Firebase's offline write queue is left intact — Firestore will sync queued writes when connectivity returns. The banner's sole purpose is to inform the user that data may be stale and that network-dependent actions may fail.
+Every exception path in `AppUpdateService.checkUpdate()` must return `(required: false, storeUrl: null)`. This covers:
 
-**Do not:**
+- `FirebaseFirestore` throws (network unavailable, permission error)
+- Doc snapshot does not exist (`doc.exists == false`)
+- Version field is null, empty, or malformed
+- `int.tryParse` returns null on a non-numeric segment
+- `Platform.isAndroid` / `Platform.isIOS` behavior in unexpected environments
 
-- Push a `NoInternetScreen` onto the navigation stack (breaks FCM deep links, AuthCubit routing, and form state)
-- Disable any buttons or form fields while offline
-- Intercept Firestore reads/writes
-- Auto-refresh any cubit when connectivity restores
+**Do not** let any of these propagate to the caller as an exception. The `try-catch` in `checkUpdate()` is the sole safety net — wrap the entire method body.
 
-### 1.2 The silent-refresh invariant
+### 1.2 The no-bypass invariant
 
-`{bool silent = false}` is a purely cosmetic parameter. It controls whether the `loading` status is emitted before the fetch. **The fetch always runs.** On success, the new data replaces the old (whether or not the loading state was shown). On error, the error state is always emitted regardless of `silent` — there is no silent failure path.
+`UpdateRequiredScreen` must never allow the user to continue using the app:
 
+- `PopScope(canPop: false)` prevents Android back gesture.
+- No `Navigator.pop`, `Navigator.pushReplacement`, or any other navigation away from this screen.
+- If `launchUrl` returns `false` or throws, show no error dialog — the user simply taps again. The screen remains.
+- No "skip" or "later" button. No timer that auto-dismisses. No tap-outside-to-dismiss.
+
+### 1.3 The semver invariant
+
+`"1.10.0" > "1.9.0"` is false under lexicographic string comparison. Always compare as integer tuples:
+
+```dart
+bool _isBelow(String installed, String minimum) {
+  final i = _parse(installed);
+  final m = _parse(minimum);
+  for (int j = 0; j < 3; j++) {
+    if (i[j] < m[j]) return true;
+    if (i[j] > m[j]) return false;
+  }
+  return false; // equal = not below minimum
+}
+
+List<int> _parse(String version) {
+  final parts = version.split('.');
+  return List.generate(3, (i) => int.tryParse(parts.elementAtOrNull(i) ?? '') ?? 0);
+}
 ```
-silent = false (initial load):  emit(loading) → fetch → emit(loaded or error)
-silent = true  (pull-to-refresh): [no emit]  → fetch → emit(loaded or error)
-```
-
-This means a failed silent refresh removes the existing list and shows the error state — correct, because the connectivity banner is visible and explains why.
-
-### 1.3 The RefreshIndicator invariant
-
-Every `RefreshIndicator` must have a **scrollable child at all times**, even when the content is empty or in an error state. The rule:
-
-- If the screen currently shows a `ListView` of items → `RefreshIndicator` wraps the `ListView` directly.
-- If the screen shows an empty state or error widget (non-scrollable) → wrap it in `ListView(children: [widget])` so the drag gesture reaches the indicator.
-- **Never** wrap a `DefaultTabController` or `TabBarView` in a single `RefreshIndicator` — the tab controller consumes the horizontal swipe before the vertical drag reaches the indicator. Each tab content must have its own `RefreshIndicator`.
 
 ---
 
-## 2. ConnectivityService
+## 2. `AppUpdateService`
 
-**File:** `lib/core/services/connectivity_service.dart` (new file, ~40 lines)
+**File:** `lib/core/services/app_update_service.dart` (new, ~55 lines)
 
 ```dart
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import '../constants/firebase_paths.dart';
 
-class ConnectivityService {
-  ConnectivityService._();
-  static final ConnectivityService instance = ConnectivityService._();
+class AppUpdateService {
+  AppUpdateService._();
+  static final AppUpdateService instance = AppUpdateService._();
 
-  Stream<bool> get isConnectedStream => Connectivity()
-      .onConnectivityChanged
-      .map((results) => results.any((r) => r != ConnectivityResult.none));
+  Future<({bool required, String? storeUrl})> checkUpdate() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final doc = await FirebaseFirestore.instance
+          .collection(FirebasePaths.config)
+          .doc(FirebasePaths.appSettings)
+          .get();
+
+      if (!doc.exists) return (required: false, storeUrl: null);
+
+      final data = doc.data()!;
+      final isAndroid = Platform.isAndroid;
+
+      final minimumVersion = (isAndroid
+              ? data['minimumAndroidVersion']
+              : data['minimumIosVersion']) as String? ??
+          '0.0.0';
+      final storeUrl = (isAndroid
+          ? data['androidStoreUrl']
+          : data['iosStoreUrl']) as String?;
+
+      final required = _isBelow(info.version, minimumVersion);
+      return (required: required, storeUrl: required ? storeUrl : null);
+    } catch (_) {
+      return (required: false, storeUrl: null);
+    }
+  }
+
+  bool _isBelow(String installed, String minimum) {
+    final i = _parse(installed);
+    final m = _parse(minimum);
+    for (int j = 0; j < 3; j++) {
+      if (i[j] < m[j]) return true;
+      if (i[j] > m[j]) return false;
+    }
+    return false;
+  }
+
+  List<int> _parse(String version) {
+    final parts = version.split('.');
+    return List.generate(
+      3,
+      (i) => int.tryParse(parts.elementAtOrNull(i) ?? '') ?? 0,
+    );
+  }
 }
 ```
 
 Notes:
-
-- `onConnectivityChanged` emits `List<ConnectivityResult>` in `connectivity_plus ^6.x` (changed from a single value in v5).
-- The stream maps the list to `true` if any result is not `none` — handles multi-network devices (WiFi + cellular) correctly.
-- No singleton state for current connectivity — the `StreamBuilder` in `app.dart` handles initial state from the stream's first event.
-- No `Cubit` or `BLoC` for connectivity — a `StreamBuilder` is sufficient. Connectivity is UI-only context; it needs no business logic.
+- `dart:io` `Platform` is safe on Android and iOS. The service is never called on web.
+- `PackageInfo.fromPlatform()` returns `version` as the semver string (e.g. `"1.1.0"`), matching the Firestore field format.
+- The Firestore read uses the default offline persistence cache. On first cold start with no network and no cached doc: `doc.exists == false` → fail-open.
 
 ---
 
-## 3. App-level overlay (`app.dart`)
+## 3. Firestore `config/app_settings` document
 
-**File:** `lib/app/app.dart` (delta: ~25 lines)
+**Collection:** `config`
+**Document ID:** `app_settings`
 
-Add a `StreamBuilder<bool>` inside `MaterialApp.builder`. The builder wraps every screen with a `Stack`. When `isConnected == false`, a `Positioned` red banner appears at the top.
+Fields to create manually in the Firestore console before rollout:
+
+| Field | Type | Example value | Notes |
+|---|---|---|---|
+| `minimumAndroidVersion` | string | `"1.1.0"` | Set to current shipped version initially so no one is blocked |
+| `minimumIosVersion` | string | `"1.1.0"` | Same |
+| `androidStoreUrl` | string | `"https://play.google.com/store/apps/details?id=<package_id>"` | Use `https://` form, not `market://` — universally compatible |
+| `iosStoreUrl` | string | `"https://testflight.apple.com/join/<invite_code>"` | TestFlight invite link; update here when link changes |
+
+**To force a mandatory update:** bump `minimumAndroidVersion` or `minimumIosVersion` to the new required version. Takes effect on next app cold start — no binary push needed.
+
+---
+
+## 4. Splash screen changes
+
+**File:** `lib/features/splash/presentation/screens/splash_screen.dart` (delta: ~15 lines)
+
+Replace the single `checkAuthStatus` call with a `_checkVersionThenAuth()` helper:
 
 ```dart
-MaterialApp(
-  // ... existing config unchanged ...
-  builder: (context, child) {
-    return StreamBuilder<bool>(
-      stream: ConnectivityService.instance.isConnectedStream,
-      initialData: true, // optimistic — banner hides until first offline event
-      builder: (context, snapshot) {
-        final isConnected = snapshot.data ?? true;
-        return Stack(
-          children: [
-            child!,
-            if (!isConnected)
-              Positioned(
-                top: MediaQuery.of(context).viewPadding.top,
-                left: 0,
-                right: 0,
-                child: Material(
-                  color: Colors.red.shade700,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 16,
-                    ),
-                    child: Text(
-                      'no_internet_connection'.tr(),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+    _checkVersionThenAuth();
+  });
+}
+
+Future<void> _checkVersionThenAuth() async {
+  final result = await AppUpdateService.instance.checkUpdate();
+  if (!mounted) return;
+  if (result.required) {
+    Navigator.pushReplacementNamed(
+      context,
+      RouteNames.updateRequired,
+      arguments: result.storeUrl,
+    );
+    return;
+  }
+  context.read<AuthCubit>().checkAuthStatus(
+    languageCode: context.locale.languageCode,
+  );
+}
+```
+
+**Read the actual splash screen before implementing** — match the exact existing method name and parameter for `checkAuthStatus`. The `BlocListener` in `build` and the rest of the splash UI are unchanged.
+
+---
+
+## 5. `UpdateRequiredScreen`
+
+**File:** `lib/features/update/presentation/screens/update_required_screen.dart` (new, ~75 lines)
+
+```dart
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/app_sizes.dart';
+
+class UpdateRequiredScreen extends StatelessWidget {
+  final String? storeUrl;
+  const UpdateRequiredScreen({super.key, this.storeUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.lg),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset('assets/images/logo.png', width: 80),
+                const SizedBox(height: AppSizes.lg),
+                Text(
+                  'update_required_title'.tr(),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSizes.md),
+                Text(
+                  'update_required_message'.tr(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSizes.xl),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: storeUrl == null ? null : () => _openStore(storeUrl!),
+                    child: Text('update_now'.tr()),
                   ),
                 ),
-              ),
-          ],
-        );
-      },
-    );
-  },
-)
-```
-
-Implementation notes:
-
-- `initialData: true` so the banner is hidden on app start — it only appears after the first offline event from the stream.
-- `MediaQuery.of(context).viewPadding.top` accounts for the status bar / notch so the banner starts below the OS status bar.
-- `Material` widget is required for `Text` to render correctly outside a `Scaffold` context.
-- The `!isConnected` guard means the `Positioned` widget is completely absent from the tree when online — no repaint cost when connected.
-- `.tr()` works inside `builder` because `builder` runs below the `MaterialApp`'s localization delegates.
-- RTL direction is inherited from `MaterialApp`'s `Directionality` — the banner renders correctly in Arabic.
-
-**Import to add:** `import '../core/services/connectivity_service.dart';`
-
----
-
-## 4. Cubit changes — silent parameter
-
-### 4.1 `TasksCubit` (`lib/features/tasks/presentation/cubit/tasks_cubit.dart`)
-
-Add `{bool silent = false}` to three fetch methods:
-
-```dart
-Future<void> fetchAllTasks({bool silent = false}) async {
-  if (!silent) emit(state.copyWith(status: TasksStatus.loading, clearError: true));
-  try {
-    final tasks = await _tasksRepository.getAllTasks();
-    emit(state.copyWith(status: TasksStatus.loaded, tasks: tasks));
-  } catch (e) {
-    emit(state.copyWith(status: TasksStatus.error, errorMessage: e.toString()));
-  }
-}
-
-Future<void> fetchTasksAssignedTo(String userId, {bool silent = false}) async {
-  if (!silent) emit(state.copyWith(tasksAssignedToMeStatus: TasksStatus.loading, clearAssignedError: true));
-  try {
-    final tasks = await _tasksRepository.getTasksAssignedTo(userId);
-    emit(state.copyWith(tasksAssignedToMeStatus: TasksStatus.loaded, tasksAssignedToMe: tasks));
-  } catch (e) {
-    emit(state.copyWith(tasksAssignedToMeStatus: TasksStatus.error, tasksAssignedToMeErrorMessage: e.toString()));
-  }
-}
-
-Future<void> fetchTasksCreatedBy(String userId, {bool silent = false}) async {
-  if (!silent) emit(state.copyWith(tasksCreatedByMeStatus: TasksStatus.loading, clearCreatedError: true));
-  try {
-    final tasks = await _tasksRepository.getTasksCreatedBy(userId);
-    emit(state.copyWith(tasksCreatedByMeStatus: TasksStatus.loaded, tasksCreatedByMe: tasks));
-  } catch (e) {
-    emit(state.copyWith(tasksCreatedByMeStatus: TasksStatus.error, tasksCreatedByMeErrorMessage: e.toString()));
-  }
-}
-```
-
-The exact `clearAssignedError` / `clearCreatedError` flag names should match whatever the existing `TasksState.copyWith` already supports — **read the actual cubit before implementing** to match the existing state API exactly.
-
-### 4.2 `DashboardCubit` (`lib/features/dashboard/presentation/cubit/dashboard_cubit.dart`)
-
-```dart
-Future<void> loadAdminStats({bool silent = false}) async {
-  if (!silent) emit(state.copyWith(status: DashboardStatus.loading));
-  try {
-    final stats = await _repo.getAdminStats();
-    emit(state.copyWith(status: DashboardStatus.loaded, stats: stats));
-  } catch (e) {
-    emit(state.copyWith(status: DashboardStatus.error, errorMessage: e.toString()));
-  }
-}
-
-Future<void> loadEmployeeStats(String userId, {bool silent = false}) async {
-  if (!silent) emit(state.copyWith(status: DashboardStatus.loading));
-  try {
-    final stats = await _repo.getEmployeeStats(userId);
-    emit(state.copyWith(status: DashboardStatus.loaded, stats: stats));
-  } catch (e) {
-    emit(state.copyWith(status: DashboardStatus.error, errorMessage: e.toString()));
-  }
-}
-```
-
-Again — **read the actual cubit** before implementing. The pseudocode above shows intent; exact field names must match the existing state.
-
-### 4.3 `EmployeesCubit` (`lib/features/employees/presentation/cubit/employees_cubit.dart`)
-
-```dart
-Future<void> fetchEmployees({bool silent = false}) async {
-  if (!silent) emit(state.copyWith(status: EmployeesStatus.loading));
-  try {
-    final employees = await _repo.getEmployees();
-    emit(state.copyWith(status: EmployeesStatus.loaded, employees: employees));
-  } catch (e) {
-    emit(state.copyWith(status: EmployeesStatus.error, errorMessage: e.toString()));
-  }
-}
-```
-
----
-
-## 5. Screen changes
-
-### 5.1 `TasksScreen` (`lib/features/tasks/presentation/screens/tasks_screen.dart`)
-
-**`_loadTasks` helper** — add `{bool silent = false}` and pass it through:
-
-```dart
-void _loadTasks({bool silent = false}) {
-  final user = context.read<AuthCubit>().state.user;
-  if (user == null) return;
-  if (user.role == 'admin') {
-    context.read<TasksCubit>().fetchAllTasks(silent: silent);
-    context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent);
-  } else {
-    context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent);
-    context.read<TasksCubit>().fetchTasksCreatedBy(user.id, silent: silent);
-  }
-}
-```
-
-**`_buildTasksTabContent`** — wrap the return value in `RefreshIndicator`:
-
-```dart
-Widget _buildTasksTabContent({...}) {
-  return RefreshIndicator(
-    onRefresh: () async => _loadTasks(silent: true),
-    child: _buildTasksTabBody(
-      status: status,
-      errorKey: errorKey,
-      tasks: tasks,
-      currentUser: currentUser,
-      isAdmin: isAdmin,
-    ),
-  );
-}
-
-Widget _buildTasksTabBody({...}) {
-  if (status == TasksStatus.loading && tasks.isEmpty) {
-    // Initial load only — show spinner in a scrollable container so
-    // RefreshIndicator drag still works.
-    return ListView(
-      children: const [
-        SizedBox(height: 200),
-        Center(child: CircularProgressIndicator()),
-      ],
-    );
-  }
-  if (status == TasksStatus.error) {
-    return ListView(
-      children: [EmptyStateWidget(icon: Icons.error_outline, titleKey: errorKey ?? '')],
-    );
-  }
-  final filteredTasks = _applyFilters(tasks);
-  if (filteredTasks.isEmpty) {
-    return ListView(
-      children: [
-        EmptyStateWidget(
-          icon: tasks.isNotEmpty ? Icons.search_off : Icons.task_alt_outlined,
-          titleKey: tasks.isNotEmpty ? 'no_matching_tasks' : 'no_tasks_found',
+              ],
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
-  return ListView.separated(
-    // existing item builder unchanged
-  );
+
+  Future<void> _openStore(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication)
+        .catchError((_) => false);
+  }
 }
 ```
 
-Key invariant: the `if (status == TasksStatus.loading && tasks.isEmpty)` guard on the loading check ensures silent refreshes (where `tasks` is already populated) skip the spinner and let the `RefreshIndicator`'s own indicator serve as the only visual.
-
-### 5.2 `EmployeeHomeScreen` (`lib/features/employee/presentation/screens/employee_home_screen.dart`)
-
-Extract a `_loadData({bool silent = false})` helper and call it from `initState` and from the `RefreshIndicator.onRefresh`:
-
-```dart
-Future<void> _loadData({bool silent = false}) async {
-  final user = context.read<AuthCubit>().state.user;
-  if (user == null) return;
-  context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent);
-  context.read<DashboardCubit>().loadEmployeeStats(user.id, silent: silent);
-}
-```
-
-The body `SingleChildScrollView` (or `ListView`) becomes the child of a `RefreshIndicator`. The existing nested `BlocBuilder` loading guard (`if (dashboardState.status == loading || tasksState.tasksAssignedToMeStatus == loading) return CircularProgressIndicator()`) must also respect silent: only show the full-screen spinner when both data sources are in initial load state (no data yet):
-
-```dart
-final isInitialLoad =
-    (dashboardState.status == DashboardStatus.loading && dashboardState.stats == null) ||
-    (tasksState.tasksAssignedToMeStatus == TasksStatus.loading && tasksState.tasksAssignedToMe.isEmpty);
-
-if (isInitialLoad) {
-  return const Center(child: CircularProgressIndicator());
-}
-```
-
-**Read the actual screen first** to match the exact state field names.
-
-### 5.3 `AdminDashboardScreen` (`lib/features/admin/presentation/screens/admin_dashboard_screen.dart`)
-
-Same pattern: extract `_loadData({bool silent = false})`, wrap scrollable body in `RefreshIndicator`, guard full-screen spinner only on initial load (stats null / empty).
-
-### 5.4 `EmployeesScreen` (`lib/features/employees/presentation/screens/employees_screen.dart`)
-
-Straightforward — the screen already has a `ListView` of employees. Wrap it in `RefreshIndicator`:
-
-```dart
-RefreshIndicator(
-  onRefresh: () async {
-    context.read<EmployeesCubit>().fetchEmployees(silent: true);
-  },
-  child: ListView.separated(
-    // existing items unchanged
-  ),
-)
-```
-
-The empty state (`EmptyStateWidget`) and error state must also be wrapped in a `ListView` for the same scrollability reason.
+Notes:
+- `PopScope(canPop: false)` is the Flutter 3.12+ API. If the project's Flutter SDK is older, use `WillPopScope(onWillPop: () async => false, ...)` instead. Check `pubspec.yaml` `environment.sdk` before choosing.
+- Button `onPressed: null` when `storeUrl` is null — disabled, but user is still fully blocked. No bypass.
+- `_openStore` catches all errors silently. Screen stays. User retries by tapping.
 
 ---
 
-## 6. Translations
+## 6. Routing
 
-Add one key × 2 locales. Existing parity is 241/241; after this change: 242/242.
+**`lib/core/routes/route_names.dart`** — add:
+
+```dart
+static const String updateRequired = '/update-required';
+```
+
+**`lib/core/routes/app_router.dart`** — add case before `default:`:
+
+```dart
+case RouteNames.updateRequired:
+  return MaterialPageRoute(
+    builder: (_) => UpdateRequiredScreen(
+      storeUrl: settings.arguments as String?,
+    ),
+    settings: settings,
+  );
+```
+
+Import: `import '../../features/update/presentation/screens/update_required_screen.dart';`
+
+---
+
+## 7. Firestore rules delta
+
+Add inside `match /databases/{database}/documents { ... }`, after the `task_templates` block:
+
+```
+match /config/{configId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+```
+
+`allow read: if true` is intentional — no sensitive data, must be readable before auth.
+
+---
+
+## 8. `FirebasePaths` constants
+
+**`lib/core/constants/firebase_paths.dart`** — add:
+
+```dart
+static const String config = 'config';
+static const String appSettings = 'app_settings';
+```
+
+---
+
+## 9. Translations
+
+Add 3 keys × 2 locales. Current parity: 242/242. Target: 245/245.
+
+**`assets/translations/en.json`** — append:
 
 ```json
-// en.json — append after "weekday_sun"
-"no_internet_connection": "No internet connection"
+"update_required_title": "Update Required",
+"update_required_message": "A new version of the app is required to continue. Please update and reopen.",
+"update_now": "Update Now"
+```
 
-// ar.json — append after "weekday_sun"
-"no_internet_connection": "لا يوجد اتصال بالإنترنت"
+**`assets/translations/ar.json`** — append:
+
+```json
+"update_required_title": "تحديث مطلوب",
+"update_required_message": "إصدار جديد من التطبيق مطلوب للمتابعة. يرجى التحديث وإعادة الفتح.",
+"update_now": "تحديث الآن"
+```
+
+Verify:
+```bash
+python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
+```
+Expected: `245 245 []`
+
+---
+
+## 10. Affected files
+
+| File | Change | Type |
+|---|---|---|
+| `lib/core/services/app_update_service.dart` | New singleton | New, ~55 lines |
+| `lib/core/constants/firebase_paths.dart` | +2 constants | +2 lines |
+| `lib/features/splash/presentation/screens/splash_screen.dart` | `_checkVersionThenAuth` helper | ~15 line delta |
+| `lib/features/update/presentation/screens/update_required_screen.dart` | New screen | New, ~75 lines |
+| `lib/core/routes/route_names.dart` | +1 constant | +1 line |
+| `lib/core/routes/app_router.dart` | +1 case + import | +6 line delta |
+| `firestore.rules` | `config/` block | +4 line delta |
+| `assets/translations/en.json` | +3 keys | +3 lines |
+| `assets/translations/ar.json` | +3 keys | +3 lines |
+| `docs/release-checklist.md` | `config/app_settings` creation + `firebase deploy` steps | +8 lines |
+
+**Zero changes to:** `pubspec.yaml`, `main.dart`, `app.dart`, Cloud Functions, any existing cubit, any task/auth/notification screen, `AppDrawer`.
+
+---
+
+## 11. Quality gates
+
+```bash
+flutter analyze          # zero warnings
+flutter test             # all existing tests green (no new unit tests — Platform.isAndroid
+                         # throws in test context; cover via smoke tests instead)
+cd functions && npm run lint  # clean (no CF changes, confirming no regression)
+python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
+# Expected: 245 245 []
 ```
 
 ---
 
-## 7. `pubspec.yaml`
+## 12. Smoke tests
 
-Add under `dependencies`:
-
-```yaml
-connectivity_plus: ^6.0.0
-```
-
-Run `flutter pub get` after adding.
-
----
-
-## 8. Affected files
-
-| File                                                                   | Change                                                                              | Type           |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------- |
-| `pubspec.yaml`                                                         | Add `connectivity_plus: ^6.0.0`                                                     | +1 dep         |
-| `lib/core/services/connectivity_service.dart`                          | New singleton stream wrapper                                                        | New, ~25 lines |
-| `lib/app/app.dart`                                                     | Add `StreamBuilder` + `MaterialApp.builder` overlay                                 | ~25 line delta |
-| `lib/features/tasks/presentation/cubit/tasks_cubit.dart`               | `{bool silent = false}` on 3 fetch methods                                          | ~6 line delta  |
-| `lib/features/dashboard/presentation/cubit/dashboard_cubit.dart`       | `{bool silent = false}` on 2 methods                                                | ~4 line delta  |
-| `lib/features/employees/presentation/cubit/employees_cubit.dart`       | `{bool silent = false}` on `fetchEmployees`                                         | ~2 line delta  |
-| `lib/features/tasks/presentation/screens/tasks_screen.dart`            | `_loadTasks` silent param + `RefreshIndicator` per tab + `ListView`-wrap all states | ~50 line delta |
-| `lib/features/employee/presentation/screens/employee_home_screen.dart` | `_loadData` helper + `RefreshIndicator` + initial-load guard                        | ~25 line delta |
-| `lib/features/admin/presentation/screens/admin_dashboard_screen.dart`  | `_loadData` helper + `RefreshIndicator` + initial-load guard                        | ~20 line delta |
-| `lib/features/employees/presentation/screens/employees_screen.dart`    | `RefreshIndicator` + `ListView`-wrap states                                         | ~15 line delta |
-| `assets/translations/en.json`                                          | 1 new key                                                                           | +1 line        |
-| `assets/translations/ar.json`                                          | 1 new key                                                                           | +1 line        |
-
-**Zero changes to:** Firestore rules, `functions/index.js`, any data model, any route, `TasksState`, `TaskDetailsScreen`, `ReportsScreen`, any form screen, any auth/settings screen.
+| # | Environment | Test |
+|---|---|---|
+| 1 | real device | Installed `1.1.0`, doc minimum `1.1.0` → normal launch, no block |
+| 2 | real device | Installed `1.1.0`, minimum bumped to `1.2.0` → cold start shows `UpdateRequiredScreen` |
+| 3 | real device | Tap "Update Now" → correct store opens (Play Store on Android, TestFlight on iOS) |
+| 4 | real device | Android back gesture on `UpdateRequiredScreen` → screen stays, no exit |
+| 5 | real device | Arabic locale → `UpdateRequiredScreen` in Arabic, RTL correct |
+| 6 | emulator | Airplane mode, doc not cached → fail-open, normal splash |
+| 7 | emulator | `config/app_settings` doc does not exist → fail-open, normal splash |
+| 8 | emulator | `storeUrl` field absent, update required → `UpdateRequiredScreen` shows, button disabled |
+| 9 | emulator | Minimum `"1.10.0"`, installed `"1.9.0"` → blocked (tuple comparison, not string) |
+| 10 | emulator | Minimum `"1.1.0"`, installed `"1.1.0"` → pass through (equal = not below) |
+| 11 | Firestore console | Admin bumps minimum → next cold start affected users are blocked |
 
 ---
 
-## 9. Quality gates
+## 13. Definition of Done
 
-- `flutter analyze` — zero warnings.
-- `flutter test` — all existing tests green. No new unit tests required (the `silent` parameter is a trivial boolean branch; `RefreshIndicator` changes are UI-only). **However**, if the implementing agent finds that the `TasksCubit` tests assert on the number of emitted states, those tests may need updating to account for the skipped `loading` emit when `silent: true`. Read the existing tests before implementing.
-- `npm run lint` — N/A (no Cloud Function changes), but run it anyway to confirm no regressions.
-
----
-
-## 10. Smoke tests
-
-Annotated with whether the project owner or agent can run them.
-
-1. **(real) Airplane mode — offline banner appears** — put device in airplane mode, open app. A red "No internet connection" banner appears at the top within a few seconds. Arabic locale: banner shows in Arabic. Banner disappears when airplane mode is turned off.
-
-2. **(real) Banner does not block interaction** — while offline, navigate between screens, open a task, tap buttons. All navigation still works; only network-dependent fetches fail (which is expected and the banner explains).
-
-3. **(real) TasksScreen pull-to-refresh — admin** — sign in as admin. Admin assigns a new task to employee on a second device. On the first device (TasksScreen, "All tasks" tab), pull down. The new task appears without a full-screen spinner flash.
-
-4. **(real) TasksScreen pull-to-refresh — employee** — sign in as employee. Pull down on "Assigned to me" tab. Task list updates without loading flash.
-
-5. **(real) EmployeeHomeScreen pull-to-refresh** — pull down on employee home. Stats and task list refresh silently.
-
-6. **(real) AdminDashboardScreen pull-to-refresh** — pull down on admin dashboard. Stats refresh silently.
-
-7. **(real) EmployeesScreen pull-to-refresh** — admin adds employee on another device/web. Pull down on employees list. New employee appears without loading flash.
-
-8. **(emulator/CI) Empty state is still refreshable** — when there are no tasks (fresh account), pull down on the "All tasks" tab. The `RefreshIndicator` spinner appears and the refresh runs (no tasks, empty state again). Confirms the `ListView` wrapper is in place.
-
-9. **(emulator/CI) Initial load still shows spinner** — open TasksScreen for the first time (initial fetch). Full-screen `CircularProgressIndicator` appears while loading. Confirms `silent = false` path is unchanged.
-
-10. **(emulator/CI) Silent refresh error path** — put device offline, pull-to-refresh on TasksScreen. The refresh runs (network fails), an error state appears. Confirms error is still emitted even when `silent = true`.
-
-11. **(emulator/CI) Translation parity** — `python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"` → `242 242 []`.
-
-12. **(real) Arabic RTL layout** — switch to Arabic locale. Banner text is right-aligned and displays correctly. Pull-to-refresh gestures work in RTL.
+- [ ] `AppUpdateService` at `lib/core/services/app_update_service.dart`; entire body in try-catch; all exception paths return `(required: false, storeUrl: null)`.
+- [ ] `FirebasePaths.config` and `FirebasePaths.appSettings` added.
+- [ ] `SplashScreen._checkVersionThenAuth()` fires before `checkAuthStatus()`; `BlocListener` and splash UI unchanged.
+- [ ] `UpdateRequiredScreen`: `PopScope(canPop: false)` present; button disabled when `storeUrl` null; `_openStore` catches all errors silently; no navigation out.
+- [ ] `RouteNames.updateRequired` and `AppRouter` case registered.
+- [ ] Firestore rules `config/` block added.
+- [ ] Translation parity `245 245 []`.
+- [ ] `docs/release-checklist.md` updated with `config/app_settings` creation step and `firebase deploy --only firestore:rules` step.
+- [ ] `flutter analyze` clean; `flutter test` green.
+- [ ] No changes outside files listed in §10.
+- [ ] Workflow docs updated (SESSION_LOG, BACKLOG #9 Done, CURRENT_TASK reset).
+- [ ] PR title: `feat(app): add mandatory app-update gate with Firestore version config`.
 
 ---
 
-## 11. Definition of Done
+## 14. Risks
 
-- [ ] `connectivity_plus` added to `pubspec.yaml` and `flutter pub get` run.
-- [ ] `ConnectivityService` exists at `lib/core/services/connectivity_service.dart`.
-- [ ] `app.dart` wires the `StreamBuilder` in `MaterialApp.builder`; red banner appears/disappears correctly.
-- [ ] `initialData: true` on the `StreamBuilder` so banner is hidden on cold start.
-- [ ] `{bool silent = false}` added to `fetchAllTasks`, `fetchTasksAssignedTo`, `fetchTasksCreatedBy` in `TasksCubit`.
-- [ ] `{bool silent = false}` added to `loadAdminStats`, `loadEmployeeStats` in `DashboardCubit`.
-- [ ] `{bool silent = false}` added to `fetchEmployees` in `EmployeesCubit`.
-- [ ] `TasksScreen._loadTasks` passes `silent` through; each tab's content is wrapped in its own `RefreshIndicator`.
-- [ ] Empty and error states in `TasksScreen` are `ListView`-wrapped.
-- [ ] Loading spinner in `TasksScreen` only shows when data list is empty (initial load guard).
-- [ ] `EmployeeHomeScreen` has `RefreshIndicator` + `_loadData` helper + initial-load guard.
-- [ ] `AdminDashboardScreen` has `RefreshIndicator` + `_loadData` helper + initial-load guard.
-- [ ] `EmployeesScreen` has `RefreshIndicator`; empty/error states are `ListView`-wrapped.
-- [ ] `no_internet_connection` key added to both `en.json` and `ar.json`.
-- [ ] Translation parity check: `242 242 []`.
-- [ ] `flutter analyze` clean.
-- [ ] `flutter test` all green.
-- [ ] No changes outside the files listed in §8.
-- [ ] Workflow docs updated (SESSION_LOG, BACKLOG, CURRENT_TASK reset).
-- [ ] PR title: `feat(app): add offline connectivity banner and pull-to-refresh on key screens`.
+- **`Platform.isAndroid` in unit tests** — throws `UnsupportedError` in test context. Do not write unit tests that exercise the platform branch. Cover with smoke tests #1–#3.
+- **`config/app_settings` doc absent on first deploy** — fail-open is correct; feature is inert until the admin creates the doc. Release checklist update is the mitigation.
+- **Firestore offline cache staleness** — if a user has a cached doc from when the minimum was lower, they pass through until next online cold start. Accepted limitation; the gate fires correctly once online.
+- **`market://` scheme on Android** — use `https://play.google.com/store/...` form in `androidStoreUrl`, not `market://`. The `https://` form works universally; `market://` fails if Play Store is not the default handler.
+- **`PopScope` Flutter version** — `PopScope` requires Flutter 3.12+. Check `environment.sdk` in `pubspec.yaml`. If older, use `WillPopScope(onWillPop: () async => false, ...)`.
 
 ---
 
-## 12. Risks
+## 15. Out of scope
 
-- **`connectivity_plus` v6 API:** `onConnectivityChanged` now emits `List<ConnectivityResult>` (changed from `ConnectivityResult` in v5). The `ConnectivityService` maps this list using `.any((r) => r != ConnectivityResult.none)`. **Do not** use the v5 single-value API.
-- **`initialData: true`:** Without this, `StreamBuilder` starts with `snapshot.data == null`, making `snapshot.data ?? true` evaluate as `true` (connected) — which is the correct initial state. Either `initialData: true` or the `?? true` fallback achieves the same result. Include both for clarity.
-- **`MediaQuery` inside `builder`:** `builder` runs below `MaterialApp`, so `MediaQuery.of(context)` is available. However, on the very first frame before layout, `viewPadding` may be zero. This resolves on the next frame — acceptable.
-- **Cubit state field names:** The pseudocode in §4 uses illustrative names. **The agent must read the actual cubit and state files** before implementing to match the exact existing API. A mismatch in field names will cause a compile error or a lost emit.
-- **Existing `TasksCubit` tests:** Any test that asserts `expectLater(cubit.stream, emits([loading, loaded]))` will pass when `silent: false` (unchanged). Tests calling with `silent: true` will see only `[loaded]`. Check the test file before implementation.
-- **`EmployeeHomeScreen` nested `BlocBuilder` loading guard:** The existing guard checks `tasksState.tasksAssignedToMeStatus == TasksStatus.loading` — this fires during silent refresh too, causing a flash. The fix is to also check that `tasksAssignedToMe.isEmpty` (initial load only). **Read the actual screen** to locate the exact guard condition.
-
----
-
-## 13. Out of scope (do not pull in)
-
-- `internet_connection_checker_plus` or HTTP-ping reachability (overkill; `connectivity_plus` is sufficient)
-- Auto-refresh when connectivity restores
-- Queued-write conflict resolution or offline write disabling
-- Connectivity state as a `Cubit` or `BLoC`
-- `RefreshIndicator` on `NotificationsScreen` (already has it)
-- `RefreshIndicator` on `RecurringTasksScreen` (already has it)
-- `RefreshIndicator` on `TaskDetailsScreen`, `ReportsScreen`, form screens
-- Any visual change beyond the red top banner (no snackbar, no bottom sheet, no modal)
-- Progressive deadline reminders (v1.1.1)
-- UI/UX polish (v1.1.1)
-- Attendance feature (v1.2.0)
+- Soft-update mode (banner, dismissible)
+- Admin UI for version management (Firestore console is sufficient)
+- Web platform support (`dart:io` `Platform` not available on web)
+- Mid-session update checks (cold-start gate only)
+- Shorebird patch vs store-build semantics (BACKLOG #10 audit)
 
 ---
 
-## 14. Workflow doc updates required
+## 16. Workflow doc updates required on completion
 
-| File               | Change                                                                                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `CURRENT_TASK.md`  | Reset to "No active task — v1.1.0 ready for release cut" when PR merges                                                                  |
-| `BACKLOG.md`       | Mark connectivity-and-refresh item Done with completion date and quality gate results                                                    |
-| `SESSION_LOG.md`   | Append implementation entry at the top                                                                                                   |
-| `DECISIONS_LOG.md` | Append: "`MaterialApp.builder` overlay chosen over route-push for offline guard — avoids FCM deep-link interference and form state loss" |
+| File | Change |
+|---|---|
+| `CURRENT_TASK.md` | Reset to "No active task" |
+| `BACKLOG.md` | Mark item #9 Done with completion date and quality gate results |
+| `SESSION_LOG.md` | Append implementation entry at top |
+| `docs/release-checklist.md` | Add `config/app_settings` creation step + `firebase deploy --only firestore:rules` |
