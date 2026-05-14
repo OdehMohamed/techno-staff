@@ -1,3 +1,12 @@
+## 2026-05-14 — GitHub Copilot (GPT-5.4) — Implement progressive 72h + 24h deadline reminders
+
+- **Agent**: GitHub Copilot (GPT-5.4)
+- **Branch**: `feat/progressive-reminders`
+- **Goal**: Implement BACKLOG #12 by adding progressive pre-deadline reminders (72h + 24h), fixing timezone bugs, and keeping scope limited to Cloud Functions + translations.
+- **Outcome**: Rewrote `sendTaskDeadlineReminders` using Jerusalem-wall-clock day windows (`ymdInJerusalem` + `jerusalemMidnightAsUTC`) and parallel `Promise.all` queries for 72h and 24h thresholds. Added per-threshold dedup checks/updates (`reminderSent72hAt`, `reminderSent24hAt`) with same-day Jerusalem logic, per-task try/catch isolation, and assignee-only FCM + in-app reminders. Fixed overdue same-day checks in `sendOverdueTaskEscalations` to use `sameDayJerusalem(...)` for both reminder and escalation timestamps. Added new i18n key `task_deadline_72h_body` in functions table and EN/AR translation files. Quality gates all green: `cd functions && npm run lint`, translation parity `246 246 []`, `flutter analyze`, `flutter test`.
+- **Files touched**: `functions/index.js`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Merge PR, then run `firebase deploy --only functions` (required post-merge; not Shorebird patch-eligible).
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — Shorebird feasibility audit (BACKLOG #10)
 
 - **Agent**: Claude Code (Sonnet 4.6) — lead / architect (read-only audit, no implementation).

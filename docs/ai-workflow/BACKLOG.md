@@ -175,10 +175,11 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 12. Progressive deadline reminder notifications — `feat/progressive-reminders`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress — branch `feat/progressive-reminders`, spec locked 2026-05-14
+- **Status**: Done — 2026-05-14
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — rewrote `sendTaskDeadlineReminders` with Jerusalem-wall-clock windows for 72h and 24h thresholds, parallel query execution, per-threshold dedup fields (`reminderSent72hAt` / `reminderSent24hAt`), per-task error isolation, and assignee-only FCM + in-app notifications. Fixed same-day checks in `sendOverdueTaskEscalations` to use `sameDayJerusalem(...)`. Added `task_deadline_72h_body` in functions i18n + EN/AR app translations. Quality gates: `cd functions && npm run lint` clean, translation parity `246 246 []`, `flutter analyze` clean, `flutter test` green.
 - **Description**: Extend `sendTaskDeadlineReminders` Cloud Function from a single 24h-before reminder to a 72h + 24h progressive pattern. Fix existing timezone bug (raw `new Date()` → `ymdInJerusalem` + `jerusalemMidnightAsUTC` helpers). Fix same-day check bug in `sendOverdueTaskEscalations`. Deduplication via two server-written Timestamp fields on task doc: `reminderSent72hAt`, `reminderSent24hAt`. New i18n key `task_deadline_72h_body` in `functions/index.js` + both translation JSON files. Scope: Cloud Functions + translation JSON only — no Dart/rules/pubspec changes. Not Shorebird patch-eligible; requires `firebase deploy --only functions` post-merge.
 - **Acceptance criteria**: At most one reminder per task per threshold per Jerusalem calendar day. Timezone bug fixed in both functions. `npm run lint` clean, `flutter analyze` clean, `flutter test` green, translation parity `246 246 []`.
 

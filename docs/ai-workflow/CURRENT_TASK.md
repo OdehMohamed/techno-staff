@@ -8,10 +8,9 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-**BACKLOG #12 — Progressive Deadline Reminder Notifications**
-Branch: `feat/progressive-reminders` (created from `dev` 2026-05-14)
+No active task.
 
-Extend `sendTaskDeadlineReminders` from a single 24h reminder to a 72h + 24h progressive pattern. Fix the existing timezone bug in the same PR. Also fix the same-day check bug in `sendOverdueTaskEscalations`. Scope: `functions/index.js` + translation JSON files only.
+Latest completed: BACKLOG #12 — progressive deadline reminders (72h + 24h), timezone fixes, and i18n parity.
 
 ---
 
