@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
+import '../../../../core/services/app_update_service.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 
@@ -20,10 +21,27 @@ class _SplashScreenState extends State<SplashScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AuthCubit>().checkAuthStatus(
-        languageCode: context.locale.languageCode,
-      );
+      _checkVersionThenAuth();
     });
+  }
+
+  Future<void> _checkVersionThenAuth() async {
+    final result = await AppUpdateService.instance.checkUpdate();
+
+    if (!mounted) return;
+
+    if (result.required) {
+      Navigator.pushReplacementNamed(
+        context,
+        RouteNames.updateRequired,
+        arguments: result.storeUrl,
+      );
+      return;
+    }
+
+    context.read<AuthCubit>().checkAuthStatus(
+      languageCode: context.locale.languageCode,
+    );
   }
 
   @override

@@ -246,5 +246,8 @@
   "weekday_fri": "Fri",
   "weekday_sat": "Sat",
   "weekday_sun": "Sun",
-  "no_internet_connection": "No internet connection"
+  "no_internet_connection": "No internet connection",
+  "update_required_title": "Update Required",
+  "update_required_message": "A new version of the app is required to continue. Please update and reopen.",
+  "update_now": "Update Now"
 }
