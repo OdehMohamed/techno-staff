@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — Plan feat/connectivity-and-refresh (offline guard + pull-to-refresh)
+
+- **Agent**: Claude Code (Sonnet 4.6) — acting as lead / architect (planning only, no implementation code).
+- **Branch**: `feat/connectivity-and-refresh` (created from `dev` after PR #29 squash-merge).
+- **Goal**: Lock scope, architecture, and implementation spec for v1.1.0 stabilization items: offline connectivity banner and pull-to-refresh on the four highest-traffic screens.
+- **Outcome**: Ran a read-only audit covering connectivity libraries, overlay mechanisms, cubit silent-refresh pattern, `RefreshIndicator` constraints, and backward-compat risks. Surfaced the load-bearing constraint: `RefreshIndicator` cannot wrap `TabBarView` (horizontal swipe consumed by tab controller) — each tab content must have its own indicator. Locked 10 planning decisions: `connectivity_plus ^6.x` (emits `List<ConnectivityResult>` in v6 — not v5's scalar); `MaterialApp.builder` Stack overlay over route-push (avoids FCM deep-link and form state interference); `initialData: true` for optimistic start; no auto-refresh on reconnect; `{bool silent = false}` on cubit fetches with "skip loading emit, always run fetch, always emit error"; `ListView`-wrap all non-scrollable states inside `RefreshIndicator`; per-tab `RefreshIndicator` in `TasksScreen`; initial-load spinner guard (`tasks.isEmpty && status == loading`); 4 screens in scope (Tasks, EmployeeHome, AdminDashboard, Employees); 1 translation key (`no_internet_connection`) → 242/242 parity. Wrote complete `CURRENT_TASK.md` spec (14 sections): `ConnectivityService` singleton, `app.dart` overlay with pseudocode, cubit silent-param pseudocode with exact-API warning, per-screen `RefreshIndicator` + `_loadData` helper + initial-load guard patterns, affected files table, quality gates, 12 smoke tests, DoD checklist, risks, out-of-scope rails, workflow doc update table.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Implementing agent takes over on `feat/connectivity-and-refresh` from `CURRENT_TASK.md`. After PR merges: cut v1.1.0 testing release. v1.1.1 items deferred: progressive reminders + UI/UX polish. v1.2.0: attendance MVP.
+
 ## 2026-05-14 — Claude Code (Sonnet 4.6) — Multi-assignee supplement for PR #29 (F3.B)
 
 - **Agent**: Claude Code (Sonnet 4.6) — lead audit + implementation on `feat/recurring-tasks`.
