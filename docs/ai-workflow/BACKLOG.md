@@ -133,9 +133,73 @@ _None yet._
 - **Description**: Two v1.1.0 pre-release stabilization items shipped together. (1) **Offline guard**: top-anchored red banner via `MaterialApp.builder` Stack overlay (NOT a route push). Powered by `connectivity_plus ^6.x` singleton `ConnectivityService` with `Stream<bool>`. Banner is informational only — does not block navigation, disable buttons, or intercept Firestore writes. (2) **Pull-to-refresh**: `RefreshIndicator` on `TasksScreen` (per-tab, due to `TabBarView` incompatibility), `EmployeeHomeScreen`, `AdminDashboardScreen`, `EmployeesScreen`. Silent refresh via `{bool silent = false}` on cubit fetch methods to avoid full-screen spinner flash during refresh. Initial load guard: full-screen spinner only when data list is empty. Empty/error states wrapped in `ListView` so drag gesture always reaches the indicator. 1 new translation key `no_internet_connection` × 2 locales → 242/242 parity. Zero changes to Firestore rules, Cloud Functions, data models, routing, or existing state shape. Spec in `CURRENT_TASK.md`.
 - **Acceptance criteria**: (1) Airplane mode triggers red banner; banner disappears on reconnect. (2) Pull-to-refresh on all 4 screens updates data without full-screen loading flash. (3) Empty/error states on all 4 screens are still draggable. (4) `flutter analyze` clean, `flutter test` all green, translation parity `242 242 []`.
 
-_All v1.1 features are now in flight or complete._
+_All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
-_Deferred to v1.2.0_: F2 — Attendance MVP (timestamp + biometric, no location).
+---
+
+### v1.2 — next development cycle (unified; no v1.1.1 / v1.2.0 split)
+
+> Roadmap consolidated 2026-05-14 after v1.1.0 deployment. v1.1.1 and v1.2.0 collapsed into one unified cycle. Ordering is locked: mandatory update first (production safety valve), Shorebird audit second (gates release strategy), stabilization triage ongoing, then features in parallel, attendance last (architecture-first). See `DECISIONS_LOG.md` 2026-05-14 for rationale.
+
+#### 9. Mandatory app-update system — `feat/mandatory-app-update`
+
+- **Priority**: Should-fix (operational safety valve)
+- **Status**: In progress — planning round 2026-05-14
+- **Owner**: TBD (implementing agent)
+- **Target release**: 1.2.0
+- **Added**: 2026-05-14
+- **Description**: On app startup, fetch a minimum supported version from a Firestore `config/app_settings` doc (`minimumAndroidVersion` / `minimumIosVersion` string fields). If the installed version is below minimum, block app usage with a non-dismissible update UI that deep-links to Google Play (Android) or TestFlight/App Store (iOS). Version comparison uses tuple semver logic (not string comparison). Blocking UI appears before or during splash, before any auth gate. Soft-update mode (banner, not block) is a future extension — out of scope for this PR. Firestore `config/app_settings` chosen over Firebase Remote Config (already in stack, no new service, admin-editable from Firestore console).
+- **Acceptance criteria**: (1) Device with version below minimum is blocked on cold start with update UI and correct store link. (2) Device with version at or above minimum passes through normally. (3) Firestore doc update takes effect on next app cold start (no binary push needed). (4) `flutter analyze` clean, `flutter test` green.
+
+#### 10. Shorebird feasibility audit — (planning only, no branch yet)
+
+- **Priority**: Should-fix (release strategy decision)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: N/A (audit only)
+- **Added**: 2026-05-14
+- **Description**: Dedicated read-only audit (no implementation) covering: free-tier constraints (5,000 active devices/month, 1 app), Dart-only patch surface and what that excludes (`firebase_messaging` background isolate, `local_auth` biometric, FCM token setup, `flutter_local_notifications` channel config), Crashlytics symbol mapping compatibility with patched builds, iOS App Store / TestFlight policy compliance, rollback behavior, and explicit semantics for how Shorebird patches and the mandatory update system coexist (patch = Dart-only silent fix; mandatory update = breaking change requiring a full binary). Decision gates release strategy for all subsequent features.
+- **Acceptance criteria**: Written decision in `DECISIONS_LOG.md` — adopt or reject with specific constraints documented. If adopted: release checklist updated to distinguish patch-eligible from store-build-required changes.
+
+#### 11. Stabilization — real-world usage triage (ongoing)
+
+- **Priority**: Should-fix (stability)
+- **Status**: Open — collection ongoing from v1.1.0 testing
+- **Owner**: Mohamed Odeh (triage); TBD (fixes)
+- **Target release**: 1.2.0
+- **Added**: 2026-05-14
+- **Description**: Collect and triage tester feedback from v1.1.0 closed testing cycle. Known watch areas: offline write queue user expectation (task completed while offline — does it sync?), notification timing behavior, recurring task generation edge cases, refresh expectations, admin workflow friction. First formal triage pass after ~2 weeks of real usage. Fixes sized and promoted to individual BACKLOG items as they are discovered.
+- **Acceptance criteria**: First formal triage document complete. High-severity items promoted to BACKLOG with priority. Low-severity items captured in NEXT_STEPS.
+
+#### 12. Progressive deadline reminder notifications — `feat/progressive-reminders`
+
+- **Priority**: Should-fix (feature)
+- **Status**: Open
+- **Owner**: TBD
+- **Target release**: 1.2.0
+- **Added**: 2026-05-14
+- **Description**: Extend `sendTaskDeadlineReminders` Cloud Function from a single 24h-before reminder to a multi-threshold progressive pattern (e.g. 72h, 24h). Key design constraint: deduplication — each threshold must fire at most once per task. Extension of existing `lastReminderSentAt`-style field pattern on the task doc (e.g. `remindersSent: ['72h', '24h']` array or separate timestamp fields per threshold). Requires a Firestore rules delta (server-writable field). No client changes. Architecture-first spec required before implementation.
+- **Acceptance criteria**: At most one reminder per task per threshold. No regression on existing 24h path. `npm run lint` clean.
+
+#### 13. UI/UX improvements (admin dashboard, reports, employee home/workflow)
+
+- **Priority**: Should-fix (polish)
+- **Status**: Open — scope to be defined from tester feedback
+- **Owner**: TBD
+- **Target release**: 1.2.0
+- **Added**: 2026-05-14
+- **Description**: Targeted UX improvements informed by real v1.1.0 testing feedback. Known candidates: admin dashboard layout, reports screen usability, employee home/workflow friction. Exact scope deferred until stabilization triage (item #11) produces signal. Do not spec or implement before tester feedback is available.
+- **Acceptance criteria**: Specific items defined and closed. No regressions on existing screens.
+
+#### 14. Attendance / check-in / check-out system — (architecture-first planning round required)
+
+- **Priority**: Should-fix (feature)
+- **Status**: Open — blocked on architecture planning round
+- **Owner**: TBD
+- **Target release**: 1.2.0
+- **Added**: 2026-05-14 (carried from 2026-05-01 v1.2.0 deferral)
+- **Description**: Admin-visible employee check-in / check-out system. Known scope: timestamp recording + biometric gate (`local_auth`). No geolocation in initial scope. Architecture-first planning round required before any code — open questions: collection structure (`attendance/{uid}/records/{date}` vs flat), admin reporting view (existing Reports screen vs new screen), relationship to task model (orthogonal or linked), whether the no-location constraint still holds after testing feedback. `local_auth` is a native plugin — permanently outside Shorebird patch surface.
+- **Acceptance criteria**: Architecture planning round complete with locked CURRENT_TASK.md spec before any implementation begins.
 
 ---
 

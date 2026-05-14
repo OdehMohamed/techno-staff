@@ -1,3 +1,12 @@
+## 2026-05-14 — Claude Code (Sonnet 4.6) — v1.1.0 release cut + next cycle roadmap planning
+
+- **Agent**: Claude Code (Sonnet 4.6) — lead / architect.
+- **Branch**: `main` (release cut); `dev` (roadmap planning).
+- **Goal**: Complete v1.1.0 release publication and lock the next development cycle roadmap.
+- **Outcome**: v1.1.0 fully published — `main` pushed to remote (`24713a8`), tag `v1.1.0` pushed, GitHub Release object created, Android Closed Testing and iOS TestFlight builds deployed and runtime-validated on both platforms. Remote `feat/connectivity-and-refresh` branch deleted. Next cycle roadmap locked: v1.1.1 / v1.2.0 split collapsed into a unified v1.2 cycle. Sequence locked: mandatory update system first (BACKLOG #9), Shorebird feasibility audit second (BACKLOG #10), stabilization triage ongoing (BACKLOG #11), progressive reminders + UI/UX in parallel (BACKLOG #12–#13), attendance architecture planning last (BACKLOG #14). Key architectural decisions recorded: Firestore `config/app_settings` doc over Firebase Remote Config for version gating; mandatory update as production safety valve before further native integrations. Production gaps captured in NEXT_STEPS: recurring task failure visibility, firebase deploy discipline in release checklist, offline write queue UX expectations, CHANGELOG parity.
+- **Files touched**: `docs/ai-workflow/BACKLOG.md` (items #9–#14 added under v1.2 group), `docs/ai-workflow/NEXT_STEPS.md` (populated with 5 engineering/architecture ideas), `docs/ai-workflow/DECISIONS_LOG.md` (2 new entries: roadmap consolidation + Firestore config decision), `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Move directly into mandatory update system planning round (architecture-first spec for BACKLOG #9). Branch: `feat/mandatory-app-update` from `dev`.
+
 ## 2026-05-14 — GitHub Copilot (GPT-5.4) — Implement connectivity banner and pull-to-refresh
 
 - **Agent**: GitHub Copilot (GPT-5.4)
