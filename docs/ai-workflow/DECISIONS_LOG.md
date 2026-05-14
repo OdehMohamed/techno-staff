@@ -20,6 +20,22 @@ Decisions capture "why we did it" so that a future reader (human or AI) can tell
 
 ---
 
+## 2026-05-14 — Next cycle roadmap: unified release + mandatory-update-first ordering
+
+- **Decision**: (1) Collapse the previously planned v1.1.1 and v1.2.0 into a single unified next cycle (v1.2.0). (2) Lock the implementation sequence: mandatory update system first, Shorebird feasibility audit second, then progressive reminders + UI/UX improvements in parallel, attendance architecture planning last. (3) No new features start before the mandatory update system is live.
+- **Reason**: v1.1.0 deployment revealed that users in Closed Testing / TestFlight do not naturally discover updates without manual prompting. A mandatory update system is a production safety valve — if a bad build reaches users, the minimum version can be bumped in Firestore without a code push to force users off it. This protection should exist before any further native integrations (attendance biometric) or complex features ship. Shorebird must be audited before it affects release strategy decisions. Attendance is the most complex feature (native integrations, trust semantics, reporting structure) and must start with an architecture-first planning round regardless of Shorebird outcome. The v1.1.1 / v1.2.0 split added no useful constraint given the consolidated backlog.
+- **Impact**: BACKLOG restructured under a single v1.2 group (items #9–#14). Items #9 (mandatory update) and #10 (Shorebird audit) are gates for subsequent work. No features from items #12–#14 are specced or implemented until #9 is live and #10 is resolved.
+- **Owner**: Mohamed Odeh.
+- **Related**: `BACKLOG.md` items #9–#14, `NEXT_STEPS.md`.
+
+## 2026-05-14 — Firestore config doc for mandatory version gating (over Firebase Remote Config)
+
+- **Decision**: Store minimum supported version fields (`minimumAndroidVersion`, `minimumIosVersion`) in a Firestore `config/app_settings` document, not Firebase Remote Config.
+- **Reason**: Firebase Remote Config would add a new Firebase service dependency and a new async initialization path at startup. The Firestore stack is already fully initialized at startup (`Firebase.initializeApp` → `FirebaseFirestore.instance`), the rules pattern is established, and the doc is editable from the Firestore console without a code deploy. Version gating is two string fields — Remote Config adds no capability that justifies the additional service.
+- **Impact**: `config/app_settings` Firestore doc must exist before the feature can gate anything. Firestore rules must allow unauthenticated or pre-auth reads of this doc so the gate fires before the login screen. Version comparison uses tuple semver logic on the three numeric segments (not string comparison).
+- **Owner**: Mohamed Odeh.
+- **Related**: `BACKLOG.md` item #9.
+
 ## 2026-05-14 — MaterialApp.builder overlay for offline connectivity state
 
 - **Decision**: Show offline state with a `MaterialApp.builder` `Stack` overlay banner instead of pushing a dedicated offline route.
