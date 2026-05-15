@@ -1,3 +1,12 @@
+## 2026-05-15 — Claude Code (Sonnet 4.6) — Attendance architecture planning round + phased implementation plan (BACKLOG #14)
+
+- **Agent**: Claude Code (Sonnet 4.6) — lead / architect (read-only planning, no implementation).
+- **Branch**: N/A (planning only; workflow docs only).
+- **Goal**: Complete the architecture-first planning round for BACKLOG #14 (attendance system) and lock a phased implementation strategy before any code is written.
+- **Outcome**: Full architecture locked across all dimensions — trust model (biometric gate + server timestamps; WiFi/geofencing explicitly rejected), write path (Cloud Function callables only; `allow write: if false` on `attendance`), data model (flat `attendance/{userId}_{YYYY-MM-DD}`; Jerusalem date server-computed; v1 statuses `present|absent|manual`; `late` deferred to schedule-aware v2), absence cron (`sendDailyAbsenceMarker` at 23:00 Asia/Jerusalem), biometric policy (`biometricOnly: false` — OS PIN/pattern fallback), online-only gate, reporting placement (Reports screen tab + employee drawer self-view). Feature split into 4 phased PRs: P1 backend-only (Cloud Functions + rules + indexes + 26 translation keys, parity target 272/272); P2 employee flow (local_auth native integration — full binary release boundary); P3 admin management (pure Dart, patch-eligible); P4 polish (defined from real-device testing). Key reuse note: `sendDailyAbsenceMarker` and `recordAttendance` must both use existing `ymdInJerusalem` helper for consistent Jerusalem-date semantics across doc IDs, absence cron, and reporting queries.
+- **Files touched**: `docs/ai-workflow/CURRENT_TASK.md` (full locked spec + phased plan), `docs/ai-workflow/BACKLOG.md` (#14 status updated to "In progress"), `docs/ai-workflow/DECISIONS_LOG.md` (attendance architecture entry + BACKLOG #13 UI/UX entry), `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Hand `CURRENT_TASK.md` Phase 1 scope to implementing agent with instruction to branch `feat/attendance-p1-backend` from `dev` and reuse `ymdInJerusalem`. No scope widening beyond P1 checklist.
+
 ## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement UI/UX improvements across reports, tasks, details, and dashboards
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
