@@ -239,6 +239,316 @@ exports.generateRecurringTaskInstances = onSchedule(
   },
 );
 
+exports.recordAttendance = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const action = request.data && request.data.action;
+  const biometricVerified =
+    !!(request.data && request.data.biometricVerified === true);
+
+  if (action !== "check_in" && action !== "check_out") {
+    throw new HttpsError("invalid-argument", "Invalid attendance action");
+  }
+
+  const db = admin.firestore();
+  const now = new Date();
+  const date = ymdInJerusalem(now);
+  const userId = request.auth.uid;
+  const docId = `${userId}_${date}`;
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("permission-denied", "Current user record not found");
+  }
+  const userData = userDoc.data() || {};
+  const userName = userData.name || "Unknown";
+
+  const attendanceRef = db.collection("attendance").doc(docId);
+  const logRef = db.collection("attendance_logs").doc();
+
+  await db.runTransaction(async (txn) => {
+    const attendanceSnap = await txn.get(attendanceRef);
+    const previousValue = attendanceSnap.exists ? attendanceSnap.data() : null;
+
+    if (action === "check_in") {
+      if (attendanceSnap.exists && attendanceSnap.data().checkInAt != null) {
+        throw new HttpsError("failed-precondition", "already-checked-in");
+      }
+
+      const nextValue = {
+        userId,
+        userName,
+        date,
+        checkInAt: admin.firestore.FieldValue.serverTimestamp(),
+        checkOutAt: null,
+        biometricVerified,
+        status: "present",
+        durationMinutes: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (!attendanceSnap.exists) {
+        nextValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      }
+
+      txn.set(attendanceRef, nextValue, { merge: true });
+      txn.set(logRef, {
+        attendanceId: docId,
+        userId,
+        action: "check_in",
+        performedBy: userId,
+        performedByName: userName,
+        previousValue,
+        newValue: {
+          checkInAt: "serverTimestamp",
+          status: "present",
+          biometricVerified,
+        },
+        performedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    if (!attendanceSnap.exists || attendanceSnap.data().checkInAt == null) {
+      throw new HttpsError("failed-precondition", "not-checked-in");
+    }
+
+    if (attendanceSnap.data().checkOutAt != null) {
+      throw new HttpsError("failed-precondition", "already-checked-out");
+    }
+
+    const checkInAt = attendanceSnap.data().checkInAt.toDate();
+    const durationMinutes = Math.max(
+      0,
+      Math.round((now.getTime() - checkInAt.getTime()) / 60000),
+    );
+
+    txn.set(
+      attendanceRef,
+      {
+        userId,
+        userName,
+        date,
+        checkOutAt: admin.firestore.FieldValue.serverTimestamp(),
+        biometricVerified,
+        status: "present",
+        durationMinutes,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    txn.set(logRef, {
+      attendanceId: docId,
+      userId,
+      action: "check_out",
+      performedBy: userId,
+      performedByName: userName,
+      previousValue,
+      newValue: {
+        checkOutAt: "serverTimestamp",
+        status: "present",
+        biometricVerified,
+        durationMinutes,
+      },
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true, docId };
+});
+
+exports.adminCorrectAttendance = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const adminUid = request.auth.uid;
+  const db = admin.firestore();
+
+  const adminDoc = await db.collection("users").doc(adminUid).get();
+  if (!adminDoc.exists || (adminDoc.data() || {}).role !== "admin") {
+    throw new HttpsError("permission-denied", "Only admins can correct attendance");
+  }
+
+  const adminName = (adminDoc.data() || {}).name || "Admin";
+  const userId = request.data && request.data.userId;
+  const date = request.data && request.data.date;
+  const fields = (request.data && request.data.fields) || {};
+
+  if (!userId || !date || typeof fields !== "object") {
+    throw new HttpsError("invalid-argument", "Missing required correction payload");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpsError("invalid-argument", "Invalid date format");
+  }
+
+  const parsedFields = {};
+  if (Object.prototype.hasOwnProperty.call(fields, "checkInAt")) {
+    if (fields.checkInAt == null || fields.checkInAt === "") {
+      parsedFields.checkInAt = null;
+    } else {
+      const parsed = new Date(fields.checkInAt);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new HttpsError("invalid-argument", "Invalid checkInAt timestamp");
+      }
+      parsedFields.checkInAt = admin.firestore.Timestamp.fromDate(parsed);
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(fields, "checkOutAt")) {
+    if (fields.checkOutAt == null || fields.checkOutAt === "") {
+      parsedFields.checkOutAt = null;
+    } else {
+      const parsed = new Date(fields.checkOutAt);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new HttpsError("invalid-argument", "Invalid checkOutAt timestamp");
+      }
+      parsedFields.checkOutAt = admin.firestore.Timestamp.fromDate(parsed);
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(fields, "notes")) {
+    parsedFields.notes = fields.notes == null ? null : String(fields.notes);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(fields, "biometricVerified")) {
+    parsedFields.biometricVerified = !!fields.biometricVerified;
+  }
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "Target user not found");
+  }
+  const userName = (userDoc.data() || {}).name || "Unknown";
+
+  const docId = `${userId}_${date}`;
+  const attendanceRef = db.collection("attendance").doc(docId);
+  const logRef = db.collection("attendance_logs").doc();
+
+  await db.runTransaction(async (txn) => {
+    const attendanceSnap = await txn.get(attendanceRef);
+    const existing = attendanceSnap.exists ? attendanceSnap.data() : {};
+    const previousValue = attendanceSnap.exists
+      ? {
+          checkInAt: existing.checkInAt || null,
+          checkOutAt: existing.checkOutAt || null,
+          status: existing.status || null,
+          notes: existing.notes || null,
+          durationMinutes:
+            existing.durationMinutes == null ? null : existing.durationMinutes,
+        }
+      : null;
+
+    const nextValue = {
+      ...parsedFields,
+      correctedBy: adminUid,
+      correctedAt: admin.firestore.FieldValue.serverTimestamp(),
+      status: "manual",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (!attendanceSnap.exists) {
+      nextValue.userId = userId;
+      nextValue.userName = userName;
+      nextValue.date = date;
+      nextValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+
+    const effectiveCheckIn =
+      Object.prototype.hasOwnProperty.call(nextValue, "checkInAt")
+        ? nextValue.checkInAt
+        : existing.checkInAt || null;
+    const effectiveCheckOut =
+      Object.prototype.hasOwnProperty.call(nextValue, "checkOutAt")
+        ? nextValue.checkOutAt
+        : existing.checkOutAt || null;
+
+    if (effectiveCheckIn && effectiveCheckOut) {
+      const durationMinutes = Math.max(
+        0,
+        Math.round(
+          (effectiveCheckOut.toDate().getTime() -
+            effectiveCheckIn.toDate().getTime()) /
+            60000,
+        ),
+      );
+      nextValue.durationMinutes = durationMinutes;
+    } else {
+      nextValue.durationMinutes = null;
+    }
+
+    txn.set(attendanceRef, nextValue, { merge: true });
+    txn.set(logRef, {
+      attendanceId: docId,
+      userId,
+      action: "admin_correction",
+      performedBy: adminUid,
+      performedByName: adminName,
+      previousValue,
+      newValue: {
+        ...parsedFields,
+        status: "manual",
+        correctedBy: adminUid,
+        durationMinutes: nextValue.durationMinutes,
+      },
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true, docId };
+});
+
+exports.sendDailyAbsenceMarker = onSchedule(
+  {
+    schedule: "0 23 * * *",
+    timeZone: "Asia/Jerusalem",
+  },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const today = ymdInJerusalem(new Date());
+
+      const employeesSnapshot = await db
+        .collection("users")
+        .where("isActive", "==", true)
+        .where("role", "==", "employee")
+        .get();
+
+      for (const employeeDoc of employeesSnapshot.docs) {
+        const employee = employeeDoc.data() || {};
+        const userId = employeeDoc.id;
+        const userName = employee.name || "Unknown";
+        const attendanceId = `${userId}_${today}`;
+        const attendanceRef = db.collection("attendance").doc(attendanceId);
+        const attendanceSnap = await attendanceRef.get();
+
+        if (attendanceSnap.exists && attendanceSnap.data().checkInAt != null) {
+          continue;
+        }
+
+        const absentDoc = {
+          userId,
+          userName,
+          date: today,
+          status: "absent",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (!attendanceSnap.exists) {
+          absentDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        }
+
+        await attendanceRef.set(absentDoc, { merge: true });
+      }
+    } catch (error) {
+      console.error("Error running daily absence marker:", error);
+    }
+  },
+);
+
 exports.createEmployeeUser = onCall(async (request) => {
   try {
     // 🔐 تحقق أن المستخدم مسجل دخول
