@@ -133,6 +133,60 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     );
   }
 
+  Future<void> loadRoster(String date) async {
+    emit(state.copyWith(
+      rosterStatus: AttendanceLoadStatus.loading,
+      selectedDate: date,
+      clearRosterError: true,
+    ));
+    try {
+      final records = await _attendanceRepository.fetchRosterForDate(date);
+      emit(state.copyWith(
+        rosterStatus: AttendanceLoadStatus.loaded,
+        roster: records,
+      ));
+    } catch (_) {
+      emit(state.copyWith(
+        rosterStatus: AttendanceLoadStatus.error,
+        rosterError: 'network_error',
+      ));
+    }
+  }
+
+  Future<void> adminCorrect({
+    required String userId,
+    required String date,
+    required Map<String, dynamic> fields,
+    String? notes,
+  }) async {
+    emit(state.copyWith(
+      correctionStatus: AttendanceActionStatus.submitting,
+      clearCorrectionError: true,
+    ));
+    try {
+      await _attendanceRepository.adminCorrect(
+        userId: userId,
+        date: date,
+        fields: fields,
+        notes: notes,
+      );
+      emit(state.copyWith(correctionStatus: AttendanceActionStatus.success));
+      await loadRoster(date);
+    } catch (_) {
+      emit(state.copyWith(
+        correctionStatus: AttendanceActionStatus.error,
+        correctionError: 'network_error',
+      ));
+    }
+  }
+
+  void clearCorrectionFeedback() {
+    emit(state.copyWith(
+      correctionStatus: AttendanceActionStatus.idle,
+      clearCorrectionError: true,
+    ));
+  }
+
   String _mapAttendanceError(Object error) {
     if (error is FirebaseFunctionsException) {
       final code = error.code;

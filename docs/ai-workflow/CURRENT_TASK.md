@@ -111,14 +111,16 @@ Files changed:
 - `lib/shared/widgets/app_drawer.dart` — add "Attendance Management" entry for admins
 
 Phase 3 acceptance criteria:
-- [ ] `flutter analyze` clean
-- [ ] `flutter test` green
-- [ ] Admin can view all employees' attendance for a selected date
-- [ ] Admin can correct any attendance record (edit times, status, notes)
-- [ ] Correction is logged in `attendance_logs` (via `adminCorrectAttendance` callable)
-- [ ] Today's attendance summary card visible on admin dashboard (present / total active)
-- [ ] Attendance tab visible in Reports screen (admin only)
-- [ ] Admin drawer "Attendance Management" entry navigates correctly
+- [x] `flutter analyze` clean
+- [x] `flutter test` green
+- [x] Admin can view all employees' attendance for a selected date
+- [x] Admin can correct any attendance record (edit times, status, notes)
+- [x] Correction is logged in `attendance_logs` (via `adminCorrectAttendance` callable)
+- [x] Today's attendance summary card visible on admin dashboard (present / total active)
+- [x] Attendance tab visible in Reports screen (admin only)
+- [x] Admin drawer "Attendance Management" entry navigates correctly
+
+Phase 3 implementation status: completed in `feat/attendance-p3-admin`.
 
 ---
 

@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
 import 'package:techno_staff/features/dashboard/data/services/report_service.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_line_chart.dart';
@@ -24,12 +26,18 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  String _todayJerusalemYmd() {
+    final nowJerusalem = DateTime.now().toUtc().add(const Duration(hours: 3));
+    return DateFormat('yyyy-MM-dd').format(nowJerusalem);
+  }
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+      context.read<AttendanceCubit>().loadRoster(_todayJerusalemYmd());
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthCubit>().state.user;
@@ -202,6 +210,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   icon: Icons.check_circle_outline,
                                 ),
                               ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSizes.md),
+                        // Today's attendance summary card
+                        BlocBuilder<AttendanceCubit, AttendanceState>(
+                          builder: (context, attendanceState) {
+                            final presentCount = attendanceState.roster
+                                .where((r) => r.status == 'present')
+                                .length;
+                            return _DashboardStatCard(
+                              title: 'today_attendance'.tr(),
+                              value: presentCount.toString(),
+                              icon: Icons.how_to_reg_outlined,
                             );
                           },
                         ),
