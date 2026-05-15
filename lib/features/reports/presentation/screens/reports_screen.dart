@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -223,7 +222,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
-                                  '${'selected_month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                                  '${'selected_month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
                                 ),
                                 trailing: const Icon(Icons.calendar_month),
                                 onTap: _pickMonth,
@@ -250,7 +249,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             title:
                                 '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
                             subtitle:
-                                '${'month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                                '${'month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
                           ),
                           const SizedBox(height: AppSizes.md),
 
@@ -284,40 +283,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           const SizedBox(height: AppSizes.lg),
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 900;
-                              final isMedium = constraints.maxWidth >= 600;
+                              final isWide = constraints.maxWidth >= 500;
 
                               if (isWide) {
-                                return Row(
-                                  children: [
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'total_tasks'.tr(),
-                                        value: totalTasks.toString(),
-                                        icon: Icons.task_outlined,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'completed'.tr(),
-                                        value: completedTasks.toString(),
-                                        icon: Icons.check_circle_outline,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'in_progress'.tr(),
-                                        value: inProgressTasks.toString(),
-                                        icon: Icons.pending_actions_outlined,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              if (isMedium) {
                                 return Row(
                                   children: [
                                     Expanded(
@@ -404,7 +372,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ),
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 700;
+                              final isWide = constraints.maxWidth >= 500;
 
                               if (isWide) {
                                 return Row(
@@ -478,73 +446,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ),
                           ),
                           const SizedBox(height: AppSizes.md),
-
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final callable = FirebaseFunctions.instance
-                                    .httpsCallable('testTaskDeadlineReminders');
-
-                                final result = await callable.call();
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Reminder sent: ${result.data}',
-                                    ),
-                                  ),
-                                );
-                              } catch (_) {
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error sending reminder'),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.notifications_active),
-                            label: const Text('Test Reminder'),
-                          ),
-                          const SizedBox(height: AppSizes.md),
-
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final callable = FirebaseFunctions.instance
-                                    .httpsCallable(
-                                      'testOverdueTaskEscalations',
-                                    );
-
-                                final result = await callable.call();
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Escalation sent: ${result.data}',
-                                    ),
-                                  ),
-                                );
-                              } catch (_) {
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error sending escalation'),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.notifications_active),
-                            label: const Text('Test Escalation'),
-                          ),
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(
                             title: 'tasks'.tr(),
@@ -599,7 +500,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                           _InfoChip(
                                             icon: Icons.calendar_today_outlined,
                                             label:
-                                                '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                                '${'due_date'.tr()}: ${DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)}',
                                           ),
                                         ],
                                       ),

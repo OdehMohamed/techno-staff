@@ -1,3 +1,12 @@
+## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement UI/UX improvements across reports, tasks, details, and dashboards
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feat/ui-ux-improvements`
+- **Goal**: Implement BACKLOG #13 with a strictly scoped UI polish pass across five presentation files (no backend/translation/model changes).
+- **Outcome**: Completed all locked changes in the five scoped files. `reports_screen.dart`: removed the two debug callable buttons and the `cloud_functions` import, switched month display to `DateFormat.yMMMM(context.locale.languageCode)`, switched due-date chips to `DateFormat.yMMMd(context.locale.languageCode)`, and simplified both responsive LayoutBuilders to a single `isWide >= 500` branch. `employee_home_screen.dart`: added `RouteNames` import, made each preview card tappable to task details via `InkWell`, clamped description text to 2 lines with ellipsis, and added a conditional `all_tasks` TextButton to open the tasks screen when more than 3 tasks exist. `tasks_screen.dart`: clamped card descriptions and hid assignee status/counter controls for completed tasks by extending the existing guard with `task.status != 'completed'`. `task_details_screen.dart`: switched due-date/timestamp formats to the locked readable patterns, localized status values in log descriptions with `.tr()`, and added action-specific log icons via `_logActionIcon`. `admin_dashboard_screen.dart`: removed dead medium-breakpoint branches and unified three LayoutBuilder thresholds to `>= 500`, updated recent-activity timestamps to `dd MMM yyyy • HH:mm`, and added optional `accentColor` support to `_DashboardStatCard` with error highlighting on open overdue cards when count > 0.
+- **Files touched**: `lib/features/reports/presentation/screens/reports_screen.dart`, `lib/features/employee/presentation/screens/employee_home_screen.dart`, `lib/features/tasks/presentation/screens/tasks_screen.dart`, `lib/features/tasks/presentation/screens/task_details_screen.dart`, `lib/features/admin/presentation/screens/admin_dashboard_screen.dart`, `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Open PR with title `feat(ui): UI/UX usability improvements — task workflow, date formats, log polish`.
+
 ## 2026-05-14 — GitHub Copilot (GPT-5.4) — Implement progressive 72h + 24h deadline reminders
 
 - **Agent**: GitHub Copilot (GPT-5.4)

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_state.dart';
@@ -238,40 +239,69 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                                     padding: const EdgeInsets.only(
                                       bottom: AppSizes.md,
                                     ),
-                                    child: AppCard(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  task.title,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.titleLarge,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          RouteNames.taskDetails,
+                                          arguments: task,
+                                        );
+                                      },
+                                      child: AppCard(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    task.title,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.titleLarge,
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(
-                                                width: AppSizes.sm,
-                                              ),
-                                              StatusBadge(status: task.status),
-                                            ],
-                                          ),
-                                          const SizedBox(height: AppSizes.sm),
-                                          Text(task.description),
-                                          const SizedBox(height: AppSizes.md),
-                                          PriorityBadge(
-                                            priority: task.priority,
-                                          ),
-                                        ],
+                                                const SizedBox(
+                                                  width: AppSizes.sm,
+                                                ),
+                                                StatusBadge(
+                                                  status: task.status,
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: AppSizes.sm),
+                                            Text(
+                                              task.description,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: AppSizes.md),
+                                            PriorityBadge(
+                                              priority: task.priority,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
                                 }).toList(),
+                              ),
+                            if (tasks.length > 3)
+                              Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      RouteNames.tasks,
+                                    );
+                                  },
+                                  child: Text('all_tasks'.tr()),
+                                ),
                               ),
                           ],
                         ),
