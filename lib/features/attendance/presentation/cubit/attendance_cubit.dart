@@ -171,7 +171,6 @@ class AttendanceCubit extends Cubit<AttendanceState> {
         notes: notes,
       );
       emit(state.copyWith(correctionStatus: AttendanceActionStatus.success));
-      await loadRoster(date);
     } catch (_) {
       emit(state.copyWith(
         correctionStatus: AttendanceActionStatus.error,

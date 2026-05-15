@@ -67,67 +67,88 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.locale.languageCode;
-    final parsedDate = DateTime.tryParse(_selectedDate);
-    final dateLabel = parsedDate != null
-        ? DateFormat.yMMMd(locale).format(parsedDate)
-        : _selectedDate;
-
     return Scaffold(
       appBar: AppBar(title: Text('attendance_management'.tr())),
       drawer: const AppDrawer(),
-      body: Padding(
-        padding: const EdgeInsets.all(AppSizes.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(title: 'attendance_management'.tr()),
-            AppCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(dateLabel),
-                trailing: const Icon(Icons.calendar_today_outlined),
-                onTap: _pickDate,
-              ),
+      body: BlocConsumer<AttendanceCubit, AttendanceState>(
+        listener: (context, state) {
+          if (state.correctionStatus == AttendanceActionStatus.success) {
+            context.read<AttendanceCubit>().clearCorrectionFeedback();
+            Navigator.of(context).pop();
+            context.read<AttendanceCubit>().loadRoster(_selectedDate);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('attendance_corrected'.tr())),
+            );
+          } else if (state.correctionStatus == AttendanceActionStatus.error &&
+              state.correctionError != null) {
+            context.read<AttendanceCubit>().clearCorrectionFeedback();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.correctionError!.tr())),
+            );
+          }
+        },
+        builder: (context, state) {
+          final locale = context.locale.languageCode;
+          final parsedDate = DateTime.tryParse(_selectedDate);
+          final dateLabel = parsedDate != null
+              ? DateFormat.yMMMd(locale).format(parsedDate)
+              : _selectedDate;
+
+          return Padding(
+            padding: const EdgeInsets.all(AppSizes.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(title: 'attendance_management'.tr()),
+                AppCard(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(dateLabel),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: _pickDate,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.md),
+                Expanded(child: _buildRosterContent(context, state)),
+              ],
             ),
-            const SizedBox(height: AppSizes.md),
-            Expanded(
-              child: BlocBuilder<AttendanceCubit, AttendanceState>(
-                builder: (context, state) {
-                  if (state.rosterStatus == AttendanceLoadStatus.loading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          );
+        },
+      ),
+    );
+  }
 
-                  if (state.rosterStatus == AttendanceLoadStatus.error) {
-                    return Center(
-                      child: Text((state.rosterError ?? 'network_error').tr()),
-                    );
-                  }
+  Widget _buildRosterContent(BuildContext context, AttendanceState state) {
+    if (state.rosterStatus == AttendanceLoadStatus.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                  if (state.roster.isEmpty) {
-                    return const EmptyStateWidget(
-                      icon: Icons.people_outline,
-                      titleKey: 'no_attendance_records',
-                    );
-                  }
+    if (state.rosterStatus == AttendanceLoadStatus.error) {
+      return Center(
+        child: Text((state.rosterError ?? 'network_error').tr()),
+      );
+    }
 
-                  return ListView.separated(
-                    itemCount: state.roster.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSizes.sm),
-                    itemBuilder: (context, index) {
-                      final record = state.roster[index];
-                      return _RosterRow(
-                        record: record,
-                        onTap: () => _openCorrectionSheet(record),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+    if (state.roster.isEmpty) {
+      return const EmptyStateWidget(
+        icon: Icons.people_outline,
+        titleKey: 'no_attendance_records',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () =>
+          context.read<AttendanceCubit>().loadRoster(_selectedDate),
+      child: ListView.separated(
+        itemCount: state.roster.length,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
+        itemBuilder: (context, index) {
+          final record = state.roster[index];
+          return _RosterRow(
+            record: record,
+            onTap: () => _openCorrectionSheet(record),
+          );
+        },
       ),
     );
   }
@@ -225,7 +246,6 @@ class _CorrectionSheet extends StatefulWidget {
 }
 
 class _CorrectionSheetState extends State<_CorrectionSheet> {
-  late String _selectedStatus;
   TimeOfDay? _checkInTime;
   TimeOfDay? _checkOutTime;
   final _notesController = TextEditingController();
@@ -233,7 +253,6 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.record.status;
     if (widget.record.checkInAt != null) {
       final local = widget.record.checkInAt!.toLocal();
       _checkInTime = TimeOfDay(hour: local.hour, minute: local.minute);
@@ -282,10 +301,6 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
     final fields = <String, dynamic>{};
     final original = widget.record;
 
-    if (_selectedStatus != original.status) {
-      fields['status'] = _selectedStatus;
-    }
-
     if (_checkInTime != null) {
       final iso = _timeToIso(_checkInTime!, original.date);
       final originalIso = original.checkInAt?.toUtc().toIso8601String();
@@ -312,22 +327,7 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AttendanceCubit, AttendanceState>(
-      listener: (context, state) {
-        if (state.correctionStatus == AttendanceActionStatus.success) {
-          context.read<AttendanceCubit>().clearCorrectionFeedback();
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('attendance_corrected'.tr())),
-          );
-        } else if (state.correctionStatus == AttendanceActionStatus.error &&
-            state.correctionError != null) {
-          context.read<AttendanceCubit>().clearCorrectionFeedback();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.correctionError!.tr())),
-          );
-        }
-      },
+    return BlocBuilder<AttendanceCubit, AttendanceState>(
       builder: (context, state) {
         final isSubmitting =
             state.correctionStatus == AttendanceActionStatus.submitting;
@@ -354,7 +354,7 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
                 trailing: Text(
                   _checkInTime != null ? _checkInTime!.format(context) : '-',
                 ),
-                onTap: _pickCheckIn,
+                onTap: isSubmitting ? null : _pickCheckIn,
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -362,40 +362,14 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
                 trailing: Text(
                   _checkOutTime != null ? _checkOutTime!.format(context) : '-',
                 ),
-                onTap: _pickCheckOut,
-              ),
-              const SizedBox(height: AppSizes.sm),
-              InputDecorator(
-                decoration: InputDecoration(labelText: 'status'.tr()),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedStatus,
-                    isDense: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: 'present',
-                        child: Text('attendance_status_present'.tr()),
-                      ),
-                      DropdownMenuItem(
-                        value: 'absent',
-                        child: Text('attendance_status_absent'.tr()),
-                      ),
-                      DropdownMenuItem(
-                        value: 'manual',
-                        child: Text('attendance_status_manual'.tr()),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => _selectedStatus = v);
-                    },
-                  ),
-                ),
+                onTap: isSubmitting ? null : _pickCheckOut,
               ),
               const SizedBox(height: AppSizes.sm),
               TextFormField(
                 controller: _notesController,
                 decoration: InputDecoration(labelText: 'notes'.tr()),
                 maxLines: 2,
+                enabled: !isSubmitting,
               ),
               const SizedBox(height: AppSizes.md),
               SizedBox(

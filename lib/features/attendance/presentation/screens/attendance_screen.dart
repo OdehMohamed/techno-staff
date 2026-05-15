@@ -155,6 +155,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               : 'check_in_success';
           _showSnackBar(key);
           context.read<AttendanceCubit>().clearActionFeedback();
+          final userId = context.read<AuthCubit>().state.user?.id;
+          if (userId != null) {
+            context.read<AttendanceCubit>().loadHistory(userId);
+          }
         }
 
         if (state.actionStatus == AttendanceActionStatus.error &&
