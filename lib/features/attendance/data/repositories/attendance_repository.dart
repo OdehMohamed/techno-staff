@@ -54,6 +54,32 @@ class AttendanceRepository {
     await callable.call(const {'action': 'check_out', 'biometricVerified': true});
   }
 
+  Future<List<AttendanceModel>> fetchRosterForDate(String date) async {
+    final snapshot = await _firestore
+        .collection('attendance')
+        .where('date', isEqualTo: date)
+        .get();
+    final docs = snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
+        .toList();
+    docs.sort((a, b) => a.date.compareTo(b.date));
+    return docs;
+  }
+
+  Future<void> adminCorrect({
+    required String userId,
+    required String date,
+    required Map<String, dynamic> fields,
+    String? notes,
+  }) async {
+    final callable = _functions.httpsCallable('adminCorrectAttendance');
+    await callable.call({
+      'userId': userId,
+      'date': date,
+      'fields': {...fields, if (notes != null) 'notes': notes},
+    });
+  }
+
   String _todayJerusalemYmd() {
     // Matches backend phase assumptions (Jerusalem UTC+3 approximation).
     final nowJerusalem = DateTime.now().toUtc().add(const Duration(hours: 3));

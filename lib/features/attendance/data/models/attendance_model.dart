@@ -3,22 +3,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AttendanceModel {
   final String id;
   final String userId;
+  final String userName;
   final String date;
   final DateTime? checkInAt;
   final DateTime? checkOutAt;
   final int? durationMinutes;
   final String status;
+  final bool biometricVerified;
+  final String? notes;
+  final String? correctedBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   const AttendanceModel({
     required this.id,
     required this.userId,
+    this.userName = '',
     required this.date,
     this.checkInAt,
     this.checkOutAt,
     this.durationMinutes,
     required this.status,
+    this.biometricVerified = false,
+    this.notes,
+    this.correctedBy,
     this.createdAt,
     this.updatedAt,
   });
@@ -27,6 +35,7 @@ class AttendanceModel {
     return AttendanceModel(
       id: id,
       userId: data['userId'] as String? ?? '',
+      userName: data['userName'] as String? ?? '',
       date: data['date'] as String? ?? '',
       checkInAt: _toDateTime(data['checkInAt']),
       checkOutAt: _toDateTime(data['checkOutAt']),
@@ -34,6 +43,9 @@ class AttendanceModel {
           ? data['durationMinutes'] as int
           : null,
       status: data['status'] as String? ?? 'present',
+      biometricVerified: data['biometricVerified'] as bool? ?? false,
+      notes: data['notes'] as String?,
+      correctedBy: data['correctedBy'] as String?,
       createdAt: _toDateTime(data['createdAt']),
       updatedAt: _toDateTime(data['updatedAt']),
     );

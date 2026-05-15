@@ -1,3 +1,13 @@
+## 2026-05-15 — GitHub Copilot (Claude Sonnet 4.6) — Implement BACKLOG #14 Phase 3 admin attendance management
+
+- **Agent**: GitHub Copilot (Claude Sonnet 4.6)
+- **Branch**: `feat/attendance-p3-admin`
+- **Goal**: Implement admin attendance management (roster view, date picker, correction bottom sheet, Reports attendance section, dashboard summary card, routing and drawer wiring) per locked `CURRENT_TASK.md` Phase 3 scope. Pure Dart — no native config, no pubspec changes, no Cloud Function changes.
+- **Outcome**: Extended `AttendanceModel` with `userName`, `biometricVerified`, `notes`, `correctedBy` (fromMap only). Extended `AttendanceRepository` with `fetchRosterForDate` (Firestore query) and `adminCorrect` (callable). Extended `AttendanceState` with `rosterStatus`, `roster`, `rosterError`, `correctionStatus`, `correctionError`, `selectedDate` + matching `copyWith` flags. Extended `AttendanceCubit` with `loadRoster`, `adminCorrect`, `clearCorrectionFeedback`. Created `AdminAttendanceScreen` with Jerusalem-date default, 90-day date picker, roster list with status chips, and correction bottom sheet (check-in/out time pickers, status dropdown, notes field, callable-backed Save). Added read-only Attendance section (date picker + roster list) to `ReportsScreen`. Added today's attendance `_DashboardStatCard` (present count) to `AdminDashboardScreen` with roster load in `initState`. Added `RouteNames.adminAttendance`, router case, and admin drawer entry for "Attendance Management".
+- **Files touched**: `lib/features/attendance/data/models/attendance_model.dart`, `lib/features/attendance/data/repositories/attendance_repository.dart`, `lib/features/attendance/presentation/cubit/attendance_state.dart`, `lib/features/attendance/presentation/cubit/attendance_cubit.dart`, `lib/features/admin/presentation/screens/admin_attendance_screen.dart` (new), `lib/features/reports/presentation/screens/reports_screen.dart`, `lib/features/admin/presentation/screens/admin_dashboard_screen.dart`, `lib/core/routes/route_names.dart`, `lib/core/routes/app_router.dart`, `lib/shared/widgets/app_drawer.dart`, workflow docs.
+- **Quality gates**: `flutter analyze` clean (No issues found), `flutter test` green (6/6), `npm run lint` clean, translation parity `273 273 []`.
+- **Follow-ups**: Open PR to `dev` titled `feat(attendance): P3 admin management — roster, corrections, reports tab, dashboard card`. Patch-eligible via Shorebird (pure Dart).
+
 ## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement BACKLOG #14 Phase 2 employee attendance flow
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)
