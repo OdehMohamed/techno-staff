@@ -48,15 +48,18 @@ Files changed:
 - `assets/translations/ar.json` — matching Arabic for all 26 keys
 
 Phase 1 acceptance criteria:
-- [ ] `npm run lint` clean
-- [ ] `recordAttendance` callable rejects unauthenticated calls
-- [ ] `recordAttendance` blocks double check-in (same-day Jerusalem)
-- [ ] `recordAttendance` blocks check-out without prior check-in
-- [ ] `recordAttendance` sets `durationMinutes` on check-out
-- [ ] `adminCorrectAttendance` rejects non-admin callers
-- [ ] `attendance` and `attendance_logs` Firestore rules present
-- [ ] `firestore.indexes.json` updated
-- [ ] Translation parity: 272/272
+- [x] `npm run lint` clean
+- [x] `recordAttendance` callable rejects unauthenticated calls
+- [x] `recordAttendance` blocks double check-in (same-day Jerusalem)
+- [x] `recordAttendance` blocks check-out without prior check-in
+- [x] `recordAttendance` sets `durationMinutes` on check-out
+- [x] `adminCorrectAttendance` rejects non-admin callers
+- [x] `attendance` and `attendance_logs` Firestore rules present
+- [x] `firestore.indexes.json` updated
+- [x] Translation parity: 272/272
+
+Phase 1 implementation status: completed in `feat/attendance-p1-backend` and ready to merge to `dev`.
+Post-merge deployment required: `firebase deploy --only functions,firestore`.
 
 ---
 

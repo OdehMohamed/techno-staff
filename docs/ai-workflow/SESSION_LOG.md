@@ -1,3 +1,12 @@
+## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement BACKLOG #14 Phase 1 backend foundation
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feat/attendance-p1-backend`
+- **Goal**: Implement attendance backend foundation only (Cloud Functions + rules + indexes + i18n) per locked `CURRENT_TASK.md` Phase 1 scope.
+- **Outcome**: Added three new Cloud Function exports in `functions/index.js` without modifying existing task-related functions: `recordAttendance` (employee check-in/check-out with unauthenticated guard, Jerusalem-day doc id via existing `ymdInJerusalem`, same-day guardrails, duration computation on check-out, and transactional write of attendance + attendance_logs), `adminCorrectAttendance` (server-side admin verification, correction metadata fields, create-if-missing behavior, duration recomputation, and transactional attendance_logs write), and `sendDailyAbsenceMarker` (`onSchedule` at `0 23 * * *` Asia/Jerusalem, marks active employees absent when missing/no check-in). Added Firestore security blocks for `attendance` and `attendance_logs` with server-only writes. Added `firestore.indexes.json` with both required attendance composites (`date ASC + status ASC`, `userId ASC + date DESC`). Added the 26 new attendance translation keys in EN/AR, preserving parity at `272 272 []`.
+- **Files touched**: `functions/index.js`, `firestore.rules`, `firestore.indexes.json`, `assets/translations/en.json`, `assets/translations/ar.json`, `docs/ai-workflow/CURRENT_TASK.md`, `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Open PR to `dev` titled `feat(attendance): P1 backend foundation — callables, rules, indexes, i18n`. After merge, run `firebase deploy --only functions,firestore` (not Shorebird patch-eligible).
+
 ## 2026-05-15 — Claude Code (Sonnet 4.6) — Attendance architecture planning round + phased implementation plan (BACKLOG #14)
 
 - **Agent**: Claude Code (Sonnet 4.6) — lead / architect (read-only planning, no implementation).

@@ -112,6 +112,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /attendance/{docId} {
+      allow read: if isAdmin() || resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /attendance_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /config/{configId} {
       allow read: if true;
       allow write: if isAdmin();
