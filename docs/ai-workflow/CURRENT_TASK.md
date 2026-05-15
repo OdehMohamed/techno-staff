@@ -1,6 +1,6 @@
 # Current Task
 
-> Last updated: 2026-05-14
+> Last updated: 2026-05-15
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
 
@@ -8,342 +8,464 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task
 
-No active task.
+**BACKLOG #13 — UI/UX Improvements**
+Branch: `feat/ui-ux-improvements` (created from `dev` 2026-05-15)
 
-Latest completed: BACKLOG #12 — progressive deadline reminders (72h + 24h), timezone fixes, and i18n parity.
+Targeted, no-redesign UI/UX pass across five screens based on a full audit of all
+presentation-layer files. No backend changes, no data-model changes, no new routes,
+no translation additions.
 
 ---
 
 ## Locked planning decisions
 
-1. **Thresholds** — 72h + 24h. No 48h threshold in this PR to avoid notification fatigue.
-2. **Deduplication fields** — Two server-written Timestamp fields on the task doc: `reminderSent72hAt` and `reminderSent24hAt`. Mirrors the existing `lastOverdueReminderAt` / `lastOverdueEscalationAt` pattern on `sendOverdueTaskEscalations`.
-3. **Timezone bug fix** — Fix in this PR. Both `sendTaskDeadlineReminders` query windows and the same-day guard on `sendOverdueTaskEscalations` must use the existing `ymdInJerusalem` / `jerusalemMidnightAsUTC` helpers, not raw `new Date()`.
-4. **Notification targets** — Employee (assignee) only. Admins are not notified before the deadline.
-5. **New i18n key** — `task_deadline_72h_body` added to: `functions/index.js` i18n table, `assets/translations/en.json`, `assets/translations/ar.json`. Reuse `task_deadline_title` and `task_deadline_tomorrow_body` (24h) unchanged.
-6. **PR scope** — `functions/index.js` + translation JSON files only. No new Dart files, no `TaskModel` changes, no `pubspec.yaml` changes, no UI changes.
-7. **Shorebird eligibility** — Not patch-eligible (functions change). Requires `firebase deploy --only functions` after merge.
+1. **Scope only** — Five Dart files. Zero changes to translation JSON, pubspec.yaml,
+   firestore.rules, Cloud Functions, any cubit, any repository, any model.
+2. **C1 — Debug test buttons removed from Reports screen** — The two ElevatedButtons
+   calling `testTaskDeadlineReminders` and `testOverdueTaskEscalations` are development
+   artifacts that must not be visible in production.
+3. **W1 — Employee home task cards tappable + "View all" link** — Each preview card
+   navigates to `RouteNames.taskDetails`. A "View all" link below the list navigates
+   to the Tasks tab (drawer navigation or `RouteNames.tasks`). No new routes.
+4. **W2 — Task description clamped to 2 lines in all list cards** — Applied to the
+   task list in `tasks_screen.dart` and the preview cards in `employee_home_screen.dart`.
+5. **W3 — Status dropdown hidden for completed tasks** — Add `task.status != 'completed'`
+   guard to the assignee status-update section in `tasks_screen.dart`.
+6. **D1 — Human-readable date formats** — Replace `yyyy-MM-dd` with
+   `DateFormat.yMMMd(locale)` and `yyyy-MM` with `DateFormat.yMMMM(locale)` at all
+   four display sites. Timestamps keep HH:mm. Use `context.locale.languageCode` for
+   locale-aware output.
+7. **L1 — Activity log status values localized** — Call `.tr()` on `previousStatus`
+   and `newStatus` in `_buildLogDescription` in `task_details_screen.dart`. All required
+   keys (`pending`, `in_progress`, `completed`) already exist in both locales.
+8. **A1 — Medium-breakpoint LayoutBuilder dead code removed** — In
+   `admin_dashboard_screen.dart` and `reports_screen.dart`, the `isMedium` (600–899 px)
+   and `isWide` (≥900 px) branches are identical. Remove `isMedium` and lower the
+   single row threshold to ≥ 500 px (covers landscape phones and tablets; leaves narrow
+   portrait phones with the column layout).
+9. **P1 — Activity log icon differentiation** — Map `action` → icon:
+   `created` → `Icons.add_circle_outline`, `status_changed` → `Icons.swap_horiz`,
+   `overdue_escalation` → `Icons.warning_amber_outlined`, default → `Icons.history`.
+10. **P2 — Overdue stat card urgency color (admin dashboard only)** — `_DashboardStatCard`
+    gains an optional `accentColor` param. The Open Overdue card passes
+    `colorScheme.error` when `overdueOpenTasks > 0`, null otherwise. Employee home is
+    unchanged.
+11. **Translation delta: 0** — No new keys. The parity stays at 246/246.
 
 ---
 
-## 1. Architecture (read this before any code)
+## 1. `reports_screen.dart`
 
-### 1.1 Existing function landscape
+### 1.1 C1 — Remove debug test buttons
 
-Two daily Cloud Functions interact with `dueDate`:
+Delete both button blocks (lines ~481–547 in the current file). These are the two
+`ElevatedButton.icon` widgets that call `testTaskDeadlineReminders` and
+`testOverdueTaskEscalations`. Also remove the `cloud_functions` import at line 1 if
+it is only used by these buttons (verify before removing).
 
-| Function                     | Schedule                    | Covers                                                       | Dedup field                                                    |
-| ---------------------------- | --------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
-| `sendTaskDeadlineReminders`  | `0 9 * * *` Asia/Jerusalem  | Pre-deadline: "due tomorrow" (24h) — **buggy timezone math** | None today                                                     |
-| `sendOverdueTaskEscalations` | `0 10 * * *` Asia/Jerusalem | Post-deadline: overdue escalation                            | `lastOverdueReminderAt`, `lastOverdueEscalationAt` on task doc |
+After removal the "Delivery Performance" section is followed directly by the task list.
 
-### 1.2 The timezone bug (must fix)
+### 1.2 D1 — Human-readable month and date formats
 
-`sendTaskDeadlineReminders` computes the query window with raw JS `new Date()`:
+Two call sites:
 
-```js
-// BUGGY — runs in UTC Cloud Functions environment; NOT Asia/Jerusalem wall-clock
-const tomorrow = new Date(
-  now.getFullYear(),
-  now.getMonth(),
-  now.getDate() + 1,
-  0,
-  0,
-  0,
-  0,
-);
-const tomorrowStart = tomorrow;
-const tomorrowEnd = new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+| Location | Before | After |
+|---|---|---|
+| Selected-month chip (line ~226) | `DateFormat('yyyy-MM').format(_selectedMonth)` | `DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)` |
+| Report subtitle (line ~253) | `DateFormat('yyyy-MM').format(_selectedMonth)` | `DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)` |
+| Task due-date in report list (line ~602) | `DateFormat('yyyy-MM-dd').format(task.dueDate)` | `DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)` |
+
+`DateFormat` is already imported via `easy_localization` / `intl`. No new import needed
+(confirm the import chain — `easy_localization` re-exports `DateFormat`; if not, add
+`import 'package:intl/intl.dart';`).
+
+### 1.3 A1 — Remove medium-breakpoint dead code
+
+Two LayoutBuilder blocks in this file use the same `isWide`/`isMedium` pattern.
+
+**Before:**
+```dart
+final isWide = constraints.maxWidth >= 900;
+final isMedium = constraints.maxWidth >= 600;
+
+if (isWide) { return Row(3 cards); }
+if (isMedium) { return Row(3 cards); }   // ← identical to isWide, dead
+return Column(3 cards);
 ```
 
-`ymdInJerusalem` and `jerusalemMidnightAsUTC` helpers already exist in the file (used by `generateRecurringTaskInstances`). The fix is to use them:
+**After:**
+```dart
+final isWide = constraints.maxWidth >= 500;
 
-```js
-// CORRECT — Jerusalem wall-clock window
-const nowJer = ymdInJerusalem(now);
-const tomorrowMidnightUtc = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 1,
-);
-const tomorrowEndUtc = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 2,
-);
+if (isWide) { return Row(3 cards); }
+return Column(3 cards);
 ```
 
-The same-day dedup check in `sendOverdueTaskEscalations` uses raw JS date methods:
+Apply to both LayoutBuilder instances in this file (stat cards around line ~285 and
+delivery performance around line ~405). Leave the column content unchanged.
 
-```js
-// BUGGY — raw UTC
-const sameDay = (ts) => {
-  const d = ts.toDate();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-};
+---
+
+## 2. `employee_home_screen.dart`
+
+### 2.1 W1 — Make task preview cards tappable + add "View all" link
+
+**Import to add:**
+```dart
+import '../../../../core/routes/route_names.dart';
 ```
 
-Fix: use `sameDayJerusalem(ts.toDate(), now)` — this helper also already exists in the file.
+**Wrap each card in InkWell:**
 
-### 1.3 Deduplication invariant
+The preview section builds cards from `tasks.take(3).map((task) { ... })`. Wrap the
+existing `AppCard` with an `InkWell`:
 
-Each threshold must fire at most once per task per calendar day (Jerusalem wall-clock). The guard is:
+```dart
+InkWell(
+  borderRadius: BorderRadius.circular(12),
+  onTap: () {
+    Navigator.pushNamed(
+      context,
+      RouteNames.taskDetails,
+      arguments: task,
+    );
+  },
+  child: AppCard(
+    child: Column( ... ),
+  ),
+),
+```
 
-```js
-// Before sending the 72h reminder:
-if (task.reminderSent72hAt && sameDayJerusalem(task.reminderSent72hAt.toDate(), now)) {
-  continue; // already sent today
+**Add "View all" link below the list:**
+
+After the `Column(children: tasks.take(3)...)` block, add:
+
+```dart
+if (tasks.length > 3)
+  Align(
+    alignment: AlignmentDirectional.centerEnd,
+    child: TextButton(
+      onPressed: () {
+        Navigator.pushNamed(context, RouteNames.tasks);
+      },
+      child: Text('all_tasks'.tr()),
+    ),
+  ),
+```
+
+`all_tasks` is an existing translation key. `RouteNames.tasks` is the existing route
+for the tasks screen.
+
+### 2.2 W2 — Clamp description to 2 lines
+
+In the task preview card's description `Text`:
+
+**Before:**
+```dart
+Text(task.description),
+```
+
+**After:**
+```dart
+Text(
+  task.description,
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+),
+```
+
+---
+
+## 3. `tasks_screen.dart`
+
+### 3.1 W2 — Clamp description to 2 lines in list cards
+
+Same change as §2.2, in `_buildTasksList` (line ~517):
+
+**Before:**
+```dart
+Text(task.description),
+```
+
+**After:**
+```dart
+Text(
+  task.description,
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+),
+```
+
+### 3.2 W3 — Hide status dropdown for completed tasks
+
+In `_buildTasksList`, the status-update section condition:
+
+**Before:**
+```dart
+if (currentUser != null && task.assignedTo == currentUser.id) ...[
+```
+
+**After:**
+```dart
+if (currentUser != null &&
+    task.assignedTo == currentUser.id &&
+    task.status != 'completed') ...[
+```
+
+This hides both the counter increment row and the status dropdown once a task is
+marked completed. The completed task card still shows title, description, priority
+badge, and the green completed CountdownChip (hidden when completed — check existing
+`CountdownChip(isCompleted: task.status == 'completed')` behaviour and confirm the
+chip is already hidden; the existing implementation hides it on completion so no
+change needed there).
+
+---
+
+## 4. `task_details_screen.dart`
+
+### 4.1 D1 — Human-readable date formats
+
+Three call sites in the main `build` method:
+
+| Location | Before | After |
+|---|---|---|
+| Due date (line ~225) | `DateFormat('yyyy-MM-dd').format(task.dueDate)` | `DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)` |
+| Created at (line ~237) | `DateFormat('yyyy-MM-dd HH:mm').format(task.createdAt)` | `DateFormat('dd MMM yyyy • HH:mm').format(task.createdAt)` |
+| Updated at (line ~244) | Same pattern | Same replacement |
+| Completed at (line ~251) | Same pattern | Same replacement |
+
+For the timestamp rows (created/updated/completed), the HH:mm part is kept.
+`DateFormat.yMMMd` gives locale-aware format; the timestamp rows use a fixed
+`'dd MMM yyyy • HH:mm'` format (simpler and still readable).
+
+### 4.2 L1 — Localize status values in activity log description
+
+In `_buildLogDescription`:
+
+**Before:**
+```dart
+return '$performedByName • $previousStatus → $newStatus';
+```
+
+**After:**
+```dart
+return '$performedByName • ${previousStatus.tr()} → ${newStatus.tr()}';
+```
+
+All status strings (`pending`, `in_progress`, `completed`) are existing translation
+keys in both locales.
+
+### 4.3 P1 — Activity log icon differentiation
+
+Add a private helper at the bottom of `_TaskDetailsScreenState` (or as a top-level
+function):
+
+```dart
+IconData _logActionIcon(String action) {
+  switch (action) {
+    case 'created':
+      return Icons.add_circle_outline;
+    case 'status_changed':
+      return Icons.swap_horiz;
+    case 'overdue_escalation':
+      return Icons.warning_amber_outlined;
+    default:
+      return Icons.history;
+  }
 }
-
-// After sending, write back:
-await db.collection('tasks').doc(taskId).update({ reminderSent72hAt: admin.firestore.FieldValue.serverTimestamp() });
 ```
 
-Fields are absent on existing task docs (no migration needed — `undefined` / `null` → no same-day match → sends correctly on first trigger).
+In the log list builder, replace the hardcoded `Icons.history`:
 
-### 1.4 `dueDate` semantics
-
-`TaskModel.dueDate` is semantically date-only. The app treats it as end-of-day in Asia/Jerusalem. A task with `dueDate = 2026-05-20` is considered due at 23:59:59 Jerusalem on that date.
-
-- **72h window**: `dueDate` falls in the Jerusalem calendar day that is exactly 3 days from today: `[dayAfterTomorrow midnight UTC, day+3 midnight UTC)`.
-- **24h window**: `dueDate` falls in the Jerusalem calendar day that is exactly 1 day from today (tomorrow): `[tomorrow midnight UTC, day+2 midnight UTC)`.
-
-Both windows must use Jerusalem midnight boundaries computed via `jerusalemMidnightAsUTC`.
-
----
-
-## 2. `sendTaskDeadlineReminders` — full rewrite spec
-
-**File:** `functions/index.js` — replace the existing `sendTaskDeadlineReminders` function body.
-
-### 2.1 Schedule
-
-Unchanged: `schedule: "0 9 * * *"`, `timeZone: "Asia/Jerusalem"`.
-
-### 2.2 Query windows (two separate Firestore queries)
-
-```js
-const now = new Date();
-const nowJer = ymdInJerusalem(now);
-
-// 72h window: tasks due in exactly 3 days (Jerusalem calendar day)
-const in72hStart = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 3,
-);
-const in72hEnd = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 4,
-);
-
-// 24h window: tasks due in exactly 1 day (Jerusalem calendar day)
-const in24hStart = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 1,
-);
-const in24hEnd = jerusalemMidnightAsUTC(
-  nowJer.year,
-  nowJer.month,
-  nowJer.day + 2,
-);
+**Before:**
+```dart
+child: const Icon(Icons.history),
 ```
 
-Run both Firestore queries in parallel:
-
-```js
-const [snap72h, snap24h] = await Promise.all([
-  db
-    .collection("tasks")
-    .where("status", "!=", "completed")
-    .where("dueDate", ">=", in72hStart)
-    .where("dueDate", "<", in72hEnd)
-    .get(),
-  db
-    .collection("tasks")
-    .where("status", "!=", "completed")
-    .where("dueDate", ">=", in24hStart)
-    .where("dueDate", "<", in24hEnd)
-    .get(),
-]);
-```
-
-### 2.3 Processing loop for each threshold
-
-Process the two result sets independently. For each task in each set:
-
-1. **Dedup guard** — check `reminderSent72hAt` (or `reminderSent24hAt`) for same-day Jerusalem match via `sameDayJerusalem`. If already sent today, skip.
-2. **Fetch assignee** — `db.collection('users').doc(task.assignedTo).get()`. If doc missing or user inactive, skip.
-3. **Send FCM** — reuse existing `sendFCMNotification` helper with appropriate i18n string (`task_deadline_72h_body` or `task_deadline_tomorrow_body`).
-4. **Write in-app notification** — reuse `createInAppNotification` helper.
-5. **Update dedup field** — `db.collection('tasks').doc(taskId).update({ reminderSent72hAt: admin.firestore.FieldValue.serverTimestamp() })`.
-
-Wrap the per-task logic in try/catch so a single failure does not abort the rest of the batch.
-
-### 2.4 i18n strings to use
-
-| Key                           | Threshold | Usage                                                     |
-| ----------------------------- | --------- | --------------------------------------------------------- |
-| `task_deadline_title`         | both      | Reuse existing — no change                                |
-| `task_deadline_72h_body`      | 72h       | **New** — e.g. "Your task '{taskTitle}' is due in 3 days" |
-| `task_deadline_tomorrow_body` | 24h       | Reuse existing — no change                                |
-
----
-
-## 3. `sendOverdueTaskEscalations` — same-day check fix
-
-**File:** `functions/index.js` — targeted fix only; no logic change.
-
-Find the existing same-day check that uses raw JS date methods and replace with `sameDayJerusalem`:
-
-```js
-// BEFORE (buggy):
-const isSameDayReminderSent =
-  task.lastOverdueReminderAt &&
-  task.lastOverdueReminderAt.toDate().getFullYear() === now.getFullYear() &&
-  task.lastOverdueReminderAt.toDate().getMonth() === now.getMonth() &&
-  task.lastOverdueReminderAt.toDate().getDate() === now.getDate();
-
-// AFTER (correct):
-const isSameDayReminderSent =
-  task.lastOverdueReminderAt &&
-  sameDayJerusalem(task.lastOverdueReminderAt.toDate(), now);
-```
-
-Apply the same fix to `lastOverdueEscalationAt` same-day check.
-
----
-
-## 4. New translation key
-
-### `functions/index.js` i18n table
-
-Add under the existing deadline keys:
-
-```js
-task_deadline_72h_body: {
-  en: "Your task '{taskTitle}' is due in 3 days.",
-  ar: "مهمتك '{taskTitle}' تستحق خلال 3 أيام.",
-},
-```
-
-### `assets/translations/en.json`
-
-Add:
-
-```json
-"task_deadline_72h_body": "Your task '{taskTitle}' is due in 3 days."
-```
-
-### `assets/translations/ar.json`
-
-Add:
-
-```json
-"task_deadline_72h_body": "مهمتك '{taskTitle}' تستحق خلال 3 أيام."
-```
-
-Current translation parity: 245/245. Target after this PR: 246/246.
-
-Verify:
-
-```bash
-python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
-# Expected: 246 246 []
+**After:**
+```dart
+child: Icon(_logActionIcon(log.action)),
 ```
 
 ---
 
-## 5. Firestore rules
+## 5. `admin_dashboard_screen.dart`
 
-No change needed. `reminderSent72hAt` and `reminderSent24hAt` are written by Cloud Functions (admin SDK, bypasses rules). The existing `onlyAllowedTaskStatusFieldsChanged` guard on client writes already blocks clients from writing unknown fields — no update required.
+### 5.1 A1 — Remove medium-breakpoint dead code
+
+Same pattern as §1.3. Three LayoutBuilder blocks in this file:
+- KPI stat cards (employees / total tasks / completed tasks) — lines ~151–238
+- Delivery performance cards (on time / late / open overdue) — lines ~280–336
+- Team insights cards — lines ~360–428
+
+Apply the single-threshold fix (`>= 500`) to all three. Remove the `isMedium` check.
+Leave all card content unchanged.
+
+### 5.2 D1 — Human-readable timestamp in activity log
+
+Activity log item timestamp (line ~520):
+
+**Before:**
+```dart
+DateFormat('yyyy-MM-dd • HH:mm').format(activityTime),
+```
+
+**After:**
+```dart
+DateFormat('dd MMM yyyy • HH:mm').format(activityTime),
+```
+
+### 5.3 P2 — Overdue stat card urgency color
+
+**Modify `_DashboardStatCard`** to accept an optional accent color:
+
+```dart
+class _DashboardStatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color? accentColor;  // new
+
+  const _DashboardStatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    this.accentColor,        // new
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accentColor ?? Theme.of(context).colorScheme.primary;
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color),   // explicit color on icon
+          ),
+          const SizedBox(width: AppSizes.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: AppSizes.xs),
+                Text(value, style: Theme.of(context).textTheme.headlineMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+**At the call site for Open Overdue**, inside the delivery-performance LayoutBuilder,
+pass the accent color:
+
+```dart
+_DashboardStatCard(
+  title: 'open_overdue'.tr(),
+  value: overdueOpenTasks.toString(),
+  icon: Icons.warning_amber_outlined,
+  accentColor: overdueOpenTasks > 0
+      ? Theme.of(context).colorScheme.error
+      : null,
+),
+```
+
+Apply this to **both** the `isWide` Row branch and the Column fallback branch (both
+call sites for the Open Overdue card). The other two delivery-performance cards
+(`completed_on_time`, `completed_late`) receive no accent color.
 
 ---
 
 ## 6. Affected files
 
-| File                          | Change                                                                                                                                                                      |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `functions/index.js`          | Rewrite `sendTaskDeadlineReminders` (72h + 24h, timezone fix, dedup fields); fix same-day check in `sendOverdueTaskEscalations`; add `task_deadline_72h_body` to i18n table |
-| `assets/translations/en.json` | +1 key (`task_deadline_72h_body`)                                                                                                                                           |
-| `assets/translations/ar.json` | +1 key (`task_deadline_72h_body`)                                                                                                                                           |
+| File | Changes |
+|---|---|
+| `lib/features/reports/presentation/screens/reports_screen.dart` | C1 (remove debug buttons), D1 (date formats), A1 (breakpoint fix) |
+| `lib/features/employee/presentation/screens/employee_home_screen.dart` | W1 (tappable cards + view all), W2 (description clamp) |
+| `lib/features/tasks/presentation/screens/tasks_screen.dart` | W2 (description clamp), W3 (hide dropdown for completed) |
+| `lib/features/tasks/presentation/screens/task_details_screen.dart` | D1 (date formats), L1 (localize status), P1 (log icons) |
+| `lib/features/admin/presentation/screens/admin_dashboard_screen.dart` | A1 (breakpoint fix), D1 (timestamp format), P2 (overdue color) |
 
-**Zero changes to:** any `.dart` file, `pubspec.yaml`, `firestore.rules`, `main.dart`, any cubit, any screen, any model, any test.
+**Zero changes to:** translation JSON files, pubspec.yaml, firestore.rules,
+functions/index.js, any cubit, any state, any repository, any model, any route name
+constants, `AppDrawer`.
 
 ---
 
 ## 7. Quality gates
 
 ```bash
-cd functions && npm run lint          # zero warnings
+flutter analyze          # zero warnings
+flutter test             # all green
 python3 -c "import json; e=json.load(open('assets/translations/en.json')); a=json.load(open('assets/translations/ar.json')); print(len(e), len(a), [k for k in e if k not in a])"
 # Expected: 246 246 []
-flutter analyze                       # zero warnings (no Dart changes; confirm no regression)
-flutter test                          # all green (no Dart changes; confirm no regression)
-```
-
-Post-merge deployment (not a quality gate, but required):
-
-```bash
-firebase deploy --only functions
 ```
 
 ---
 
 ## 8. Smoke tests
 
-| #   | Test                                                                                     | Expected                                                       |
-| --- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 1   | Task due 3 days from now, function runs → FCM sent to assignee                           | Notification received; `reminderSent72hAt` written on task doc |
-| 2   | Same task, function runs again same day → no duplicate FCM                               | No second notification; `reminderSent72hAt` already set        |
-| 3   | Task due tomorrow, function runs → FCM sent to assignee                                  | Notification received; `reminderSent24hAt` written on task doc |
-| 4   | Same task, function runs again same day → no duplicate                                   | No second notification                                         |
-| 5   | Task due in 3 days AND due tomorrow (two separate tasks) → both FCM sent                 | Two notifications; each task's dedup field set independently   |
-| 6   | Task already completed → no reminder sent                                                | No notification for either threshold                           |
-| 7   | Task due in 3 days, assignee user doc missing → function continues without crash         | Remaining tasks processed normally                             |
-| 8   | Overdue task, `lastOverdueReminderAt` set to today (Jerusalem) → no duplicate escalation | Escalation skipped; Jerusalem-aware same-day check correct     |
-| 9   | Arabic-locale assignee → 72h notification body in Arabic                                 | `task_deadline_72h_body` Arabic string used                    |
+| # | Screen | Test |
+|---|---|---|
+| 1 | Reports (admin) | No "Test Reminder" or "Test Escalation" buttons visible anywhere |
+| 2 | Reports (admin) | Month selector displays "May 2026" style instead of "2026-05" |
+| 3 | Reports (admin) | Report subtitle and task due-date chips show human-readable dates |
+| 4 | Employee Home | Tap a task preview card → navigates to task details screen |
+| 5 | Employee Home | "All tasks" link visible when more than 3 tasks exist → taps to Tasks screen |
+| 6 | Employee Home | Task description is clamped to 2 lines with ellipsis on long descriptions |
+| 7 | Tasks (assignee) | Long description clamped to 2 lines in the task list card |
+| 8 | Tasks (assignee) | Completed task cards show NO status dropdown or counter increment |
+| 9 | Tasks (assignee) | In-progress / pending task cards still show the status dropdown |
+| 10 | Task Details | Due date shows as "15 May 2026" style (en) / locale-appropriate (ar) |
+| 11 | Task Details | Activity log shows "قيد الانتظار → مكتملة" in Arabic (not "pending → completed") |
+| 12 | Task Details | Creation log entry shows `+` icon; status-change shows swap icon |
+| 13 | Admin Dashboard | Open Overdue card icon/container is red when count > 0; neutral when 0 |
+| 14 | Admin Dashboard | Activity log timestamps show "15 May 2026 • 09:00" style |
+| 15 | Admin Dashboard (tablet/landscape) | Stat cards remain in 3-column row at ≥ 500 px wide |
+| 16 | Admin Dashboard (narrow phone portrait) | Stat cards stack vertically at < 500 px |
+| 17 | Arabic locale | Employee home, tasks, reports, task details all display correct Arabic date formats |
 
 ---
 
 ## 9. Definition of Done
 
-- [ ] `sendTaskDeadlineReminders` rewritten with 72h + 24h threshold windows using `jerusalemMidnightAsUTC`.
-- [ ] `reminderSent72hAt` and `reminderSent24hAt` dedup fields written to task doc after each send; same-day Jerusalem guard prevents duplicates.
-- [ ] Timezone bug in `sendTaskDeadlineReminders` query windows fixed (uses `ymdInJerusalem` + `jerusalemMidnightAsUTC`, not raw `new Date()`).
-- [ ] Same-day check bug in `sendOverdueTaskEscalations` fixed (`sameDayJerusalem` used for both `lastOverdueReminderAt` and `lastOverdueEscalationAt`).
-- [ ] `task_deadline_72h_body` added to `functions/index.js` i18n table (en + ar).
-- [ ] `task_deadline_72h_body` added to `assets/translations/en.json` and `assets/translations/ar.json`; parity `246 246 []`.
-- [ ] `cd functions && npm run lint` clean.
-- [ ] `flutter analyze` clean; `flutter test` green.
+- [ ] Reports screen: no debug test buttons; month format human-readable; `cloud_functions` import removed if unused.
+- [ ] Employee home: task cards tappable; "View all" link shown when tasks > 3; description clamped.
+- [ ] Tasks screen: description clamped; status dropdown/counter hidden for completed tasks.
+- [ ] Task details: human-readable dates; activity log statuses localized; log icons differentiated.
+- [ ] Admin dashboard: medium-breakpoint dead code removed; overdue card has urgency color; timestamp format updated.
+- [ ] `flutter analyze` clean; `flutter test` green; translation parity `246 246 []`.
 - [ ] No changes outside files listed in §6.
-- [ ] Workflow docs updated (SESSION_LOG, BACKLOG #12 Done, CURRENT_TASK reset).
-- [ ] PR title: `feat(notifications): add 72h progressive deadline reminder and fix timezone bug`.
-- [ ] `firebase deploy --only functions` executed post-merge (not a CI gate, but required).
+- [ ] Workflow docs updated (SESSION_LOG, BACKLOG #13 Done, CURRENT_TASK reset).
+- [ ] PR title: `feat(ui): UI/UX usability improvements — task workflow, date formats, log polish`.
 
 ---
 
 ## 10. Out of scope
 
-- 48h threshold (explicitly deferred to avoid notification fatigue)
-- Admin pre-deadline notifications
-- Flutter UI changes of any kind
-- Shorebird patch (functions change → ineligible)
-- `firestore.rules` changes
-- `pubspec.yaml` changes
+- Any new screens or navigation routes
+- Redesign of dashboard, reports, or employee home layout
+- New stat cards or data additions to any screen
+- Changes to `AppDrawer`, `AppCard`, `StatusBadge`, `PriorityBadge`, or any shared widget
+- Backend / Firestore / Cloud Functions changes
+- Translation additions
+- Employee home showing pending count or overdue data
 
 ---
 
 ## 11. Workflow doc updates required on completion
 
-| File              | Change                                                           |
-| ----------------- | ---------------------------------------------------------------- |
-| `CURRENT_TASK.md` | Reset to "No active task"                                        |
-| `BACKLOG.md`      | Mark item #12 Done with completion date and quality gate results |
-| `SESSION_LOG.md`  | Append implementation entry at top                               |
+| File | Change |
+|---|---|
+| `CURRENT_TASK.md` | Reset to "No active task" |
+| `BACKLOG.md` | Mark item #13 Done with completion date and quality gate results |
+| `SESSION_LOG.md` | Append implementation entry at top |

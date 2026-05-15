@@ -186,12 +186,12 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 13. UI/UX improvements (admin dashboard, reports, employee home/workflow)
 
 - **Priority**: Should-fix (polish)
-- **Status**: Open — scope to be defined from tester feedback
-- **Owner**: TBD
+- **Status**: In progress — branch `feat/ui-ux-improvements`, spec locked 2026-05-15
+- **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
-- **Description**: Targeted UX improvements informed by real v1.1.0 testing feedback. Known candidates: admin dashboard layout, reports screen usability, employee home/workflow friction. Exact scope deferred until stabilization triage (item #11) produces signal. Do not spec or implement before tester feedback is available.
-- **Acceptance criteria**: Specific items defined and closed. No regressions on existing screens.
+- **Description**: Full presentation-layer audit (21 files) identified 10 concrete improvements across 5 screens. Scope: (C1) remove debug test buttons from Reports; (W1) make employee home task cards tappable with "View all" link; (W2) clamp task descriptions to 2 lines in list cards and home preview; (W3) hide status dropdown for completed tasks; (D1) human-readable date formats across 4 sites; (L1) localize activity log status values; (A1) remove dead medium-breakpoint LayoutBuilder branches; (P1) differentiate activity log icons by action type; (P2) urgency color on Open Overdue stat card. Zero new translation keys, zero backend changes, zero new routes.
+- **Acceptance criteria**: All 17 smoke tests pass. `flutter analyze` clean. `flutter test` green. Translation parity 246/246.
 
 #### 14. Attendance / check-in / check-out system — (architecture-first planning round required)
 
