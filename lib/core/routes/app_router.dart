@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/settings/presentation/screens/about_screen.dart';
 import '../../features/settings/presentation/screens/change_password_screen.dart';
@@ -152,6 +153,11 @@ class AppRouter {
         final template = settings.arguments as TaskTemplateModel;
         return MaterialPageRoute(
           builder: (_) => EditTemplateScreen(template: template),
+          settings: settings,
+        );
+      case RouteNames.attendance:
+        return MaterialPageRoute(
+          builder: (_) => const AttendanceScreen(),
           settings: settings,
         );
       case RouteNames.updateRequired:

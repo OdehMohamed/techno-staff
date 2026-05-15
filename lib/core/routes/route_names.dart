@@ -20,5 +20,6 @@ class RouteNames {
   static const String recurringTasks = '/recurring-tasks';
   static const String addTemplate = '/add-template';
   static const String editTemplate = '/edit-template';
+  static const String attendance = '/attendance';
   static const String updateRequired = '/update-required';
 }

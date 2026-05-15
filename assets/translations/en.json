@@ -276,5 +276,6 @@
   "attendance_history": "Attendance History",
   "no_attendance_records": "No attendance records yet",
   "correct_attendance": "Correct Attendance",
-  "attendance_corrected": "Attendance record corrected"
+  "attendance_corrected": "Attendance record corrected",
+  "today_attendance": "Today's Attendance"
 }

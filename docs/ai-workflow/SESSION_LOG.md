@@ -1,3 +1,12 @@
+## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement BACKLOG #14 Phase 2 employee attendance flow
+
+- **Agent**: GitHub Copilot (GPT-5.3-Codex)
+- **Branch**: `feat/attendance-p2-employee`
+- **Goal**: Implement attendance employee flow only (biometric gate, check-in/check-out, history screen, routing and drawer wiring) per locked `CURRENT_TASK.md` Phase 2 scope.
+- **Outcome**: Added the full Phase 2 attendance feature slice under `lib/features/attendance/` (`AttendanceModel`, `AttendanceRepository`, `AttendanceCubit` + `AttendanceState`, `AttendanceScreen`, `AttendanceCheckButton`, `AttendanceRecordCard`). Wired `AttendanceRepository` + `AttendanceCubit` into the existing global provider setup in `main.dart`. Added route constant and router mapping for `RouteNames.attendance` and added employee drawer navigation entry (`my_attendance`). Implemented biometric-gated check-in/check-out using `local_auth` with offline blocking via `connectivity_plus` and translated snackbar feedback. Added native requirements for biometrics: `local_auth ^3.0.1`, Android `USE_BIOMETRIC`, iOS `NSFaceIDUsageDescription`, and Android minSdk guard `maxOf(flutter.minSdkVersion, 23)`. Kept scope strictly Phase 2 (no Cloud Functions/rules/indexes/translation additions).
+- **Files touched**: `pubspec.yaml`, `android/app/src/main/AndroidManifest.xml`, `android/app/build.gradle.kts`, `ios/Runner/Info.plist`, `lib/main.dart`, `lib/core/routes/route_names.dart`, `lib/core/routes/app_router.dart`, `lib/shared/widgets/app_drawer.dart`, `lib/features/attendance/data/models/attendance_model.dart`, `lib/features/attendance/data/repositories/attendance_repository.dart`, `lib/features/attendance/presentation/cubit/attendance_cubit.dart`, `lib/features/attendance/presentation/cubit/attendance_state.dart`, `lib/features/attendance/presentation/screens/attendance_screen.dart`, `lib/features/attendance/presentation/widgets/attendance_check_button.dart`, `lib/features/attendance/presentation/widgets/attendance_record_card.dart`, workflow docs.
+- **Follow-ups**: Open PR to `dev` titled `feat(attendance): P2 employee flow — biometric check-in/check-out + history screen`.
+
 ## 2026-05-15 — GitHub Copilot (GPT-5.3-Codex) — Implement BACKLOG #14 Phase 1 backend foundation
 
 - **Agent**: GitHub Copilot (GPT-5.3-Codex)

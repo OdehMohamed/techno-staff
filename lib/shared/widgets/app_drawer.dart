@@ -56,6 +56,15 @@ class AppDrawer extends StatelessWidget {
                   );
                 },
               ),
+            if (user?.role == 'employee')
+              ListTile(
+                leading: const Icon(Icons.fingerprint_outlined),
+                title: Text('my_attendance'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, RouteNames.attendance);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.task_outlined),
               title: Text('tasks'.tr()),

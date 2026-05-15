@@ -276,5 +276,6 @@
   "attendance_history": "سجل الحضور",
   "no_attendance_records": "لا توجد سجلات حضور بعد",
   "correct_attendance": "تصحيح الحضور",
-  "attendance_corrected": "تم تصحيح سجل الحضور"
+  "attendance_corrected": "تم تصحيح سجل الحضور",
+  "today_attendance": "حضور اليوم"
 }
