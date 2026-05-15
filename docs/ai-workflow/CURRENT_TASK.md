@@ -72,30 +72,30 @@ Files changed:
 - `android/app/build.gradle` — verify `minSdkVersion >= 23`
 - `ios/Runner/Info.plist` — add `NSFaceIDUsageDescription`
 - `lib/features/attendance/data/models/attendance_model.dart` — new
-- `lib/features/attendance/data/models/attendance_log_model.dart` — new
 - `lib/features/attendance/data/repositories/attendance_repository.dart` — new
 - `lib/features/attendance/presentation/cubit/attendance_cubit.dart` — new
 - `lib/features/attendance/presentation/cubit/attendance_state.dart` — new
 - `lib/features/attendance/presentation/screens/attendance_screen.dart` — new
 - `lib/features/attendance/presentation/widgets/attendance_check_button.dart` — new
 - `lib/features/attendance/presentation/widgets/attendance_record_card.dart` — new
-- `lib/app/app.dart` — add `AttendanceCubit` to `MultiBlocProvider`
-- `lib/main.dart` — wire `AttendanceRepository`
+- `lib/main.dart` — wire `AttendanceRepository` and `AttendanceCubit` in existing global `MultiBlocProvider`
 - `lib/core/routes/route_names.dart` — add `RouteNames.attendance`
 - `lib/core/routes/app_router.dart` — add `RouteNames.attendance` → `AttendanceScreen()`
 - `lib/shared/widgets/app_drawer.dart` — add "My Attendance" entry for employees
 
 Phase 2 acceptance criteria:
-- [ ] `flutter analyze` clean
-- [ ] `flutter test` green
-- [ ] Employee can check in (biometric prompt → callable → `attendance` doc created, `status: 'present'`)
-- [ ] Employee cannot check in twice on the same day
-- [ ] Employee can check out (biometric → callable → `checkOutAt` + `durationMinutes` set)
-- [ ] Employee cannot check out without a prior check-in
-- [ ] Check-in/out button disabled when offline; `no_internet_for_attendance` shown
-- [ ] Biometric unavailable → error snackbar, check-in blocked
-- [ ] Employee can view their own attendance history on `AttendanceScreen`
-- [ ] Employee drawer "My Attendance" entry navigates correctly
+- [x] `flutter analyze` clean
+- [x] `flutter test` green
+- [x] Employee can check in (biometric prompt → callable → `attendance` doc created, `status: 'present'`)
+- [x] Employee cannot check in twice on the same day
+- [x] Employee can check out (biometric → callable → `checkOutAt` + `durationMinutes` set)
+- [x] Employee cannot check out without a prior check-in
+- [x] Check-in/out button disabled when offline; `no_internet_for_attendance` shown
+- [x] Biometric unavailable → error snackbar, check-in blocked
+- [x] Employee can view their own attendance history on `AttendanceScreen`
+- [x] Employee drawer "My Attendance" entry navigates correctly
+
+Phase 2 implementation status: completed in `feat/attendance-p2-employee`.
 
 ---
 
