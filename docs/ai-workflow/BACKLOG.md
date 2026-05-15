@@ -194,15 +194,15 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 - **Description**: Full presentation-layer audit (21 files) identified 10 concrete improvements across 5 screens. Scope: (C1) remove debug test buttons from Reports; (W1) make employee home task cards tappable with "View all" link; (W2) clamp task descriptions to 2 lines in list cards and home preview; (W3) hide status dropdown for completed tasks; (D1) human-readable date formats across 4 sites; (L1) localize activity log status values; (A1) remove dead medium-breakpoint LayoutBuilder branches; (P1) differentiate activity log icons by action type; (P2) urgency color on Open Overdue stat card. Zero new translation keys, zero backend changes, zero new routes.
 - **Acceptance criteria**: All 17 smoke tests pass. `flutter analyze` clean. `flutter test` green. Translation parity 246/246.
 
-#### 14. Attendance / check-in / check-out system — (architecture-first planning round required)
+#### 14. Attendance / check-in / check-out system — `feat/attendance-system`
 
 - **Priority**: Should-fix (feature)
-- **Status**: Open — blocked on architecture planning round
-- **Owner**: TBD
+- **Status**: In progress — architecture locked 2026-05-15, ready for implementation
+- **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14 (carried from 2026-05-01 v1.2.0 deferral)
-- **Description**: Admin-visible employee check-in / check-out system. Known scope: timestamp recording + biometric gate (`local_auth`). No geolocation in initial scope. Architecture-first planning round required before any code — open questions: collection structure (`attendance/{uid}/records/{date}` vs flat), admin reporting view (existing Reports screen vs new screen), relationship to task model (orthogonal or linked), whether the no-location constraint still holds after testing feedback. `local_auth` is a native plugin — permanently outside Shorebird patch surface.
-- **Acceptance criteria**: Architecture planning round complete with locked CURRENT_TASK.md spec before any implementation begins.
+- **Description**: Employee check-in / check-out with biometric gate (`local_auth`, `biometricOnly: false`), server-authoritative timestamps via Cloud Function callables, flat `attendance/{userId}_{YYYY-MM-DD}` collection, v1 statuses `present|absent|manual` (late deferred to schedule-aware v2), daily absence cron at 23:00 Jerusalem, employee self-view in drawer, admin roster view + correction UI integrated into Reports screen, today's summary on admin dashboard. Full spec in `CURRENT_TASK.md`. Requires full binary release (native plugin). 26 new translation keys (parity target 272/272).
+- **Acceptance criteria**: All 18 checklist items in `CURRENT_TASK.md` pass. `flutter analyze` clean. `flutter test` green. `npm run lint` clean. Translation parity 272/272.
 
 ---
 
