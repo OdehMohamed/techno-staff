@@ -150,40 +150,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 900;
-                            final isMedium = constraints.maxWidth >= 600;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'employees'.tr(),
-                                      value: employeesCount.toString(),
-                                      icon: Icons.group_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'total_tasks'.tr(),
-                                      value: totalTasks.toString(),
-                                      icon: Icons.task_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'completed_tasks'.tr(),
-                                      value: completedTasks.toString(),
-                                      icon: Icons.check_circle_outline,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
-
-                            if (isMedium) {
                               return Row(
                                 children: [
                                   Expanded(
@@ -279,7 +248,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 700;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
                               return Row(
@@ -305,6 +274,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       title: 'open_overdue'.tr(),
                                       value: overdueOpenTasks.toString(),
                                       icon: Icons.warning_amber_outlined,
+                                      accentColor: overdueOpenTasks > 0
+                                          ? Theme.of(context).colorScheme.error
+                                          : null,
                                     ),
                                   ),
                                 ],
@@ -329,6 +301,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   title: 'open_overdue'.tr(),
                                   value: overdueOpenTasks.toString(),
                                   icon: Icons.warning_amber_outlined,
+                                  accentColor: overdueOpenTasks > 0
+                                      ? Theme.of(context).colorScheme.error
+                                      : null,
                                 ),
                               ],
                             );
@@ -359,7 +334,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 700;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
                               return Row(
@@ -517,7 +492,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                             const SizedBox(height: AppSizes.xs),
                                             Text(
                                               DateFormat(
-                                                'yyyy-MM-dd • HH:mm',
+                                                'dd MMM yyyy • HH:mm',
                                               ).format(activityTime),
                                               style: Theme.of(context)
                                                   .textTheme
@@ -554,27 +529,29 @@ class _DashboardStatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
+  final Color? accentColor;
 
   const _DashboardStatCard({
     required this.title,
     required this.value,
     required this.icon,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = accentColor ?? Theme.of(context).colorScheme.primary;
+
     return AppCard(
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon),
+            child: Icon(icon, color: color),
           ),
           const SizedBox(width: AppSizes.md),
           Expanded(
