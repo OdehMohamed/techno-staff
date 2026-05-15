@@ -8,15 +8,114 @@ Only one task is active at a time. When this task is done, either replace the co
 
 ## Active Task: BACKLOG #14 — Attendance / Check-in / Check-out System
 
-**Branch**: `feat/attendance-system` (branch from `dev`)
 **Target release**: 1.2.0
 **Planning round completed**: 2026-05-15
+**Implementation strategy**: 4 phased PRs (see below)
 
 ---
 
 ### Overview
 
-Employee check-in / check-out system with biometric gate (`local_auth`), server-authoritative timestamps, and admin correction capability. Architecture-first planning round is complete; this spec is locked and ready for implementation.
+Employee check-in / check-out system with biometric gate (`local_auth`), server-authoritative timestamps, and admin correction capability. Architecture-first planning round is complete; this spec is locked and ready for phase-by-phase implementation.
+
+---
+
+### Phased Implementation Plan
+
+The feature is split into four independent PRs to keep review scope manageable and to isolate the one Shorebird-breaking change (Phase 2's native plugin) from purely Dart-layer phases.
+
+| Phase | Branch | What ships | Shorebird |
+|---|---|---|---|
+| **P1 — Backend Foundation** | `feat/attendance-p1-backend` | 3 Cloud Functions, Firestore rules (2 blocks), 2 composite indexes, all 26 translation keys | patch-eligible (no Flutter changes) |
+| **P2 — Employee Flow** | `feat/attendance-p2-employee` | `local_auth` native config, employee feature directory, check-in/check-out biometric flow, personal history screen, employee drawer entry | **full binary release required** |
+| **P3 — Admin Management** | `feat/attendance-p3-admin` | Admin attendance screen, Reports tab, admin dashboard summary card, admin drawer entry | patch-eligible (pure Dart) |
+| **P4 — Polish** | `feat/attendance-p4-polish` | UX edge cases, reporting refinements, runtime validation from real-device testing | patch-eligible (pure Dart) |
+
+**Sequencing rule**: each phase branches from `dev` after the previous phase is merged. P1 can be deployed to Firebase independently and smoke-tested before P2 starts.
+
+**P4 is not specced upfront** — its content is determined by real-device testing feedback from P1–P3.
+
+---
+
+#### Phase 1 Scope — Backend Foundation (`feat/attendance-p1-backend`)
+
+Files changed:
+
+- `functions/index.js` — 3 new exports: `recordAttendance` (onCall), `adminCorrectAttendance` (onCall), `sendDailyAbsenceMarker` (onSchedule). Full logic in the Cloud Functions section below.
+- `firestore.rules` — add `attendance` and `attendance_logs` blocks (see Firestore Rules section below)
+- `firestore.indexes.json` — add 2 composite indexes: `(date ASC, status ASC)` and `(userId ASC, date DESC)` on `attendance` collection
+- `assets/translations/en.json` — add all 26 new keys (see Translation Keys section below)
+- `assets/translations/ar.json` — matching Arabic for all 26 keys
+
+Phase 1 acceptance criteria:
+- [ ] `npm run lint` clean
+- [ ] `recordAttendance` callable rejects unauthenticated calls
+- [ ] `recordAttendance` blocks double check-in (same-day Jerusalem)
+- [ ] `recordAttendance` blocks check-out without prior check-in
+- [ ] `recordAttendance` sets `durationMinutes` on check-out
+- [ ] `adminCorrectAttendance` rejects non-admin callers
+- [ ] `attendance` and `attendance_logs` Firestore rules present
+- [ ] `firestore.indexes.json` updated
+- [ ] Translation parity: 272/272
+
+---
+
+#### Phase 2 Scope — Employee Flow (`feat/attendance-p2-employee`)
+
+Files changed:
+
+- `pubspec.yaml` — add `local_auth` (check if `connectivity_plus` already present from BACKLOG #9; add if missing)
+- `android/app/src/main/AndroidManifest.xml` — add `USE_BIOMETRIC` permission
+- `android/app/build.gradle` — verify `minSdkVersion >= 23`
+- `ios/Runner/Info.plist` — add `NSFaceIDUsageDescription`
+- `lib/features/attendance/data/models/attendance_model.dart` — new
+- `lib/features/attendance/data/models/attendance_log_model.dart` — new
+- `lib/features/attendance/data/repositories/attendance_repository.dart` — new
+- `lib/features/attendance/presentation/cubit/attendance_cubit.dart` — new
+- `lib/features/attendance/presentation/cubit/attendance_state.dart` — new
+- `lib/features/attendance/presentation/screens/attendance_screen.dart` — new
+- `lib/features/attendance/presentation/widgets/attendance_check_button.dart` — new
+- `lib/features/attendance/presentation/widgets/attendance_record_card.dart` — new
+- `lib/app/app.dart` — add `AttendanceCubit` to `MultiBlocProvider`
+- `lib/main.dart` — wire `AttendanceRepository`
+- `lib/core/routes/route_names.dart` — add `RouteNames.attendance`
+- `lib/core/routes/app_router.dart` — add `RouteNames.attendance` → `AttendanceScreen()`
+- `lib/shared/widgets/app_drawer.dart` — add "My Attendance" entry for employees
+
+Phase 2 acceptance criteria:
+- [ ] `flutter analyze` clean
+- [ ] `flutter test` green
+- [ ] Employee can check in (biometric prompt → callable → `attendance` doc created, `status: 'present'`)
+- [ ] Employee cannot check in twice on the same day
+- [ ] Employee can check out (biometric → callable → `checkOutAt` + `durationMinutes` set)
+- [ ] Employee cannot check out without a prior check-in
+- [ ] Check-in/out button disabled when offline; `no_internet_for_attendance` shown
+- [ ] Biometric unavailable → error snackbar, check-in blocked
+- [ ] Employee can view their own attendance history on `AttendanceScreen`
+- [ ] Employee drawer "My Attendance" entry navigates correctly
+
+---
+
+#### Phase 3 Scope — Admin Management (`feat/attendance-p3-admin`)
+
+Files changed:
+
+- `lib/features/admin/presentation/screens/admin_attendance_screen.dart` — new
+- `lib/features/reports/presentation/screens/reports_screen.dart` — add "Attendance" tab
+- `lib/features/admin/presentation/screens/admin_dashboard_screen.dart` — add today's attendance summary card
+- `lib/core/routes/route_names.dart` — add `RouteNames.adminAttendance`
+- `lib/core/routes/app_router.dart` — add `RouteNames.adminAttendance` → `AdminAttendanceScreen()`
+- `lib/shared/widgets/app_drawer.dart` — add "Attendance Management" entry for admins
+
+Phase 3 acceptance criteria:
+- [ ] `flutter analyze` clean
+- [ ] `flutter test` green
+- [ ] Admin can view all employees' attendance for a selected date
+- [ ] Admin can correct any attendance record (edit times, status, notes)
+- [ ] Correction is logged in `attendance_logs` (via `adminCorrectAttendance` callable)
+- [ ] Today's attendance summary card visible on admin dashboard (present / total active)
+- [ ] Attendance tab visible in Reports screen (admin only)
+- [ ] Admin drawer "Attendance Management" entry navigates correctly
 
 ---
 
