@@ -1,457 +1,489 @@
 # Current Task
 
-> Last updated: 2026-05-15
+> Last updated: 2026-05-16
 
 Only one task is active at a time. When this task is done, either replace the content with the next task or leave a short "No active task" note until one is picked.
 
 ---
 
-## Active Task: BACKLOG #14 — Attendance / Check-in / Check-out System
+## Active Task: Attendance Architecture Stabilization
 
 **Target release**: 1.2.0
-**Planning round completed**: 2026-05-15
-**Implementation strategy**: 4 phased PRs (see below)
+**Planning round completed**: 2026-05-16
+**Branch**: `feat/attendance-stabilization` (from `dev`, after `feat/attendance-p3-supplement` merges)
+**Prerequisite**: PR #37 (`feat/attendance-p3-supplement`) merged to `dev` first.
 
 ---
 
-### Overview
+### Background
 
-Employee check-in / check-out system with biometric gate (`local_auth`), server-authoritative timestamps, and admin correction capability. Architecture-first planning round is complete; this spec is locked and ready for phase-by-phase implementation.
+P1–P3 of the attendance system are complete. Real-device testing uncovered five issues that collectively indicate the architecture needs one stabilization pass before the subsystem is considered locked:
 
----
+1. **Employee history invisible** — root cause: `firebase.json` is missing `"indexes": "firestore.indexes.json"`, so the composite index was never deployed. Secondary: UI silently shows "no records" on query error.
+2. **Single-session-per-day model is too restrictive** — split shifts, leave-and-return, and evening work are realistic and unsupported.
+3. **Reports attendance section shows wrong data** — daily roster (operational) belongs in Attendance Management, not Reports. Reports should show monthly attendance per employee.
+4. **`local_auth` semantics undocumented** — OS/device authentication vs. app password must be explicit for testers and future maintainers.
+5. **`status: 'manual'` conflates status and metadata** — correction is provenance, not an attendance status value.
 
-### Phased Implementation Plan
-
-The feature is split into four independent PRs to keep review scope manageable and to isolate the one Shorebird-breaking change (Phase 2's native plugin) from purely Dart-layer phases.
-
-| Phase | Branch | What ships | Shorebird |
-|---|---|---|---|
-| **P1 — Backend Foundation** | `feat/attendance-p1-backend` | 3 Cloud Functions, Firestore rules (2 blocks), 2 composite indexes, all 26 translation keys | patch-eligible (no Flutter changes) |
-| **P2 — Employee Flow** | `feat/attendance-p2-employee` | `local_auth` native config, employee feature directory, check-in/check-out biometric flow, personal history screen, employee drawer entry | **full binary release required** |
-| **P3 — Admin Management** | `feat/attendance-p3-admin` | Admin attendance screen, Reports tab, admin dashboard summary card, admin drawer entry | patch-eligible (pure Dart) |
-| **P4 — Polish** | `feat/attendance-p4-polish` | UX edge cases, reporting refinements, runtime validation from real-device testing | patch-eligible (pure Dart) |
-
-**Sequencing rule**: each phase branches from `dev` after the previous phase is merged. P1 can be deployed to Firebase independently and smoke-tested before P2 starts.
-
-**P4 is not specced upfront** — its content is determined by real-device testing feedback from P1–P3.
+This task corrects all five before any broader rollout.
 
 ---
 
-#### Phase 1 Scope — Backend Foundation (`feat/attendance-p1-backend`)
-
-Files changed:
-
-- `functions/index.js` — 3 new exports: `recordAttendance` (onCall), `adminCorrectAttendance` (onCall), `sendDailyAbsenceMarker` (onSchedule). Full logic in the Cloud Functions section below.
-- `firestore.rules` — add `attendance` and `attendance_logs` blocks (see Firestore Rules section below)
-- `firestore.indexes.json` — add 2 composite indexes: `(date ASC, status ASC)` and `(userId ASC, date DESC)` on `attendance` collection
-- `assets/translations/en.json` — add all 26 new keys (see Translation Keys section below)
-- `assets/translations/ar.json` — matching Arabic for all 26 keys
-
-Phase 1 acceptance criteria:
-- [x] `npm run lint` clean
-- [x] `recordAttendance` callable rejects unauthenticated calls
-- [x] `recordAttendance` blocks double check-in (same-day Jerusalem)
-- [x] `recordAttendance` blocks check-out without prior check-in
-- [x] `recordAttendance` sets `durationMinutes` on check-out
-- [x] `adminCorrectAttendance` rejects non-admin callers
-- [x] `attendance` and `attendance_logs` Firestore rules present
-- [x] `firestore.indexes.json` updated
-- [x] Translation parity: 272/272
-
-Phase 1 implementation status: completed in `feat/attendance-p1-backend` and ready to merge to `dev`.
-Post-merge deployment required: `firebase deploy --only functions,firestore`.
-
----
-
-#### Phase 2 Scope — Employee Flow (`feat/attendance-p2-employee`)
-
-Files changed:
-
-- `pubspec.yaml` — add `local_auth` (check if `connectivity_plus` already present from BACKLOG #9; add if missing)
-- `android/app/src/main/AndroidManifest.xml` — add `USE_BIOMETRIC` permission
-- `android/app/build.gradle` — verify `minSdkVersion >= 23`
-- `ios/Runner/Info.plist` — add `NSFaceIDUsageDescription`
-- `lib/features/attendance/data/models/attendance_model.dart` — new
-- `lib/features/attendance/data/repositories/attendance_repository.dart` — new
-- `lib/features/attendance/presentation/cubit/attendance_cubit.dart` — new
-- `lib/features/attendance/presentation/cubit/attendance_state.dart` — new
-- `lib/features/attendance/presentation/screens/attendance_screen.dart` — new
-- `lib/features/attendance/presentation/widgets/attendance_check_button.dart` — new
-- `lib/features/attendance/presentation/widgets/attendance_record_card.dart` — new
-- `lib/main.dart` — wire `AttendanceRepository` and `AttendanceCubit` in existing global `MultiBlocProvider`
-- `lib/core/routes/route_names.dart` — add `RouteNames.attendance`
-- `lib/core/routes/app_router.dart` — add `RouteNames.attendance` → `AttendanceScreen()`
-- `lib/shared/widgets/app_drawer.dart` — add "My Attendance" entry for employees
-
-Phase 2 acceptance criteria:
-- [x] `flutter analyze` clean
-- [x] `flutter test` green
-- [x] Employee can check in (biometric prompt → callable → `attendance` doc created, `status: 'present'`)
-- [x] Employee cannot check in twice on the same day
-- [x] Employee can check out (biometric → callable → `checkOutAt` + `durationMinutes` set)
-- [x] Employee cannot check out without a prior check-in
-- [x] Check-in/out button disabled when offline; `no_internet_for_attendance` shown
-- [x] Biometric unavailable → error snackbar, check-in blocked
-- [x] Employee can view their own attendance history on `AttendanceScreen`
-- [x] Employee drawer "My Attendance" entry navigates correctly
-
-Phase 2 implementation status: completed in `feat/attendance-p2-employee`.
-
----
-
-#### Phase 3 Scope — Admin Management (`feat/attendance-p3-admin`)
-
-Files changed:
-
-- `lib/features/admin/presentation/screens/admin_attendance_screen.dart` — new
-- `lib/features/reports/presentation/screens/reports_screen.dart` — add "Attendance" tab
-- `lib/features/admin/presentation/screens/admin_dashboard_screen.dart` — add today's attendance summary card
-- `lib/core/routes/route_names.dart` — add `RouteNames.adminAttendance`
-- `lib/core/routes/app_router.dart` — add `RouteNames.adminAttendance` → `AdminAttendanceScreen()`
-- `lib/shared/widgets/app_drawer.dart` — add "Attendance Management" entry for admins
-
-Phase 3 acceptance criteria:
-- [x] `flutter analyze` clean
-- [x] `flutter test` green
-- [x] Admin can view all employees' attendance for a selected date
-- [x] Admin can correct any attendance record (edit times, status, notes)
-- [x] Correction is logged in `attendance_logs` (via `adminCorrectAttendance` callable)
-- [x] Today's attendance summary card visible on admin dashboard (present / total active)
-- [x] Attendance tab visible in Reports screen (admin only)
-- [x] Admin drawer "Attendance Management" entry navigates correctly
-
-Phase 3 implementation status: completed in `feat/attendance-p3-admin`.
-
----
-
-### Architecture Decisions (all locked)
+### Decisions Locked in This Pass
 
 | Dimension | Decision |
 |---|---|
-| Biometric | `local_auth`; `biometricOnly: false` (allow OS PIN/pattern/passcode fallback) |
-| Write path | Cloud Function callables for all writes — client never writes to `attendance` directly |
-| Doc ID | Deterministic `{userId}_{YYYY-MM-DD}` where date is Jerusalem date computed server-side |
-| Collection layout | Flat `attendance/{docId}` (not subcollection) + `attendance_logs/{logId}` (server-only) |
-| v1 statuses | `present \| absent \| manual` only — no `late` (deferred; data model stays compatible) |
-| Offline | Block check-in/out when offline; online-only; never use Firestore offline cache for attendance |
-| Absence tracking | `sendDailyAbsenceMarker` cron at 23:00 Asia/Jerusalem |
-| Reporting | New "Attendance" tab in existing Reports screen (admin-only content) |
-| Employee self-view | `AttendanceScreen` via employee drawer — own history + today's check-in/out button |
-| Admin corrections | `adminCorrectAttendance` callable + `attendance_logs` server-only audit trail |
-| Admin dashboard | Today's attendance summary card (present count / total active employees) |
-| WiFi/geofencing | Explicitly out of scope for v1 |
-| `local_auth` + Shorebird | Adding `local_auth` requires a full binary release — never patch-eligible |
+| Sessions model | Sessions array on day document (unlimited pairs/day, guard: cannot check-in while session is open) |
+| Status values | `present \| absent` only — `manual` removed from new writes; old docs render gracefully via fallback |
+| Correction metadata | `isCorrected: bool`, `correctedBy`, `correctedAt`, `notes` — separate from `status` |
+| Employee monthly view | Two access paths: (1) new `EmployeeMonthlyAttendanceScreen` for employees via drawer; (2) Reports screen section for admins viewing any employee |
+| Index fix | `firebase.json` wires up `firestore.indexes.json`; user deploys `firebase deploy --only firestore:indexes` after merge |
 
 ---
 
-### Firestore Structure
+### Firestore Data Model (new)
 
 ```
 attendance/{userId}_{YYYY-MM-DD}
   userId: string
   userName: string
-  date: string                   // "YYYY-MM-DD" in Asia/Jerusalem — server-computed
-  checkInAt: Timestamp | null    // FieldValue.serverTimestamp() via Cloud Function
-  checkOutAt: Timestamp | null
-  biometricVerified: boolean     // client-reported soft signal — not cryptographic proof
-  status: 'present' | 'absent' | 'manual'
-  durationMinutes: number | null // computed on check-out: (checkOutAt - checkInAt) / 60000
-  notes: string | null           // admin correction notes
-  correctedBy: string | null     // uid of admin who corrected
+  date: string                        // "YYYY-MM-DD" Asia/Jerusalem — server-computed
+  status: 'present' | 'absent'        // 'manual' no longer written — fallback rendering kept for old docs
+  isCorrected: boolean                // false by default; true after any admin correction
+  totalDurationMinutes: number        // sum of all closed session durations; 0 if no closed sessions
+  sessions: [                         // array; grows with each check-in/out pair
+    {
+      checkInAt: Timestamp,
+      checkOutAt: Timestamp | null,   // null = session currently open
+      durationMinutes: number | null  // null until session closed
+    }
+  ]
+  notes: string | null                // admin correction notes
+  correctedBy: string | null          // uid of admin who last corrected
   correctedAt: Timestamp | null
-  createdAt: Timestamp           // serverTimestamp
-  updatedAt: Timestamp           // serverTimestamp
-
-attendance_logs/{logId}
-  attendanceId: string           // "${userId}_${YYYY-MM-DD}"
-  userId: string
-  action: 'check_in' | 'check_out' | 'admin_correction'
-  performedBy: string            // uid
-  performedByName: string
-  previousValue: map             // snapshot of changed fields before edit (null on check_in create)
-  newValue: map
-  performedAt: Timestamp         // serverTimestamp
-  // allow write: if false — server-only, same pattern as task_logs
+  createdAt: Timestamp
+  updatedAt: Timestamp
 ```
 
-**Composite indexes needed** (add to `firestore.indexes.json`):
-- `attendance`: `(date ASC, status ASC)` — admin date-based roster query
-- `attendance`: `(userId ASC, date DESC)` — employee history query
+**Removed fields** (from old model): `checkInAt` (now derived getter), `checkOutAt` (derived getter), `durationMinutes` (renamed `totalDurationMinutes`), `biometricVerified` (not surfaced in UI).
+
+**attendance_logs**: unchanged — server-only, same structure.
 
 ---
 
-### Cloud Functions (`functions/index.js`)
+### Composite Indexes (`firestore.indexes.json`)
 
-#### `recordAttendance` — onCall
+Keep existing:
+- `attendance`: `(date ASC, status ASC)` — admin daily roster
+- `attendance`: `(userId ASC, date DESC)` — employee history / monthly query
 
-Called by the Flutter client after a successful biometric challenge.
+Add:
+- `attendance`: `(userId ASC, date ASC)` — monthly range query (Reports, ascending chronological order)
 
-```
-request.data: {
-  action: 'check_in' | 'check_out',
-  biometricVerified: boolean
+Wire up: `firebase.json` Firestore block must include `"indexes": "firestore.indexes.json"`.
+
+```json
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
 }
-request.auth.uid: employee uid (validated server-side)
 ```
 
-Logic:
-1. Validate `request.auth` exists; reject unauthenticated calls.
-2. Compute Jerusalem date using existing `ymdInJerusalem(now)` helper → `docId = "${uid}_${date}"`
-3. Read `users/{uid}` to get `userName`.
-4. In a Firestore transaction:
-   - **check_in**: if doc exists and `checkInAt != null` → throw `already-checked-in` error. Otherwise create/update doc with `checkInAt: FieldValue.serverTimestamp(), status: 'present', biometricVerified, createdAt/updatedAt`.
-   - **check_out**: if doc does not exist or `checkInAt == null` → throw `not-checked-in` error. If `checkOutAt != null` → throw `already-checked-out` error. Otherwise update doc with `checkOutAt: FieldValue.serverTimestamp()`, compute `durationMinutes` from `(now - checkInAt.toDate()) / 60000` (round to nearest minute), set `updatedAt`.
-   - In same transaction: write `attendance_logs` entry with the action and new values.
+---
+
+### Cloud Functions (`functions/index.js`) — Changes Only
+
+#### `recordAttendance` — sessions array logic
+
+**check_in:**
+1. Auth guard (unchanged).
+2. Compute Jerusalem date → `docId` (unchanged).
+3. Read `users/{uid}` for `userName` (unchanged).
+4. In Firestore transaction:
+   - Get day doc (may not exist).
+   - Read `sessions` array (default `[]` if doc missing or field absent).
+   - Guard: if last session exists and `lastSession.checkOutAt == null` → throw `HttpsError('already-exists', 'already-checked-in')`.
+   - Append new session: `{ checkInAt: serverTimestamp, checkOutAt: null, durationMinutes: null }`.
+   - If doc does not exist: `set({ userId, userName, date, status: 'present', isCorrected: false, totalDurationMinutes: 0, sessions: [newSession], createdAt: serverTimestamp, updatedAt: serverTimestamp })`.
+   - If doc exists: `update({ sessions: updatedArray, status: 'present', updatedAt: serverTimestamp })`.
+   - Write `attendance_logs` entry: `action: 'check_in'` (unchanged pattern).
 5. Return `{ success: true, docId }`.
 
-#### `adminCorrectAttendance` — onCall
+**check_out:**
+1. Auth guard (unchanged).
+2. Compute `docId` (unchanged).
+3. In Firestore transaction:
+   - Get day doc. If missing → throw `HttpsError('failed-precondition', 'not-checked-in')`.
+   - Read `sessions`. Find open session: `sessions[sessions.length - 1]` where `checkOutAt == null`.
+   - If no open session → throw `HttpsError('failed-precondition', 'not-checked-in')`.
+   - Close session: `checkOutAt = now`, `durationMinutes = Math.max(0, Math.round((now - openSession.checkInAt.toDate()) / 60000))`.
+   - Replace last element in sessions array with closed session.
+   - Recompute `totalDurationMinutes = sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)`.
+   - `update({ sessions: updatedArray, totalDurationMinutes, updatedAt: serverTimestamp })`.
+   - Write `attendance_logs` entry: `action: 'check_out'` (unchanged pattern).
+4. Return `{ success: true }`.
 
-Called by admin to create or patch an attendance record.
+**Remove**: the `already-checked-out` error code is gone. Check-out only fails on "no open session." Check-in only fails on "open session already exists."
 
+#### `adminCorrectAttendance` — sessions replace + `isCorrected`
+
+Input payload changes:
 ```
 request.data: {
   userId: string,
-  date: string,         // "YYYY-MM-DD" (Jerusalem)
+  date: string,          // "YYYY-MM-DD"
   fields: {
-    checkInAt?: string,      // ISO string — Cloud Function converts to Timestamp
-    checkOutAt?: string,
-    status?: 'present' | 'absent' | 'manual',
+    checkInAt?: string,  // ISO string
+    checkOutAt?: string, // ISO string
     notes?: string
   }
 }
 ```
 
+**Remove** `fields.status` from the callable interface — status is no longer caller-settable.
+
 Logic:
-1. Validate caller is admin (read `users/{request.auth.uid}.role == 'admin'`).
-2. `docId = "${userId}_${date}"`.
-3. In a Firestore transaction:
-   - Read current doc if it exists → snapshot `previousValue`.
-   - Merge `fields` into doc; always set `correctedBy: adminUid`, `correctedAt: serverTimestamp`, `status: 'manual'` (unless fields.status is explicitly set), `updatedAt: serverTimestamp`.
-   - If creating (doc didn't exist): also set `userId`, `userName` (fetch from `users/{userId}`), `date`, `createdAt: serverTimestamp`.
-   - Recompute `durationMinutes` if both `checkInAt` and `checkOutAt` are now present.
-   - Write `attendance_logs` entry: `action: 'admin_correction'`, `performedBy: adminUid`, `performedByName`, `previousValue` (or null), `newValue` (updated fields only).
+1. Admin auth guard (unchanged).
+2. `docId = "${userId}_${date}"` (unchanged).
+3. In Firestore transaction:
+   - Snapshot `previousValue` (unchanged).
+   - Build update map:
+     - Always set: `isCorrected: true`, `correctedBy: adminUid`, `correctedAt: serverTimestamp`, `updatedAt: serverTimestamp`.
+     - If `fields.notes` provided: set `notes`.
+     - If both `checkInAt` and `checkOutAt` provided:
+       - Parse ISO strings to Timestamps (with NaN guard, unchanged pattern).
+       - `durationMinutes = Math.max(0, Math.round((checkOutAt - checkInAt) / 60000))`.
+       - `sessions = [{ checkInAt: checkInAtTimestamp, checkOutAt: checkOutAtTimestamp, durationMinutes }]`.
+       - `totalDurationMinutes = durationMinutes`.
+       - `status = 'present'`.
+     - If neither time provided: do not touch `sessions` or `status` — notes-only correction.
+   - If doc does not exist: also set `userId`, `userName` (fetch from `users/{userId}`), `date`, `createdAt: serverTimestamp`.
+   - Write `attendance_logs` entry: `action: 'admin_correction'` (unchanged pattern).
 4. Return `{ success: true, docId }`.
 
-#### `sendDailyAbsenceMarker` — onSchedule
+#### `sendDailyAbsenceMarker` — minor update
 
+When creating the absent doc for employees with no record, write the new structure:
 ```js
-exports.sendDailyAbsenceMarker = onSchedule(
-  { schedule: "0 23 * * *", timeZone: "Asia/Jerusalem" },
-  async () => { ... }
-);
-```
-
-Logic:
-1. Compute today's Jerusalem date: `ymdInJerusalem(new Date())`.
-2. Query `users` where `isActive == true` and `role == 'employee'`.
-3. For each employee: check if `attendance/${uid}_${date}` exists with `checkInAt != null`.
-4. For those missing or with `checkInAt == null`: `set({ userId, userName, date, status: 'absent', createdAt: serverTimestamp, updatedAt: serverTimestamp }, { merge: true })`.
-5. No `attendance_logs` entry needed for automated absence marking (system-generated, not a correction).
-
----
-
-### Flutter Implementation Scope
-
-#### New feature directory: `lib/features/attendance/`
-
-```
-lib/features/attendance/
-  data/
-    models/
-      attendance_model.dart          // AttendanceModel fromMap/toMap
-      attendance_log_model.dart      // AttendanceLogModel fromMap/toMap
-    repositories/
-      attendance_repository.dart     // wraps Cloud Function callables + Firestore queries
-  presentation/
-    cubit/
-      attendance_cubit.dart          // AttendanceCubit
-      attendance_state.dart          // AttendanceState
-    screens/
-      attendance_screen.dart         // employee self-view: today's status + button + history
-    widgets/
-      attendance_check_button.dart   // biometric gate + callable invocation
-      attendance_record_card.dart    // list tile for a single attendance record
-```
-
-#### `AttendanceModel` fields (mirror Firestore exactly):
-`id`, `userId`, `userName`, `date`, `checkInAt` (nullable `DateTime`), `checkOutAt` (nullable `DateTime`), `biometricVerified`, `status`, `durationMinutes` (nullable `int`), `notes` (nullable `String`), `correctedBy` (nullable `String`), `correctedAt` (nullable `DateTime`), `createdAt`, `updatedAt`.
-
-#### `AttendanceRepository` methods:
-- `Future<void> checkIn(String userId, bool biometricVerified)` — calls `recordAttendance`
-- `Future<void> checkOut(String userId, bool biometricVerified)` — calls `recordAttendance`
-- `Future<void> adminCorrect({ userId, date, fields, notes })` — calls `adminCorrectAttendance`
-- `Stream<AttendanceModel?> streamTodayRecord(String userId)` — Firestore stream on `attendance/${userId}_${today}`
-- `Future<List<AttendanceModel>> fetchHistory(String userId, { int limit = 30 })` — ordered by `date desc`
-- `Future<List<AttendanceModel>> fetchRosterForDate(String date)` — admin query for all employees on a date
-
-#### `AttendanceCubit` states:
-- Loading / loaded / error for today's record
-- Loading / loaded / error for history list
-- Submitting / success / error for check-in/check-out action
-
-#### `AttendanceScreen` (employee):
-- Header: today's date, current status chip (`present` / `absent` / no record)
-- Check-in / check-out button (disabled when offline — use `connectivity_plus`)
-- Biometric tap flow: call `LocalAuthentication.authenticate(localizedReason: 'biometric_reason_check_in'.tr())`, on `true` → call cubit → repository → Cloud Function
-- If `biometric not available` → `ScaffoldMessenger` error snackbar with `biometric_not_available` key
-- If offline → button disabled, subtitle shows `no_internet_for_attendance` key
-- Below button: scrollable list of past records using `AttendanceRecordCard`
-
-#### New admin screen: `lib/features/admin/presentation/screens/admin_attendance_screen.dart`
-
-- Date picker row (default: today; tap to open `showDatePicker`)
-- StreamBuilder / FutureBuilder on `fetchRosterForDate(selectedDate)`
-- Each row: employee name, status chip, check-in time (if present), check-out time (if present), duration
-- Tap row → bottom sheet / dialog for admin correction:
-  - Check-in time picker, check-out time picker, status dropdown, notes field
-  - "Save" → calls `adminCorrect` → closes sheet on success
-
-#### Modified files:
-
-**`lib/features/reports/presentation/screens/reports_screen.dart`**
-- Add a new tab "Attendance" (after existing task-report content)
-- Admin-only tab: date picker + roster list (reuse `admin_attendance_screen.dart` or inline the same logic)
-
-**`lib/features/admin/presentation/screens/admin_dashboard_screen.dart`**
-- Add a today's attendance summary `_DashboardStatCard` below the existing task stat row
-- Show `present / total active employees` count
-- Data fetched from `fetchRosterForDate(today)` — count docs with `status == 'present'`
-
-**`lib/shared/widgets/app_drawer.dart`**
-- Employee: add "My Attendance" drawer entry → `RouteNames.attendance`
-- Admin: add "Attendance Management" drawer entry → `RouteNames.adminAttendance`
-
-**`lib/core/routes/route_names.dart`**
-- `static const attendance = '/attendance';`
-- `static const adminAttendance = '/admin-attendance';`
-
-**`lib/core/routes/app_router.dart`**
-- Add `RouteNames.attendance` → `AttendanceScreen()`
-- Add `RouteNames.adminAttendance` → `AdminAttendanceScreen()`
-
-**`lib/app/app.dart` (MultiBlocProvider)**
-- Add `BlocProvider(create: (_) => AttendanceCubit(attendanceRepository))`
-
-**`lib/main.dart` (or wherever repositories are wired)**
-- Instantiate `AttendanceRepository(functions: FirebaseFunctions.instance, firestore: FirebaseFirestore.instance)`
-- Pass to `AttendanceCubit`
-
-**`pubspec.yaml`**
-- Add `local_auth: ^2.3.0` (or latest stable; check pub.dev)
-- Add `connectivity_plus` if not already present (check existing deps first — it may have been added in BACKLOG #9 mandatory-update feature)
-
----
-
-### Native Configuration
-
-These changes require a full binary release (never Shorebird patch-eligible):
-
-**Android (`android/app/src/main/AndroidManifest.xml`)**:
-```xml
-<uses-permission android:name="android.permission.USE_BIOMETRIC" />
-```
-
-**Android (`android/app/build.gradle`)**:
-Verify `minSdkVersion >= 23` (required for BiometricPrompt API). Do not lower it if already set higher.
-
-**iOS (`ios/Runner/Info.plist`)**:
-```xml
-<key>NSFaceIDUsageDescription</key>
-<string>Used to verify your identity for attendance check-in and check-out.</string>
-```
-
----
-
-### Firestore Rules
-
-Add to `firestore.rules`:
-
-```
-match /attendance/{docId} {
-  // Employee reads own records; admin reads all
-  allow read: if isAdmin() || resource.data.userId == request.auth.uid;
-  // All writes go through Cloud Functions
-  allow write: if false;
-}
-match /attendance_logs/{logId} {
-  // Admin read only — used for corrections audit trail
-  allow read: if isAdmin();
-  allow write: if false;
+{
+  userId, userName, date,
+  status: 'absent',
+  isCorrected: false,
+  totalDurationMinutes: 0,
+  sessions: [],
+  createdAt: serverTimestamp,
+  updatedAt: serverTimestamp
 }
 ```
 
+No other changes to this function.
+
 ---
 
-### Translation Keys (26 new keys — parity target: 272/272)
+### Flutter — Data Layer
 
-All keys in `assets/translations/en.json` and `assets/translations/ar.json`:
+#### New: `lib/features/attendance/data/models/attendance_session.dart`
+
+```dart
+class AttendanceSession {
+  final DateTime checkInAt;
+  final DateTime? checkOutAt;
+  final int? durationMinutes;
+
+  const AttendanceSession({
+    required this.checkInAt,
+    this.checkOutAt,
+    this.durationMinutes,
+  });
+
+  factory AttendanceSession.fromMap(Map<String, dynamic> data) {
+    return AttendanceSession(
+      checkInAt: _toDateTime(data['checkInAt'])!,
+      checkOutAt: _toDateTime(data['checkOutAt']),
+      durationMinutes: data['durationMinutes'] is int
+          ? data['durationMinutes'] as int
+          : null,
+    );
+  }
+
+  static DateTime? _toDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
+  }
+}
+```
+
+#### Updated: `lib/features/attendance/data/models/attendance_model.dart`
+
+Fields:
+- Keep: `id`, `userId`, `userName`, `date`, `status`, `notes`, `correctedBy`, `createdAt`, `updatedAt`
+- Add: `sessions: List<AttendanceSession>`, `totalDurationMinutes: int`, `isCorrected: bool`, `correctedAt: DateTime?`
+- Remove direct fields: `checkInAt`, `checkOutAt`, `durationMinutes`, `biometricVerified`
+- Add computed getters:
+  ```dart
+  DateTime? get checkInAt => sessions.isNotEmpty ? sessions.first.checkInAt : null;
+  DateTime? get checkOutAt => sessions.isNotEmpty ? sessions.last.checkOutAt : null;
+  bool get hasOpenSession => sessions.isNotEmpty && sessions.last.checkOutAt == null;
+  ```
+
+`fromMap` changes:
+```dart
+sessions: (data['sessions'] as List<dynamic>? ?? [])
+    .map((s) => AttendanceSession.fromMap(s as Map<String, dynamic>))
+    .toList(),
+totalDurationMinutes: data['totalDurationMinutes'] as int? ?? 0,
+isCorrected: data['isCorrected'] as bool? ??
+    (data['status'] == 'manual'),  // backward compat: old docs with status:'manual'
+correctedAt: _toDateTime(data['correctedAt']),
+```
+
+Status backward compat in `fromMap`:
+```dart
+status: (() {
+  final s = data['status'] as String? ?? 'absent';
+  // Old docs had 'manual' — treat as 'present' for display; isCorrected handles the annotation.
+  return s == 'manual' ? 'present' : s;
+})(),
+```
+
+#### Updated: `lib/features/attendance/data/repositories/attendance_repository.dart`
+
+Add method:
+```dart
+Future<List<AttendanceModel>> fetchMonthlyAttendance(
+  String userId,
+  int year,
+  int month,
+) async {
+  final start = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
+  final nextMonth = month == 12
+      ? '${year + 1}-01-01'
+      : '${year.toString().padLeft(4, '0')}-${(month + 1).toString().padLeft(2, '0')}-01';
+
+  final snapshot = await _firestore
+      .collection('attendance')
+      .where('userId', isEqualTo: userId)
+      .where('date', isGreaterThanOrEqualTo: start)
+      .where('date', isLessThan: nextMonth)
+      .orderBy('date', descending: false)
+      .get();
+
+  return snapshot.docs
+      .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
+      .toList();
+}
+```
+
+Remove from `adminCorrect`: `fields` no longer carries `status` — remove it from the payload map construction.
+
+#### Updated: `lib/features/attendance/presentation/cubit/attendance_state.dart`
+
+Add fields:
+```dart
+final AttendanceLoadStatus monthlyStatus;
+final List<AttendanceModel> monthlyRecords;
+final String? monthlyError;
+```
+
+Add clear flag: `clearMonthlyError`.
+
+#### Updated: `lib/features/attendance/presentation/cubit/attendance_cubit.dart`
+
+Add method:
+```dart
+Future<void> loadMonthlyAttendance(String userId, int year, int month) async {
+  emit(state.copyWith(
+    monthlyStatus: AttendanceLoadStatus.loading,
+    clearMonthlyError: true,
+  ));
+  try {
+    final records = await _attendanceRepository.fetchMonthlyAttendance(userId, year, month);
+    emit(state.copyWith(
+      monthlyStatus: AttendanceLoadStatus.loaded,
+      monthlyRecords: records,
+    ));
+  } catch (_) {
+    emit(state.copyWith(
+      monthlyStatus: AttendanceLoadStatus.error,
+      monthlyError: 'network_error',
+    ));
+  }
+}
+```
+
+---
+
+### Flutter — Presentation Layer
+
+#### Updated: `lib/features/attendance/presentation/widgets/attendance_check_button.dart`
+
+Button state logic changes. Current logic uses `checkOutAt != null` as terminal state. New logic:
+
+- `todayRecord == null` OR `!todayRecord.hasOpenSession` → show "Check In" button
+- `todayRecord.hasOpenSession` → show "Check Out" button
+- No "done for today" terminal state — after checkout, check-in button reappears immediately
+
+The `onCheckIn` callback is active when `canCheckIn` and not submitting. The `onCheckOut` callback is active when `canCheckOut` and not submitting.
+
+#### Updated: `lib/features/attendance/presentation/widgets/attendance_record_card.dart`
+
+- Replace `record.durationMinutes` with `record.totalDurationMinutes` for the duration display.
+- Add `isCorrected` indicator: if `record.isCorrected`, show a small `Icon(Icons.edit_outlined, size: 14)` next to the status chip. No new translation key needed — icon only.
+- The `_StatusChip` maps `'manual'` → fallback to `'attendance_status_present'` key (unchanged from current), but this path is now only for old docs.
+
+#### Updated: `lib/features/attendance/presentation/screens/attendance_screen.dart`
+
+Fix the history section error state:
+```dart
+if (state.historyStatus == AttendanceLoadStatus.loading && state.history.isEmpty)
+  const Center(child: CircularProgressIndicator())
+else if (state.historyStatus == AttendanceLoadStatus.error)
+  Padding(
+    padding: const EdgeInsets.only(top: AppSizes.sm),
+    child: Text((state.historyError ?? 'network_error').tr()),
+  )
+else if (state.history.isEmpty)
+  Padding(
+    padding: const EdgeInsets.only(top: AppSizes.sm),
+    child: Text('no_attendance_records'.tr()),
+  )
+else
+  ...state.history.map(...)
+```
+
+No other structural changes to this screen.
+
+#### New: `lib/features/attendance/presentation/screens/employee_monthly_attendance_screen.dart`
+
+Employee-accessible screen for their own monthly attendance history.
+
+- `StatefulWidget` with `_year` (int) and `_month` (int) state, initialized to current month.
+- `initState` → `WidgetsBinding.instance.addPostFrameCallback` → `attendanceCubit.loadMonthlyAttendance(user.id, _year, _month)`.
+- Month navigator: left/right arrow buttons + `"Month Year"` label (localized via `DateFormat.yMMMM`). Tapping arrows steps month; calls `loadMonthlyAttendance` on change. Cannot navigate to a future month.
+- `BlocBuilder<AttendanceCubit, AttendanceState>` on `monthlyStatus` / `monthlyRecords`:
+  - Loading → `CircularProgressIndicator`
+  - Error → error text
+  - Loaded, empty → `EmptyStateWidget`
+  - Loaded → summary stats row + `ListView` of `AttendanceRecordCard` (already shows date, times, duration, correction indicator)
+- Summary stats row (above the list): `days_present` count, `days_absent` count, `total_hours_worked` (totalDurationMinutes sum ÷ 60, formatted as "Xh Ym"), `corrections` count (records where `isCorrected == true`).
+- `AppBar` title: `'monthly_attendance'.tr()`. `AppDrawer` included.
+
+Wire up:
+- `RouteNames.employeeMonthlyAttendance = '/employee-monthly-attendance'`
+- `app_router.dart`: add route → `EmployeeMonthlyAttendanceScreen()`
+- `app_drawer.dart`: add employee entry after "My Attendance" entry → `RouteNames.employeeMonthlyAttendance`
+
+#### Updated: `lib/features/reports/presentation/screens/reports_screen.dart`
+
+**Remove**: the daily roster attendance section that currently shows all employees for one selected date.
+
+**Add**: monthly attendance section for the selected employee and month (same pickers already used by the task report section). Trigger: when the report loads (employee + month are already selected), also call `context.read<AttendanceCubit>().loadMonthlyAttendance(selectedEmployee.id, year, month)`.
+
+Attendance section layout:
+1. Section header: `'monthly_attendance'.tr()`
+2. Summary stats row: same four stats as `EmployeeMonthlyAttendanceScreen` above.
+3. `BlocBuilder<AttendanceCubit, AttendanceState>` on `monthlyStatus` / `monthlyRecords` — list of day cards.
+
+This section is rendered only when a report has been generated (employee + month selected). Use `shrinkWrap: true, physics: const NeverScrollableScrollPhysics()` since the Reports screen is already inside a scroll view.
+
+Admin only — Firestore rules already allow admin to read any `userId`'s attendance.
+
+---
+
+### Translation Keys (5 new — parity target: 286/286)
 
 | Key | English | Arabic |
 |---|---|---|
-| `attendance` | Attendance | الحضور |
-| `my_attendance` | My Attendance | حضوري |
-| `attendance_management` | Attendance Management | إدارة الحضور |
-| `check_in` | Check In | تسجيل الحضور |
-| `check_out` | Check Out | تسجيل الانصراف |
-| `checked_in` | Checked In | تم تسجيل الحضور |
-| `checked_out` | Checked Out | تم تسجيل الانصراف |
-| `check_in_success` | Checked in successfully | تم تسجيل حضورك بنجاح |
-| `check_out_success` | Checked out successfully | تم تسجيل انصرافك بنجاح |
-| `already_checked_in` | You are already checked in for today | لقد سجلت حضورك بالفعل اليوم |
-| `not_checked_in_yet` | You haven't checked in today | لم تسجل حضورك بعد اليوم |
-| `already_checked_out` | You have already checked out today | لقد سجلت انصرافك بالفعل اليوم |
-| `biometric_reason_check_in` | Confirm your identity to check in | أكد هويتك لتسجيل الحضور |
-| `biometric_reason_check_out` | Confirm your identity to check out | أكد هويتك لتسجيل الانصراف |
-| `biometric_not_available` | Biometric authentication is not available on this device. Contact your admin. | المصادقة البيومترية غير متاحة على هذا الجهاز. تواصل مع المدير. |
-| `no_internet_for_attendance` | Internet connection required to record attendance | يلزم الاتصال بالإنترنت لتسجيل الحضور |
-| `attendance_status_present` | Present | حاضر |
-| `attendance_status_absent` | Absent | غائب |
-| `attendance_status_manual` | Corrected | تم التصحيح |
-| `check_in_time` | Check-in Time | وقت الحضور |
-| `check_out_time` | Check-out Time | وقت الانصراف |
-| `duration_minutes` | {minutes} min | {minutes} د |
-| `attendance_history` | Attendance History | سجل الحضور |
-| `no_attendance_records` | No attendance records yet | لا توجد سجلات حضور بعد |
-| `correct_attendance` | Correct Attendance | تصحيح الحضور |
-| `attendance_corrected` | Attendance record corrected | تم تصحيح سجل الحضور |
-| `today_attendance` | Today's Attendance | حضور اليوم |
+| `monthly_attendance` | Monthly Attendance | الحضور الشهري |
+| `total_hours_worked` | Total Hours Worked | إجمالي ساعات العمل |
+| `days_present` | Days Present | أيام الحضور |
+| `days_absent` | Days Absent | أيام الغياب |
+| `corrections` | Corrections | التصحيحات |
+
+Keep existing `attendance_status_manual` → "Corrected" / "تم التصحيح" — backward compat for old documents.
 
 ---
 
-### Out of Scope for This PR
+### Files Changed (complete list)
 
-Do NOT implement any of the following:
-- WiFi / SSID / BSSID validation
-- Geofencing or location tracking
-- Breaks / pause-resume
-- Shift schedules or expected hours
-- Overtime calculation
-- Leave management
-- Multiple check-in/check-out cycles per day
-- Offline sync (Firestore offline cache)
+**Backend:**
+- `firebase.json` — add `"indexes": "firestore.indexes.json"` to Firestore block
+- `firestore.indexes.json` — add `(userId ASC, date ASC)` index
+- `functions/index.js` — update `recordAttendance` (sessions), `adminCorrectAttendance` (isCorrected, remove status), `sendDailyAbsenceMarker` (new doc structure)
+
+**Data layer:**
+- `lib/features/attendance/data/models/attendance_session.dart` — new
+- `lib/features/attendance/data/models/attendance_model.dart` — updated
+- `lib/features/attendance/data/repositories/attendance_repository.dart` — add `fetchMonthlyAttendance`, update `adminCorrect` payload
+
+**State:**
+- `lib/features/attendance/presentation/cubit/attendance_state.dart` — add monthly fields
+- `lib/features/attendance/presentation/cubit/attendance_cubit.dart` — add `loadMonthlyAttendance`
+
+**UI:**
+- `lib/features/attendance/presentation/widgets/attendance_check_button.dart` — sessions-based button state
+- `lib/features/attendance/presentation/widgets/attendance_record_card.dart` — `totalDurationMinutes`, correction icon
+- `lib/features/attendance/presentation/screens/attendance_screen.dart` — fix error state
+- `lib/features/attendance/presentation/screens/employee_monthly_attendance_screen.dart` — new
+- `lib/features/reports/presentation/screens/reports_screen.dart` — remove daily roster, add monthly section
+- `lib/shared/widgets/app_drawer.dart` — add employee monthly attendance entry
+- `lib/core/routes/route_names.dart` — add `employeeMonthlyAttendance`
+- `lib/core/routes/app_router.dart` — add route
+
+**i18n:**
+- `assets/translations/en.json` — 5 new keys
+- `assets/translations/ar.json` — 5 new keys
+
+**Docs:**
+- `docs/ai-workflow/DECISIONS_LOG.md` — local_auth semantics, sessions model, correction semantics, reports semantics
+
+---
+
+### Out of Scope for This Pass
+
+Do NOT implement:
+- Schedule-aware lateness (`status: 'late'`) — needs scheduling model, deferred
+- Session-level admin correction (correct individual sessions) — correction remains day-level
+- Correct-to-absent from correction sheet (edge case) — deferred to P4
 - CSV / Excel export
-- "Late" status computation (data model is compatible but evaluation is deferred)
+- Leave management, overtime
 
 ---
 
 ### Acceptance Criteria
 
-- [ ] Employee can check in once per day (biometric prompt → Cloud Function → doc created, `status: 'present'`)
-- [ ] Employee cannot check in a second time on the same day (error: `already_checked_in`)
-- [ ] Employee can check out after checking in (biometric prompt → Cloud Function → `checkOutAt` set, `durationMinutes` computed)
-- [ ] Employee cannot check out without a prior check-in (error: `not_checked_in_yet`)
-- [ ] Check-in / check-out button disabled when offline; `no_internet_for_attendance` message shown
-- [ ] Biometric unavailable → blocking error, check-in not permitted
-- [ ] Employee can view their own attendance history on `AttendanceScreen`
-- [ ] Admin can view all employees' attendance for a selected date on `AdminAttendanceScreen`
-- [ ] Admin can correct any attendance record (edit times, status, notes); correction logged in `attendance_logs`
-- [ ] `sendDailyAbsenceMarker` runs at 23:00 Jerusalem and creates `status: 'absent'` docs for employees with no check-in
-- [ ] Today's attendance summary card visible on admin dashboard
-- [ ] Attendance tab/section visible in Reports screen (admin only)
-- [ ] Employee drawer shows "My Attendance" entry; admin drawer shows "Attendance Management" entry
-- [ ] `flutter analyze` clean
-- [ ] `flutter test` all green
+**Bug fixes:**
+- [ ] Employee can see their own attendance history (composite index deployed, query succeeds)
+- [ ] `AttendanceScreen` shows an error message (not "no records") when history query fails
+
+**Sessions model:**
+- [ ] Employee can check in, check out, and check in again on the same day (multiple sessions)
+- [ ] Check-in blocked while a session is open (`already_checked_in`)
+- [ ] Check-out blocked when no session is open (`not_checked_in_yet`)
+- [ ] `totalDurationMinutes` on day document equals sum of all closed session durations
+- [ ] Check-in button reappears after checkout (no terminal "done for today" state)
+
+**Correction semantics:**
+- [ ] Admin correction sets `isCorrected: true` (not `status: 'manual'`)
+- [ ] Corrected records show a pencil icon annotation next to their status chip
+- [ ] `adminCorrectAttendance` callable no longer accepts `fields.status`
+
+**Reports:**
+- [ ] Reports attendance section shows monthly attendance for selected employee + month
+- [ ] Daily roster removed from Reports (lives only in Attendance Management)
+- [ ] Summary stats correct: days present, days absent, hours worked, corrections count
+
+**Employee monthly view:**
+- [ ] `EmployeeMonthlyAttendanceScreen` accessible from drawer
+- [ ] Month navigation (prev/next) works; cannot navigate to future month
+- [ ] Summary stats match monthly records
+
+**Quality gates:**
 - [ ] `npm run lint` clean
-- [ ] Translation parity: 272/272 (246 existing + 26 new)
-- [ ] `attendance` and `attendance_logs` Firestore rules are in place and tested
-- [ ] `firestore.indexes.json` updated with required composite indexes
+- [ ] `flutter analyze` clean
+- [ ] `flutter test` green
+- [ ] Translation parity: 286/286
+- [ ] Post-merge user action: `firebase deploy --only firestore:indexes,functions,firestore:rules`
