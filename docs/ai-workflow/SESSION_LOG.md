@@ -1,3 +1,13 @@
+## 2026-05-16 — Claude Sonnet 4.6 — PR #38 merge + final release-prep (attendance complete)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/attendance-stabilization` → merged to `main` (PR #38, squash commit `cfd5879`)
+- **Goal**: Ship the final commit covering two post-deploy runtime fixes (correctedByName readable display, RTL time-range arrow), update workflow docs, and merge PR #38 to main.
+- **Outcome**: Committed 18 files (the full stabilization + runtime-fix changeset), pushed, opened PR #38, and squash-merged to `main`. BACKLOG #14 closed as Done 2026-05-16. `main` is now at `cfd5879`. Firebase functions were deployed by owner before merge. Attendance subsystem is production-ready for the next binary store release. Key architectural decisions that were locked in this cycle: sessions-based attendance (not single-session), session-level correction with `originalSessions` audit trail, `correctedByName` server-written for provenance, `Source.server` on history fetches, session ordering at parse time, `hide TextDirection` to resolve `intl`/`dart:ui` class shadow.
+- **Files touched**: All 18 files from the stabilization pass (see previous session entry) plus `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/CURRENT_TASK.md`.
+- **Quality gates**: `flutter analyze` clean (No issues found). `firebase deploy --only functions` completed by owner.
+- **Release note**: `local_auth` is a native plugin — attendance requires a binary store release, not a Shorebird patch. No further Firebase deploy steps outstanding.
+
 ## 2026-05-16 — Claude Sonnet 4.6 — Attendance UX/architecture refinement pass (post-stabilization)
 
 - **Agent**: Claude Sonnet 4.6
