@@ -396,9 +396,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   const adminName = (adminDoc.data() || {}).name || "Admin";
   const userId = request.data && request.data.userId;
   const date = request.data && request.data.date;
-  const fields = (request.data && request.data.fields) || {};
 
-  if (!userId || !date || typeof fields !== "object") {
+  if (!userId || !date) {
     throw new HttpsError(
       "invalid-argument",
       "Missing required correction payload",
@@ -409,20 +408,33 @@ exports.adminCorrectAttendance = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Invalid date format");
   }
 
-  const hasCheckInAt = Object.prototype.hasOwnProperty.call(
-    fields,
-    "checkInAt",
-  );
-  const hasCheckOutAt = Object.prototype.hasOwnProperty.call(
-    fields,
-    "checkOutAt",
-  );
-  if (hasCheckInAt !== hasCheckOutAt) {
+  // New sessions-array path (primary).
+  const rawSessions =
+    request.data &&
+    Array.isArray(request.data.sessions) &&
+    request.data.sessions.length > 0
+      ? request.data.sessions
+      : null;
+
+  // Legacy fields path (backward compat — kept so old clients don't break).
+  const fields = (request.data && request.data.fields) || {};
+  const hasCheckInAt = Object.prototype.hasOwnProperty.call(fields, "checkInAt");
+  const hasCheckOutAt = Object.prototype.hasOwnProperty.call(fields, "checkOutAt");
+
+  if (!rawSessions && !hasCheckInAt) {
     throw new HttpsError(
       "invalid-argument",
-      "checkInAt and checkOutAt must both be provided",
+      "Either sessions array or fields.checkInAt must be provided",
     );
   }
+
+  // notes can arrive as a top-level field (new path) or inside fields (legacy).
+  const notes =
+    request.data && request.data.notes !== undefined
+      ? request.data.notes
+      : fields.notes !== undefined
+        ? fields.notes
+        : undefined;
 
   const userDoc = await db.collection("users").doc(userId).get();
   if (!userDoc.exists) {
@@ -442,15 +454,69 @@ exports.adminCorrectAttendance = onCall(async (request) => {
     const nextValue = {
       isCorrected: true,
       correctedBy: adminUid,
+      correctedByName: adminName,
       correctedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    if (Object.prototype.hasOwnProperty.call(fields, "notes")) {
-      nextValue.notes = fields.notes == null ? null : String(fields.notes);
+    // Preserve the original sessions on the first correction for auditability.
+    // Subsequent corrections leave originalSessions intact (first version wins).
+    if (!existing.isCorrected && Array.isArray(existing.sessions)) {
+      nextValue.originalSessions = existing.sessions;
     }
 
-    if (hasCheckInAt && hasCheckOutAt) {
+    if (notes !== undefined) {
+      nextValue.notes = notes == null ? null : String(notes);
+    }
+
+    if (rawSessions) {
+      // Validate, compute durations, and sort by checkInAt.
+      const parsed = rawSessions.map((s, idx) => {
+        const checkInDate = new Date(s.checkInAt);
+        if (Number.isNaN(checkInDate.getTime())) {
+          throw new HttpsError(
+            "invalid-argument",
+            `Session ${idx}: invalid checkInAt`,
+          );
+        }
+        const checkOutDate = s.checkOutAt ? new Date(s.checkOutAt) : null;
+        if (checkOutDate && Number.isNaN(checkOutDate.getTime())) {
+          throw new HttpsError(
+            "invalid-argument",
+            `Session ${idx}: invalid checkOutAt`,
+          );
+        }
+        const durationMinutes =
+          checkOutDate != null
+            ? Math.max(
+                0,
+                Math.round(
+                  (checkOutDate.getTime() - checkInDate.getTime()) / 60000,
+                ),
+              )
+            : null;
+        return {
+          checkInAt: admin.firestore.Timestamp.fromDate(checkInDate),
+          checkOutAt: checkOutDate
+            ? admin.firestore.Timestamp.fromDate(checkOutDate)
+            : null,
+          durationMinutes,
+        };
+      });
+
+      // Guarantee session ordering.
+      parsed.sort((a, b) => a.checkInAt.toMillis() - b.checkInAt.toMillis());
+
+      const totalDurationMinutes = parsed.reduce(
+        (sum, s) => sum + (s.durationMinutes || 0),
+        0,
+      );
+
+      nextValue.sessions = parsed;
+      nextValue.totalDurationMinutes = totalDurationMinutes;
+      nextValue.status = "present";
+    } else if (hasCheckInAt && hasCheckOutAt) {
+      // Legacy path: single check-in/check-out pair.
       const parsedCheckInAt = new Date(fields.checkInAt);
       const parsedCheckOutAt = new Date(fields.checkOutAt);
       if (
@@ -463,8 +529,6 @@ exports.adminCorrectAttendance = onCall(async (request) => {
         );
       }
 
-      const checkInAt = admin.firestore.Timestamp.fromDate(parsedCheckInAt);
-      const checkOutAt = admin.firestore.Timestamp.fromDate(parsedCheckOutAt);
       const durationMinutes = Math.max(
         0,
         Math.round(
@@ -474,8 +538,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
 
       nextValue.sessions = [
         {
-          checkInAt,
-          checkOutAt,
+          checkInAt: admin.firestore.Timestamp.fromDate(parsedCheckInAt),
+          checkOutAt: admin.firestore.Timestamp.fromDate(parsedCheckOutAt),
           durationMinutes,
         },
       ];
@@ -491,9 +555,7 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       if (!Object.prototype.hasOwnProperty.call(nextValue, "sessions")) {
         nextValue.sessions = [];
       }
-      if (
-        !Object.prototype.hasOwnProperty.call(nextValue, "totalDurationMinutes")
-      ) {
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "totalDurationMinutes")) {
         nextValue.totalDurationMinutes = 0;
       }
       if (!Object.prototype.hasOwnProperty.call(nextValue, "status")) {
@@ -510,7 +572,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       performedByName: adminName,
       previousValue,
       newValue: {
-        ...fields,
+        sessions: nextValue.sessions,
+        notes: nextValue.notes,
         isCorrected: true,
         correctedBy: adminUid,
       },

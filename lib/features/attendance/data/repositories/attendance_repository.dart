@@ -37,7 +37,7 @@ class AttendanceRepository {
         .where('userId', isEqualTo: userId)
         .orderBy('date', descending: true)
         .limit(limit)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
@@ -99,17 +99,15 @@ class AttendanceRepository {
   Future<void> adminCorrect({
     required String userId,
     required String date,
-    required Map<String, dynamic> fields,
+    required List<Map<String, dynamic>> sessions,
     String? notes,
   }) async {
-    final sanitizedFields = Map<String, dynamic>.from(fields)
-      ..remove('status');
-
     final callable = _functions.httpsCallable('adminCorrectAttendance');
     await callable.call({
       'userId': userId,
       'date': date,
-      'fields': {...sanitizedFields, if (notes != null) 'notes': notes},
+      'sessions': sessions,
+      if (notes != null) 'notes': notes,
     });
   }
 

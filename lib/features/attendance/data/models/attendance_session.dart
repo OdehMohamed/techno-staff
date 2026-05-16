@@ -21,6 +21,14 @@ class AttendanceSession {
     );
   }
 
+  Map<String, dynamic> toCallableMap() {
+    return {
+      'checkInAt': checkInAt.toUtc().toIso8601String(),
+      if (checkOutAt != null)
+        'checkOutAt': checkOutAt!.toUtc().toIso8601String(),
+    };
+  }
+
   static DateTime? _toDateTime(dynamic value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;

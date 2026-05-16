@@ -62,7 +62,10 @@ class AppDrawer extends StatelessWidget {
                 title: Text('my_attendance'.tr()),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, RouteNames.attendance);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.attendance,
+                  );
                 },
               ),
             if (user?.role == 'employee')

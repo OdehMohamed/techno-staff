@@ -128,7 +128,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(key.tr())));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(key.tr())));
   }
 
   @override
@@ -172,7 +174,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           appBar: AppBar(title: Text('my_attendance'.tr())),
           drawer: const AppDrawer(),
           body: RefreshIndicator(
-            onRefresh: () => context.read<AttendanceCubit>().loadHistory(user.id),
+            onRefresh: () =>
+                context.read<AttendanceCubit>().loadHistory(user.id),
             child: ListView(
               padding: const EdgeInsets.all(AppSizes.md),
               children: [
@@ -204,13 +207,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     child: Text('no_attendance_records'.tr()),
                   )
                 else
-                  ...state.history
-                      .map(
-                        (record) => Padding(
-                          padding: const EdgeInsets.only(bottom: AppSizes.sm),
-                          child: AttendanceRecordCard(record: record),
-                        ),
-                      ),
+                  ...state.history.map(
+                    (record) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSizes.sm),
+                      child: AttendanceRecordCard(record: record),
+                    ),
+                  ),
               ],
             ),
           ),

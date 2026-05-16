@@ -193,7 +193,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   Future<void> adminCorrect({
     required String userId,
     required String date,
-    required Map<String, dynamic> fields,
+    required List<Map<String, dynamic>> sessions,
     String? notes,
   }) async {
     emit(
@@ -206,7 +206,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       await _attendanceRepository.adminCorrect(
         userId: userId,
         date: date,
-        fields: fields,
+        sessions: sessions,
         notes: notes,
       );
       emit(state.copyWith(correctionStatus: AttendanceActionStatus.success));

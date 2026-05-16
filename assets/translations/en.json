@@ -290,5 +290,10 @@
   "failed_to_export_pdf": "Failed to export PDF",
   "unknown_error": "Unknown error",
   "task_notifications": "Task Notifications",
-  "notes": "Notes"
+  "notes": "Notes",
+  "corrected_by": "Corrected by {name}",
+  "session_number": "Session {n}",
+  "sessions_count": "{count} sessions",
+  "add_session": "Add Session",
+  "no_attendance_records_yet": "No records yet. Absent employees appear after end of day."
 }

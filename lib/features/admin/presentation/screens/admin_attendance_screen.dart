@@ -1,4 +1,4 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -10,6 +10,20 @@ import '../../../../shared/widgets/section_header.dart';
 import '../../../attendance/data/models/attendance_model.dart';
 import '../../../attendance/presentation/cubit/attendance_cubit.dart';
 import '../../../attendance/presentation/cubit/attendance_state.dart';
+
+String _formatDuration(int minutes) {
+  if (minutes <= 0) return '0m';
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  if (h == 0) return '${m}m';
+  if (m == 0) return '${h}h';
+  return '${h}h ${m}m';
+}
+
+String _fmtTime(DateTime? dt) {
+  if (dt == null) return '--:--';
+  return DateFormat('HH:mm').format(dt.toLocal());
+}
 
 class AdminAttendanceScreen extends StatefulWidget {
   const AdminAttendanceScreen({super.key});
@@ -132,7 +146,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     if (state.roster.isEmpty) {
       return const EmptyStateWidget(
         icon: Icons.people_outline,
-        titleKey: 'no_attendance_records',
+        titleKey: 'no_attendance_records_yet',
       );
     }
 
@@ -146,7 +160,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           final record = state.roster[index];
           return _RosterRow(
             record: record,
-            onTap: () => _openCorrectionSheet(record),
+            onCorrect: () => _openCorrectionSheet(record),
           );
         },
       ),
@@ -154,39 +168,217 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   }
 }
 
-class _RosterRow extends StatelessWidget {
-  final AttendanceModel record;
-  final VoidCallback onTap;
+// ─── Roster row (expandable) ─────────────────────────────────────────────────
 
-  const _RosterRow({required this.record, required this.onTap});
+class _RosterRow extends StatefulWidget {
+  final AttendanceModel record;
+  final VoidCallback onCorrect;
+
+  const _RosterRow({required this.record, required this.onCorrect});
+
+  @override
+  State<_RosterRow> createState() => _RosterRowState();
+}
+
+class _RosterRowState extends State<_RosterRow> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
+    final record = widget.record;
+
     return AppCard(
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          record.userName.isNotEmpty ? record.userName : record.userId,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Row(
-          children: [
-            Text(_formatTime(record.checkInAt)),
-            const Text(' → '),
-            Text(_formatTime(record.checkOutAt)),
-          ],
-        ),
-        trailing: _AttendanceStatusChip(status: record.status),
-        onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(AppSizes.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        record.userName.isNotEmpty
+                            ? record.userName
+                            : record.userId,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    _AttendanceStatusChip(status: record.status),
+                    if (record.isCorrected) ...[
+                      const SizedBox(width: AppSizes.xs),
+                      Icon(
+                        Icons.edit_outlined,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                    if (record.notes?.isNotEmpty == true) ...[
+                      const SizedBox(width: AppSizes.xs),
+                      Icon(
+                        Icons.note_outlined,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
+                    ],
+                    const SizedBox(width: AppSizes.xs),
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSizes.xs),
+                Row(
+                  children: [
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(
+                        '${_fmtTime(record.checkInAt)} → ${_fmtTime(record.checkOutAt)}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatDuration(record.totalDurationMinutes),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w500),
+                    ),
+                    if (record.sessions.length > 1) ...[
+                      const SizedBox(width: AppSizes.xs),
+                      Text(
+                        '· ${'sessions_count'.tr(namedArgs: {'count': '${record.sessions.length}'})}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: _expanded
+                ? _RosterExpandedSection(
+                    record: record,
+                    onCorrect: widget.onCorrect,
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
+}
 
-  String _formatTime(DateTime? dt) {
-    if (dt == null) return '-';
-    return DateFormat('HH:mm').format(dt.toLocal());
+class _RosterExpandedSection extends StatelessWidget {
+  final AttendanceModel record;
+  final VoidCallback onCorrect;
+
+  const _RosterExpandedSection({
+    required this.record,
+    required this.onCorrect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dimStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: AppSizes.md),
+        if (record.sessions.isEmpty)
+          Text('no_attendance_records'.tr(), style: dimStyle)
+        else
+          ...List.generate(record.sessions.length, (i) {
+            final s = record.sessions[i];
+            final checkIn = DateFormat('HH:mm').format(s.checkInAt.toLocal());
+            final checkOut = s.checkOutAt != null
+                ? DateFormat('HH:mm').format(s.checkOutAt!.toLocal())
+                : '--:--';
+            final duration =
+                s.durationMinutes != null ? _formatDuration(s.durationMinutes!) : '';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSizes.xs),
+              child: Row(
+                children: [
+                  Text(
+                    'session_number'.tr(namedArgs: {'n': '${i + 1}'}),
+                    style: dimStyle,
+                  ),
+                  const SizedBox(width: AppSizes.sm),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      '$checkIn → $checkOut',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  if (duration.isNotEmpty) ...[
+                    const Spacer(),
+                    Text(duration, style: dimStyle),
+                  ],
+                ],
+              ),
+            );
+          }),
+        if (record.notes?.isNotEmpty == true) ...[
+          const SizedBox(height: AppSizes.xs),
+          Text('notes'.tr(), style: dimStyle),
+          const SizedBox(height: 2),
+          Text(record.notes!, style: Theme.of(context).textTheme.bodySmall),
+        ],
+        if (record.isCorrected) ...[
+          const SizedBox(height: AppSizes.sm),
+          Row(
+            children: [
+              Icon(
+                Icons.edit_outlined,
+                size: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'corrected_by'.tr(namedArgs: {
+                  'name': record.correctedByName?.isNotEmpty == true
+                      ? record.correctedByName!
+                      : 'admin'.tr(),
+                }),
+                style: dimStyle,
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: AppSizes.xs),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton.icon(
+            onPressed: onCorrect,
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            label: Text('correct_attendance'.tr()),
+          ),
+        ),
+      ],
+    );
   }
 }
+
+// ─── Status chip ─────────────────────────────────────────────────────────────
 
 class _AttendanceStatusChip extends StatelessWidget {
   final String status;
@@ -198,23 +390,23 @@ class _AttendanceStatusChip extends StatelessWidget {
     final statusKey = switch (status) {
       'present' => 'attendance_status_present',
       'absent' => 'attendance_status_absent',
-      'manual' => 'attendance_status_manual',
+      'manual' => 'attendance_status_present',
       _ => 'attendance_status_present',
     };
 
     final colors = switch (status) {
       'absent' => (
-        background: Theme.of(context).colorScheme.errorContainer,
-        foreground: Theme.of(context).colorScheme.onErrorContainer,
-      ),
+          background: Theme.of(context).colorScheme.errorContainer,
+          foreground: Theme.of(context).colorScheme.onErrorContainer,
+        ),
       'manual' => (
-        background: Theme.of(context).colorScheme.tertiaryContainer,
-        foreground: Theme.of(context).colorScheme.onTertiaryContainer,
-      ),
+          background: Theme.of(context).colorScheme.tertiaryContainer,
+          foreground: Theme.of(context).colorScheme.onTertiaryContainer,
+        ),
       _ => (
-        background: Theme.of(context).colorScheme.primaryContainer,
-        foreground: Theme.of(context).colorScheme.onPrimaryContainer,
-      ),
+          background: Theme.of(context).colorScheme.primaryContainer,
+          foreground: Theme.of(context).colorScheme.onPrimaryContainer,
+        ),
     };
 
     return Container(
@@ -228,12 +420,22 @@ class _AttendanceStatusChip extends StatelessWidget {
       ),
       child: Text(
         statusKey.tr(),
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: colors.foreground),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: colors.foreground),
       ),
     );
   }
+}
+
+// ─── Correction sheet (session-level editing) ────────────────────────────────
+
+class _SessionDraft {
+  TimeOfDay? checkInTime;
+  TimeOfDay? checkOutTime;
+
+  _SessionDraft({this.checkInTime, this.checkOutTime});
 }
 
 class _CorrectionSheet extends StatefulWidget {
@@ -246,21 +448,32 @@ class _CorrectionSheet extends StatefulWidget {
 }
 
 class _CorrectionSheetState extends State<_CorrectionSheet> {
-  TimeOfDay? _checkInTime;
-  TimeOfDay? _checkOutTime;
+  final List<_SessionDraft> _sessions = [];
   final _notesController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    if (widget.record.checkInAt != null) {
-      final local = widget.record.checkInAt!.toLocal();
-      _checkInTime = TimeOfDay(hour: local.hour, minute: local.minute);
+    final sorted = [...widget.record.sessions]
+      ..sort((a, b) => a.checkInAt.compareTo(b.checkInAt));
+
+    for (final s in sorted) {
+      final local = s.checkInAt.toLocal();
+      final localOut = s.checkOutAt?.toLocal();
+      _sessions.add(
+        _SessionDraft(
+          checkInTime: TimeOfDay(hour: local.hour, minute: local.minute),
+          checkOutTime: localOut != null
+              ? TimeOfDay(hour: localOut.hour, minute: localOut.minute)
+              : null,
+        ),
+      );
     }
-    if (widget.record.checkOutAt != null) {
-      final local = widget.record.checkOutAt!.toLocal();
-      _checkOutTime = TimeOfDay(hour: local.hour, minute: local.minute);
+
+    if (_sessions.isEmpty) {
+      _sessions.add(_SessionDraft());
     }
+
     if (widget.record.notes != null) {
       _notesController.text = widget.record.notes!;
     }
@@ -272,55 +485,64 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
     super.dispose();
   }
 
-  Future<void> _pickCheckIn() async {
+  Future<void> _pickCheckIn(int index) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _checkInTime ?? TimeOfDay.now(),
+      initialTime: _sessions[index].checkInTime ?? TimeOfDay.now(),
     );
-    if (picked != null) setState(() => _checkInTime = picked);
+    if (picked != null) setState(() => _sessions[index].checkInTime = picked);
   }
 
-  Future<void> _pickCheckOut() async {
+  Future<void> _pickCheckOut(int index) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _checkOutTime ?? TimeOfDay.now(),
+      initialTime: _sessions[index].checkOutTime ??
+          _sessions[index].checkInTime ??
+          TimeOfDay.now(),
     );
-    if (picked != null) setState(() => _checkOutTime = picked);
+    if (picked != null) setState(() => _sessions[index].checkOutTime = picked);
   }
 
   String _timeToIso(TimeOfDay time, String dateYmd) {
     final parts = dateYmd.split('-');
-    final year = int.parse(parts[0]);
-    final month = int.parse(parts[1]);
-    final day = int.parse(parts[2]);
-    final dt = DateTime(year, month, day, time.hour, time.minute);
+    final dt = DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+      time.hour,
+      time.minute,
+    );
     return dt.toUtc().toIso8601String();
   }
 
   void _save() {
-    final fields = <String, dynamic>{};
-    final original = widget.record;
+    final drafts = [..._sessions]..sort((a, b) {
+        final aMin =
+            (a.checkInTime?.hour ?? 0) * 60 + (a.checkInTime?.minute ?? 0);
+        final bMin =
+            (b.checkInTime?.hour ?? 0) * 60 + (b.checkInTime?.minute ?? 0);
+        return aMin.compareTo(bMin);
+      });
 
-    if (_checkInTime != null) {
-      final iso = _timeToIso(_checkInTime!, original.date);
-      final originalIso = original.checkInAt?.toUtc().toIso8601String();
-      if (iso != originalIso) fields['checkInAt'] = iso;
-    }
+    final sessions = drafts
+        .where((d) => d.checkInTime != null)
+        .map<Map<String, dynamic>>((d) => {
+              'checkInAt': _timeToIso(d.checkInTime!, widget.record.date),
+              if (d.checkOutTime != null)
+                'checkOutAt': _timeToIso(d.checkOutTime!, widget.record.date),
+            })
+        .toList();
 
-    if (_checkOutTime != null) {
-      final iso = _timeToIso(_checkOutTime!, original.date);
-      final originalIso = original.checkOutAt?.toUtc().toIso8601String();
-      if (iso != originalIso) fields['checkOutAt'] = iso;
-    }
+    if (sessions.isEmpty) return;
 
     final notes = _notesController.text.trim().isEmpty
         ? null
         : _notesController.text.trim();
 
     context.read<AttendanceCubit>().adminCorrect(
-      userId: original.userId,
-      date: original.date,
-      fields: fields,
+      userId: widget.record.userId,
+      date: widget.record.date,
+      sessions: sessions,
       notes: notes,
     );
   }
@@ -347,28 +569,108 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
                 'correct_attendance'.tr(),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              const SizedBox(height: 2),
+              Text(
+                widget.record.userName.isNotEmpty
+                    ? widget.record.userName
+                    : widget.record.userId,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.6),
+                    ),
+              ),
               const SizedBox(height: AppSizes.md),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('check_in_time'.tr()),
-                trailing: Text(
-                  _checkInTime != null ? _checkInTime!.format(context) : '-',
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.55,
                 ),
-                onTap: _pickCheckIn,
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('check_out_time'.tr()),
-                trailing: Text(
-                  _checkOutTime != null ? _checkOutTime!.format(context) : '-',
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...List.generate(_sessions.length, (i) {
+                        final draft = _sessions[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSizes.xs),
+                          child: Row(
+                            children: [
+                              Text(
+                                'session_number'
+                                    .tr(namedArgs: {'n': '${i + 1}'}),
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const SizedBox(width: AppSizes.xs),
+                              Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSizes.sm,
+                                          vertical: AppSizes.xs,
+                                        ),
+                                        minimumSize: Size.zero,
+                                      ),
+                                      onPressed: () => _pickCheckIn(i),
+                                      child: Text(
+                                        draft.checkInTime?.format(context) ??
+                                            '--:--',
+                                      ),
+                                    ),
+                                    const Text('→'),
+                                    TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSizes.sm,
+                                          vertical: AppSizes.xs,
+                                        ),
+                                        minimumSize: Size.zero,
+                                      ),
+                                      onPressed: draft.checkInTime != null
+                                          ? () => _pickCheckOut(i)
+                                          : null,
+                                      child: Text(
+                                        draft.checkOutTime?.format(context) ??
+                                            '--:--',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Spacer(),
+                              if (_sessions.length > 1)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 20,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _sessions.removeAt(i)),
+                                ),
+                            ],
+                          ),
+                        );
+                      }),
+                      TextButton.icon(
+                        onPressed: () =>
+                            setState(() => _sessions.add(_SessionDraft())),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text('add_session'.tr()),
+                      ),
+                      const Divider(),
+                      TextFormField(
+                        controller: _notesController,
+                        decoration:
+                            InputDecoration(labelText: 'notes'.tr()),
+                        maxLines: 2,
+                      ),
+                    ],
+                  ),
                 ),
-                onTap: _pickCheckOut,
-              ),
-              const SizedBox(height: AppSizes.sm),
-              TextFormField(
-                controller: _notesController,
-                decoration: InputDecoration(labelText: 'notes'.tr()),
-                maxLines: 2,
               ),
               const SizedBox(height: AppSizes.md),
               SizedBox(

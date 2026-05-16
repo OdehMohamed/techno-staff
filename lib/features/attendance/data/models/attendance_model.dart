@@ -13,6 +13,7 @@ class AttendanceModel {
   final bool isCorrected;
   final String? notes;
   final String? correctedBy;
+  final String? correctedByName;
   final DateTime? correctedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -28,12 +29,14 @@ class AttendanceModel {
     this.isCorrected = false,
     this.notes,
     this.correctedBy,
+    this.correctedByName,
     this.correctedAt,
     this.createdAt,
     this.updatedAt,
   });
 
-  DateTime? get checkInAt => sessions.isNotEmpty ? sessions.first.checkInAt : null;
+  DateTime? get checkInAt =>
+      sessions.isNotEmpty ? sessions.first.checkInAt : null;
 
   DateTime? get checkOutAt =>
       sessions.isNotEmpty ? sessions.last.checkOutAt : null;
@@ -56,11 +59,12 @@ class AttendanceModel {
 
     final fallbackCheckInAt = _toDateTime(data['checkInAt']);
     final fallbackCheckOutAt = _toDateTime(data['checkOutAt']);
-    final fallbackDurationMinutes =
-        data['durationMinutes'] is int ? data['durationMinutes'] as int : null;
+    final fallbackDurationMinutes = data['durationMinutes'] is int
+        ? data['durationMinutes'] as int
+        : null;
 
     final sessions = parsedSessions.isNotEmpty
-        ? parsedSessions
+        ? (parsedSessions..sort((a, b) => a.checkInAt.compareTo(b.checkInAt)))
         : fallbackCheckInAt != null
         ? [
             AttendanceSession(
@@ -77,13 +81,13 @@ class AttendanceModel {
       userName: data['userName'] as String? ?? '',
       date: data['date'] as String? ?? '',
       sessions: sessions,
-      totalDurationMinutes: data['totalDurationMinutes'] as int? ??
-          fallbackDurationMinutes ??
-          0,
+      totalDurationMinutes:
+          data['totalDurationMinutes'] as int? ?? fallbackDurationMinutes ?? 0,
       status: mappedStatus,
       isCorrected: data['isCorrected'] as bool? ?? (data['status'] == 'manual'),
       notes: data['notes'] as String?,
       correctedBy: data['correctedBy'] as String?,
+      correctedByName: data['correctedByName'] as String?,
       correctedAt: _toDateTime(data['correctedAt']),
       createdAt: _toDateTime(data['createdAt']),
       updatedAt: _toDateTime(data['updatedAt']),

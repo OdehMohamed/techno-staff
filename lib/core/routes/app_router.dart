@@ -174,9 +174,8 @@ class AppRouter {
         );
       case RouteNames.updateRequired:
         return MaterialPageRoute(
-          builder: (_) => UpdateRequiredScreen(
-            storeUrl: settings.arguments as String?,
-          ),
+          builder: (_) =>
+              UpdateRequiredScreen(storeUrl: settings.arguments as String?),
           settings: settings,
         );
       default:

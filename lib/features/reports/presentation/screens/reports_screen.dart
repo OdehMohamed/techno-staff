@@ -578,11 +578,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               final corrections = attendanceState.monthlyRecords
                                   .where((r) => r.isCorrected)
                                   .length;
-                              final totalMinutes =
-                                  attendanceState.monthlyRecords.fold<int>(
-                                0,
-                                (sum, r) => sum + r.totalDurationMinutes,
-                              );
+                              final totalMinutes = attendanceState
+                                  .monthlyRecords
+                                  .fold<int>(
+                                    0,
+                                    (sum, r) => sum + r.totalDurationMinutes,
+                                  );
 
                               return Column(
                                 children: [
@@ -738,10 +739,7 @@ class _MonthlyAttendanceSummaryCard extends StatelessWidget {
             label: 'days_present'.tr(),
             value: daysPresent.toString(),
           ),
-          _SummaryChip(
-            label: 'days_absent'.tr(),
-            value: daysAbsent.toString(),
-          ),
+          _SummaryChip(label: 'days_absent'.tr(), value: daysAbsent.toString()),
           _SummaryChip(
             label: 'total_hours_worked'.tr(),
             value: totalHoursWorked,

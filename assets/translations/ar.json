@@ -290,5 +290,10 @@
   "failed_to_export_pdf": "فشل في تصدير PDF",
   "unknown_error": "خطأ غير معروف",
   "task_notifications": "إشعارات المهام",
-  "notes": "ملاحظات"
+  "notes": "ملاحظات",
+  "corrected_by": "صُحح بواسطة {name}",
+  "session_number": "جلسة {n}",
+  "sessions_count": "{count} جلسات",
+  "add_session": "إضافة جلسة",
+  "no_attendance_records_yet": "لا توجد سجلات بعد. يظهر الغياب بعد نهاية اليوم."
 }

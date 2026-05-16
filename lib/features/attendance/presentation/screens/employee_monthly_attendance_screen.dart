@@ -37,7 +37,11 @@ class _EmployeeMonthlyAttendanceScreenState
       if (user == null) {
         return;
       }
-      context.read<AttendanceCubit>().loadMonthlyAttendance(user.id, _year, _month);
+      context.read<AttendanceCubit>().loadMonthlyAttendance(
+        user.id,
+        _year,
+        _month,
+      );
     });
   }
 
@@ -60,7 +64,11 @@ class _EmployeeMonthlyAttendanceScreenState
       return;
     }
 
-    context.read<AttendanceCubit>().loadMonthlyAttendance(user.id, _year, _month);
+    context.read<AttendanceCubit>().loadMonthlyAttendance(
+      user.id,
+      _year,
+      _month,
+    );
   }
 
   @override
@@ -80,8 +88,9 @@ class _EmployeeMonthlyAttendanceScreenState
           children: [
             SectionHeader(
               title: 'monthly_attendance'.tr(),
-              subtitle: DateFormat.yMMMM(context.locale.languageCode)
-                  .format(selectedMonth),
+              subtitle: DateFormat.yMMMM(
+                context.locale.languageCode,
+              ).format(selectedMonth),
             ),
             AppCard(
               child: Row(
@@ -92,8 +101,9 @@ class _EmployeeMonthlyAttendanceScreenState
                   ),
                   Expanded(
                     child: Text(
-                      DateFormat.yMMMM(context.locale.languageCode)
-                          .format(selectedMonth),
+                      DateFormat.yMMMM(
+                        context.locale.languageCode,
+                      ).format(selectedMonth),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -150,9 +160,8 @@ class _EmployeeMonthlyAttendanceScreenState
                     },
                     child: ListView.separated(
                       itemCount: state.monthlyRecords.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(
-                        height: AppSizes.sm,
-                      ),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSizes.sm),
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           return _MonthlySummaryCard(
@@ -208,10 +217,7 @@ class _MonthlySummaryCard extends StatelessWidget {
             label: 'days_present'.tr(),
             value: daysPresent.toString(),
           ),
-          _SummaryChip(
-            label: 'days_absent'.tr(),
-            value: daysAbsent.toString(),
-          ),
+          _SummaryChip(label: 'days_absent'.tr(), value: daysAbsent.toString()),
           _SummaryChip(
             label: 'total_hours_worked'.tr(),
             value: totalHoursWorked,
