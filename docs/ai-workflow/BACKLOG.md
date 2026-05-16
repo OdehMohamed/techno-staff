@@ -144,22 +144,23 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 9. Mandatory app-update system — `feat/mandatory-app-update`
 
 - **Priority**: Should-fix (operational safety valve)
-- **Status**: In progress — planning round 2026-05-14
+- **Status**: Done — 2026-05-14
 - **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — shipped `AppUpdateService` singleton (fail-open Firestore version check, semver tuple comparison), `UpdateRequiredScreen` (non-dismissible, `PopScope(canPop:false)`, store deep-link via `url_launcher`), `SplashScreen._checkVersionThenAuth()` hook before `checkAuthStatus()`, `config/` Firestore rules block (public read), `RouteNames.updateRequired` + `AppRouter` case, 3 translation keys × 2 locales (245/245 parity), `docs/release-checklist.md` update. `firebase deploy --only firestore:rules` executed. `config/app_settings` doc created in Firestore console. Runtime-validated: pass-through, force-update block, non-dismissible navigation, Android store link, iOS null-url disabled button. Quality gates: `flutter analyze` clean, `flutter test` green.
 - **Description**: On app startup, fetch a minimum supported version from a Firestore `config/app_settings` doc (`minimumAndroidVersion` / `minimumIosVersion` string fields). If the installed version is below minimum, block app usage with a non-dismissible update UI that deep-links to Google Play (Android) or TestFlight/App Store (iOS). Version comparison uses tuple semver logic (not string comparison). Blocking UI appears before or during splash, before any auth gate. Soft-update mode (banner, not block) is a future extension — out of scope for this PR. Firestore `config/app_settings` chosen over Firebase Remote Config (already in stack, no new service, admin-editable from Firestore console).
 - **Acceptance criteria**: (1) Device with version below minimum is blocked on cold start with update UI and correct store link. (2) Device with version at or above minimum passes through normally. (3) Firestore doc update takes effect on next app cold start (no binary push needed). (4) `flutter analyze` clean, `flutter test` green.
 
 #### 10. Shorebird feasibility audit — (planning only, no branch yet)
 
 - **Priority**: Should-fix (release strategy decision)
-- **Status**: Open
-- **Owner**: unassigned
+- **Status**: Done — 2026-05-14 (decision: conditional adoption)
+- **Owner**: Claude Code (Sonnet 4.6) — audit; Mohamed Odeh — decision
 - **Target release**: N/A (audit only)
 - **Added**: 2026-05-14
+- **Completed**: 2026-05-14 — full audit across free-tier limits, Dart-only patch surface, FCM compatibility (ANR bug #695 confirmed fixed), Crashlytics integration (adequate via custom key for testing phase), iOS App Store compliance (guideline 3.3.1b), obfuscation status (iOS requires Flutter 3.41.2+, current install 3.35.7), private-repo CI limitation (free tier excludes it — manual CLI), operational workflow change, longevity risk. Decision: **conditional adoption**. Patch-eligibility checklist and Shorebird release flow added to `docs/release-checklist.md`. Decision recorded in `DECISIONS_LOG.md`.
 - **Description**: Dedicated read-only audit (no implementation) covering: free-tier constraints (5,000 active devices/month, 1 app), Dart-only patch surface and what that excludes (`firebase_messaging` background isolate, `local_auth` biometric, FCM token setup, `flutter_local_notifications` channel config), Crashlytics symbol mapping compatibility with patched builds, iOS App Store / TestFlight policy compliance, rollback behavior, and explicit semantics for how Shorebird patches and the mandatory update system coexist (patch = Dart-only silent fix; mandatory update = breaking change requiring a full binary). Decision gates release strategy for all subsequent features.
-- **Acceptance criteria**: Written decision in `DECISIONS_LOG.md` — adopt or reject with specific constraints documented. If adopted: release checklist updated to distinguish patch-eligible from store-build-required changes.
 
 #### 11. Stabilization — real-world usage triage (ongoing)
 
@@ -174,32 +175,38 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 12. Progressive deadline reminder notifications — `feat/progressive-reminders`
 
 - **Priority**: Should-fix (feature)
-- **Status**: Open
-- **Owner**: TBD
+- **Status**: Done — 2026-05-14
+- **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
-- **Description**: Extend `sendTaskDeadlineReminders` Cloud Function from a single 24h-before reminder to a multi-threshold progressive pattern (e.g. 72h, 24h). Key design constraint: deduplication — each threshold must fire at most once per task. Extension of existing `lastReminderSentAt`-style field pattern on the task doc (e.g. `remindersSent: ['72h', '24h']` array or separate timestamp fields per threshold). Requires a Firestore rules delta (server-writable field). No client changes. Architecture-first spec required before implementation.
-- **Acceptance criteria**: At most one reminder per task per threshold. No regression on existing 24h path. `npm run lint` clean.
+- **Completed**: 2026-05-14 — rewrote `sendTaskDeadlineReminders` with Jerusalem-wall-clock windows for 72h and 24h thresholds, parallel query execution, per-threshold dedup fields (`reminderSent72hAt` / `reminderSent24hAt`), per-task error isolation, and assignee-only FCM + in-app notifications. Fixed same-day checks in `sendOverdueTaskEscalations` to use `sameDayJerusalem(...)`. Added `task_deadline_72h_body` in functions i18n + EN/AR app translations. Quality gates: `cd functions && npm run lint` clean, translation parity `246 246 []`, `flutter analyze` clean, `flutter test` green.
+- **Description**: Extend `sendTaskDeadlineReminders` Cloud Function from a single 24h-before reminder to a 72h + 24h progressive pattern. Fix existing timezone bug (raw `new Date()` → `ymdInJerusalem` + `jerusalemMidnightAsUTC` helpers). Fix same-day check bug in `sendOverdueTaskEscalations`. Deduplication via two server-written Timestamp fields on task doc: `reminderSent72hAt`, `reminderSent24hAt`. New i18n key `task_deadline_72h_body` in `functions/index.js` + both translation JSON files. Scope: Cloud Functions + translation JSON only — no Dart/rules/pubspec changes. Not Shorebird patch-eligible; requires `firebase deploy --only functions` post-merge.
+- **Acceptance criteria**: At most one reminder per task per threshold per Jerusalem calendar day. Timezone bug fixed in both functions. `npm run lint` clean, `flutter analyze` clean, `flutter test` green, translation parity `246 246 []`.
 
 #### 13. UI/UX improvements (admin dashboard, reports, employee home/workflow)
 
 - **Priority**: Should-fix (polish)
-- **Status**: Open — scope to be defined from tester feedback
-- **Owner**: TBD
+- **Status**: Done — 2026-05-15
+- **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14
-- **Description**: Targeted UX improvements informed by real v1.1.0 testing feedback. Known candidates: admin dashboard layout, reports screen usability, employee home/workflow friction. Exact scope deferred until stabilization triage (item #11) produces signal. Do not spec or implement before tester feedback is available.
-- **Acceptance criteria**: Specific items defined and closed. No regressions on existing screens.
+- **Completed**: 2026-05-15 — implemented all scoped UI updates across the five locked presentation files: removed reports debug callable buttons and stale import, replaced month/due-date formats with user-friendly localized variants, made employee-home preview cards tappable with a conditional "all tasks" link, clamped task descriptions to 2 lines in home/tasks lists, hid assignee status/counter controls for completed tasks, localized status transitions in task-details log text, added action-specific log icons, simplified dead medium breakpoints and lowered wide-threshold to 500 in reports/admin dashboard, added overdue urgency accent color support in `_DashboardStatCard`, and updated admin activity-log timestamp format. Quality gates: `flutter analyze` clean, `flutter test` all green, translation parity `246 246 []`.
+- **Description**: Full presentation-layer audit (21 files) identified 10 concrete improvements across 5 screens. Scope: (C1) remove debug test buttons from Reports; (W1) make employee home task cards tappable with "View all" link; (W2) clamp task descriptions to 2 lines in list cards and home preview; (W3) hide status dropdown for completed tasks; (D1) human-readable date formats across 4 sites; (L1) localize activity log status values; (A1) remove dead medium-breakpoint LayoutBuilder branches; (P1) differentiate activity log icons by action type; (P2) urgency color on Open Overdue stat card. Zero new translation keys, zero backend changes, zero new routes.
+- **Acceptance criteria**: All 17 smoke tests pass. `flutter analyze` clean. `flutter test` green. Translation parity 246/246.
 
-#### 14. Attendance / check-in / check-out system — (architecture-first planning round required)
+#### 14. Attendance / check-in / check-out system — `feat/attendance-system`
 
 - **Priority**: Should-fix (feature)
-- **Status**: Open — blocked on architecture planning round
-- **Owner**: TBD
+- **Status**: Done — 2026-05-16 (P1 backend + P2 employee + P3 admin + stabilization/refinement pass; P4 polish superseded by stabilization)
+- **Owner**: TBD (implementing agent)
 - **Target release**: 1.2.0
 - **Added**: 2026-05-14 (carried from 2026-05-01 v1.2.0 deferral)
-- **Description**: Admin-visible employee check-in / check-out system. Known scope: timestamp recording + biometric gate (`local_auth`). No geolocation in initial scope. Architecture-first planning round required before any code — open questions: collection structure (`attendance/{uid}/records/{date}` vs flat), admin reporting view (existing Reports screen vs new screen), relationship to task model (orthogonal or linked), whether the no-location constraint still holds after testing feedback. `local_auth` is a native plugin — permanently outside Shorebird patch surface.
-- **Acceptance criteria**: Architecture planning round complete with locked CURRENT_TASK.md spec before any implementation begins.
+- **Completed (Phase 1)**: 2026-05-15 — shipped backend foundation on `feat/attendance-p1-backend`: new callables `recordAttendance` and `adminCorrectAttendance`, new scheduler `sendDailyAbsenceMarker` (`0 23 * * *`, Asia/Jerusalem), Firestore rules blocks for `attendance` and `attendance_logs` (server-write-only), new `firestore.indexes.json` with the two required attendance composites, and 26 new attendance i18n keys in EN/AR. Quality gates: `cd functions && npm run lint` clean, parity `272 272 []`, `flutter analyze` clean, `flutter test` green. Post-merge operational step: `firebase deploy --only functions,firestore`.
+- **Completed (Phase 2)**: 2026-05-15 — shipped employee attendance flow on `feat/attendance-p2-employee`: added `local_auth` dependency + native biometric configuration (Android `USE_BIOMETRIC`, iOS `NSFaceIDUsageDescription`, Android minSdk guard `>= 23`), implemented attendance feature slice (`AttendanceModel`, `AttendanceRepository`, `AttendanceCubit` + state, `AttendanceScreen`, check button and record card widgets), wired repository/cubit in global providers from `main.dart`, added attendance route and router case, and added employee drawer entry for My Attendance. Quality gates: `flutter pub get` ok, `flutter analyze` clean, `flutter test` green, `cd functions && npm run lint` clean, translation parity unchanged `272 272 []`.
+- **Completed (Phase 3)**: 2026-05-15 — shipped admin attendance management on `feat/attendance-p3-admin`: extended `AttendanceModel` with `userName`, `biometricVerified`, `notes`, `correctedBy`; added `fetchRosterForDate` and `adminCorrect` to repository; extended `AttendanceState` with roster/correction fields; added `loadRoster`, `adminCorrect`, `clearCorrectionFeedback` to cubit; created `AdminAttendanceScreen` with date picker, roster list, and correction bottom sheet (time pickers, status dropdown, notes, callable-backed save); added read-only Attendance section to `ReportsScreen`; added today's attendance summary `_DashboardStatCard` to `AdminDashboardScreen`; added `RouteNames.adminAttendance`, router case, and admin drawer entry. Quality gates: `flutter analyze` clean, `flutter test` green (6/6), `npm run lint` clean, translation parity `273 273 []`. Pure Dart — patch-eligible via Shorebird.
+- **Completed (Stabilization)**: 2026-05-16 — architecture/UX refinement pass on `feat/attendance-stabilization`: (F1) `Source.server` on `fetchHistory` to prevent stale cache after check-in/out; (F2+C) session-level correction — `adminCorrectAttendance` now accepts a full `sessions[]` array, sorts/validates/recomputes durations server-side, preserves `originalSessions` on first correction for audit, backward-compat legacy path kept; (F3) session ordering guaranteed at parse time (`sort` by `checkInAt` in `fromMap`); (A) expandable `AttendanceRecordCard` — summary row with status chip, correction/notes indicators, first-in→last-out, duration, session count; expandable detail with per-session rows, notes, correction provenance; (B) `_CorrectionSheet` redesigned for multi-session editing (add/remove sessions, pre-fill from existing); (F4) `correctedByName` written by Cloud Function and displayed in UI (fallback `admin.tr()` — no raw UID ever shown); (F5/F6) RTL time-range fix via `Directionality(textDirection: TextDirection.ltr)` + `hide TextDirection` on `easy_localization` import to resolve `intl` class collision. 5 new translation keys (parity 291/291). `firebase deploy --only functions` run by owner 2026-05-16. `flutter analyze` clean.
+- **Description**: Employee check-in / check-out with biometric gate (`local_auth`, `biometricOnly: false`), server-authoritative timestamps via Cloud Function callables, flat `attendance/{userId}_{YYYY-MM-DD}` collection, v1 statuses `present|absent|manual` (late deferred to schedule-aware v2), daily absence cron at 23:00 Jerusalem, employee self-view in drawer, admin roster view + correction UI integrated into Reports screen, today's summary on admin dashboard. Full spec in `CURRENT_TASK.md`. Requires full binary release (native plugin). 26 new translation keys (parity target 272/272).
+- **Acceptance criteria**: All 18 checklist items in `CURRENT_TASK.md` pass. `flutter analyze` clean. `flutter test` green. `npm run lint` clean. Translation parity 272/272.
 
 ---
 

@@ -14,6 +14,15 @@ target is **v1.0.0**.
 
 ## Configuration items (one-time per release setup)
 
+- [ ] Create Firestore config doc for mandatory update gate: `config/app_settings`
+      with fields `minimumAndroidVersion`, `minimumIosVersion`,
+      `androidStoreUrl`, `iosStoreUrl`.
+- [ ] Deploy Firestore rules after update-gate changes:
+
+      ```
+      firebase deploy --only firestore:rules
+      ```
+
 - [ ] Replace placeholder `support@example.com` in `docs/privacy-policy.md`
       with the team's real support address.
 - [ ] Enable GitHub Pages: repo Settings -> Pages -> Source: Deploy from a
@@ -110,3 +119,69 @@ Items below are deferred for post-v1.0.0 and tracked in
 `docs/ai-workflow/BACKLOG.md`: offline UX hardening, performance tuning, app
 size analysis, full dark mode QA, `task_logs/` cascade-delete, FCM notification
 on task delete, and major-version dependency bumps.
+
+---
+
+## Shorebird patch-eligibility checklist
+
+Run this before every `shorebird patch`. A patch is only allowed when **all** of
+the following are true. If any is false, do a full store binary release instead.
+
+- [ ] No changes to `pubspec.yaml` or `pubspec.lock` (no new or changed packages).
+- [ ] No changes to any native file: `.kt`, `.java`, `.swift`, `.m`, `*.gradle`,
+      `Podfile`, `AndroidManifest.xml`, `Info.plist`, `GeneratedPluginRegistrant.*`.
+- [ ] No changes to `firestore.rules` (deploy separately via
+      `firebase deploy --only firestore:rules`).
+- [ ] No changes to `functions/index.js` (deploy separately via
+      `firebase deploy --only functions`).
+- [ ] No new platform permissions or notification channel configuration.
+- [ ] The `shorebird patch` CLI reports no native changes detected — confirm
+      before proceeding.
+- [ ] Change is limited to `.dart` source files, and optionally asset files
+      (verify asset/translation patching works on your first Shorebird build —
+      see `NEXT_STEPS.md`).
+
+Patch commands (run from repo root):
+```
+shorebird patch android
+shorebird patch ios          # macOS required
+```
+
+---
+
+## Shorebird store binary release
+
+Required whenever the patch-eligibility checklist above cannot be fully checked
+(new package, native change, rules/functions change, `pubspec.yaml` change).
+Also required for the **initial Shorebird adoption** (adding `shorebird_code_push`
+to `pubspec.yaml` and rebuilding with the Shorebird engine).
+
+- [ ] **iOS only — Xcode constraint:** in the "Distribute App" flow, ensure
+      **"Manage Version and Build Number" is unchecked**. If Xcode manages the
+      build number, it overwrites the version metadata Shorebird uses to target
+      patches and users stop receiving them.
+- [ ] Build with Shorebird CLI (replaces `flutter build`):
+      ```
+      shorebird release android
+      shorebird release ios          # macOS required; produces an .xcarchive
+      ```
+- [ ] Upload the resulting archive to Google Play Console / App Store Connect
+      via the normal submission flow.
+- [ ] After store approval, decide whether to bump `config/app_settings`
+      minimum version (force-update semantics via mandatory update gate) or
+      leave the minimum unchanged (users receive the new binary on natural update).
+
+### First-time Shorebird setup (one-time)
+
+- [ ] Install Shorebird CLI: `curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | bash`
+- [ ] Authenticate: `shorebird login`
+- [ ] Add `shorebird_code_push` to `pubspec.yaml` under `dependencies`.
+- [ ] Initialize in the repo: `shorebird init` (creates `shorebird.yaml`).
+- [ ] On first Shorebird-enabled build, run FCM smoke test: airplane mode → send
+      FCM message → restore connectivity. Confirm no ANR or background hang
+      (known issue #695 is fixed but verify with your Firebase version).
+- [ ] Verify Crashlytics patch tagging: add `ShorebirdUpdater().readCurrentPatch()`
+      call in `main()` after Firebase init, set
+      `FirebaseCrashlytics.instance.setCustomKey('shorebird_patch_number', ...)`.
+- [ ] Verify asset/translation patching (see `NEXT_STEPS.md` "Shorebird asset
+      patching" item) and record the result here.

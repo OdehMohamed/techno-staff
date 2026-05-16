@@ -56,6 +56,30 @@ class AppDrawer extends StatelessWidget {
                   );
                 },
               ),
+            if (user?.role == 'employee')
+              ListTile(
+                leading: const Icon(Icons.fingerprint_outlined),
+                title: Text('my_attendance'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.attendance,
+                  );
+                },
+              ),
+            if (user?.role == 'employee')
+              ListTile(
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: Text('monthly_attendance'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.employeeMonthlyAttendance,
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.task_outlined),
               title: Text('tasks'.tr()),
@@ -64,6 +88,18 @@ class AppDrawer extends StatelessWidget {
                 Navigator.pushReplacementNamed(context, RouteNames.tasks);
               },
             ),
+            if (user?.role == 'admin')
+              ListTile(
+                leading: const Icon(Icons.fingerprint_outlined),
+                title: Text('attendance_management'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.adminAttendance,
+                  );
+                },
+              ),
             if (user?.role == 'admin')
               ListTile(
                 leading: const Icon(Icons.bar_chart_outlined),

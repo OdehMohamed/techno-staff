@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
 import 'package:techno_staff/features/dashboard/data/services/report_service.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_line_chart.dart';
@@ -24,12 +26,18 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  String _todayJerusalemYmd() {
+    final nowJerusalem = DateTime.now().toUtc().add(const Duration(hours: 3));
+    return DateFormat('yyyy-MM-dd').format(nowJerusalem);
+  }
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+      context.read<AttendanceCubit>().loadRoster(_todayJerusalemYmd());
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<AuthCubit>().state.user;
@@ -150,40 +158,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 900;
-                            final isMedium = constraints.maxWidth >= 600;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'employees'.tr(),
-                                      value: employeesCount.toString(),
-                                      icon: Icons.group_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'total_tasks'.tr(),
-                                      value: totalTasks.toString(),
-                                      icon: Icons.task_outlined,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSizes.md),
-                                  Expanded(
-                                    child: _DashboardStatCard(
-                                      title: 'completed_tasks'.tr(),
-                                      value: completedTasks.toString(),
-                                      icon: Icons.check_circle_outline,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
-
-                            if (isMedium) {
                               return Row(
                                 children: [
                                   Expanded(
@@ -236,6 +213,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             );
                           },
                         ),
+                        const SizedBox(height: AppSizes.md),
+                        // Today's attendance summary card
+                        BlocBuilder<AttendanceCubit, AttendanceState>(
+                          builder: (context, attendanceState) {
+                            final presentCount = attendanceState.roster
+                                .where((r) => r.status == 'present')
+                                .length;
+                            return _DashboardStatCard(
+                              title: 'today_attendance'.tr(),
+                              value: presentCount.toString(),
+                              icon: Icons.how_to_reg_outlined,
+                            );
+                          },
+                        ),
                         const SizedBox(height: AppSizes.xl),
 
                         SectionHeader(
@@ -279,7 +270,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 700;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
                               return Row(
@@ -305,6 +296,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       title: 'open_overdue'.tr(),
                                       value: overdueOpenTasks.toString(),
                                       icon: Icons.warning_amber_outlined,
+                                      accentColor: overdueOpenTasks > 0
+                                          ? Theme.of(context).colorScheme.error
+                                          : null,
                                     ),
                                   ),
                                 ],
@@ -329,6 +323,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   title: 'open_overdue'.tr(),
                                   value: overdueOpenTasks.toString(),
                                   icon: Icons.warning_amber_outlined,
+                                  accentColor: overdueOpenTasks > 0
+                                      ? Theme.of(context).colorScheme.error
+                                      : null,
                                 ),
                               ],
                             );
@@ -359,7 +356,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 700;
+                            final isWide = constraints.maxWidth >= 500;
 
                             if (isWide) {
                               return Row(
@@ -517,7 +514,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                             const SizedBox(height: AppSizes.xs),
                                             Text(
                                               DateFormat(
-                                                'yyyy-MM-dd • HH:mm',
+                                                'dd MMM yyyy • HH:mm',
                                               ).format(activityTime),
                                               style: Theme.of(context)
                                                   .textTheme
@@ -554,27 +551,29 @@ class _DashboardStatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
+  final Color? accentColor;
 
   const _DashboardStatCard({
     required this.title,
     required this.value,
     required this.icon,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = accentColor ?? Theme.of(context).colorScheme.primary;
+
     return AppCard(
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon),
+            child: Icon(icon, color: color),
           ),
           const SizedBox(width: AppSizes.md),
           Expanded(

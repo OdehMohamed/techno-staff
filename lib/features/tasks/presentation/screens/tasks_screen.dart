@@ -514,7 +514,11 @@ class _TasksScreenState extends State<TasksScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSizes.sm),
-                  Text(task.description),
+                  Text(
+                    task.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: AppSizes.md),
                   Wrap(
                     spacing: AppSizes.sm,
@@ -529,7 +533,8 @@ class _TasksScreenState extends State<TasksScreen> {
                     ],
                   ),
                   if (currentUser != null &&
-                      task.assignedTo == currentUser.id) ...[
+                      task.assignedTo == currentUser.id &&
+                      task.status != 'completed') ...[
                     const SizedBox(height: AppSizes.lg),
                     if (task.isCounter)
                       _CounterProgressRow(

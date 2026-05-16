@@ -222,7 +222,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
-                                '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                '${'due_date'.tr()}: ${DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)}',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               CountdownChip(
@@ -235,7 +235,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           _DetailsRow(
                             label: 'created_at'.tr(),
                             value: DateFormat(
-                              'yyyy-MM-dd HH:mm',
+                              'dd MMM yyyy • HH:mm',
                             ).format(task.createdAt),
                           ),
                           if (task.updatedAt != null) ...[
@@ -243,7 +243,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             _DetailsRow(
                               label: 'updated_at'.tr(),
                               value: DateFormat(
-                                'yyyy-MM-dd HH:mm',
+                                'dd MMM yyyy • HH:mm',
                               ).format(task.updatedAt!),
                             ),
                           ],
@@ -252,7 +252,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             _DetailsRow(
                               label: 'completed_at'.tr(),
                               value: DateFormat(
-                                'yyyy-MM-dd HH:mm',
+                                'dd MMM yyyy • HH:mm',
                               ).format(task.completedAt!),
                             ),
                           ],
@@ -308,7 +308,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                             .withValues(alpha: 0.12),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.history),
+                                      child: Icon(_logActionIcon(log.action)),
                                     ),
                                     const SizedBox(width: AppSizes.md),
                                     Expanded(
@@ -339,7 +339,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                                             const SizedBox(height: AppSizes.xs),
                                             Text(
                                               DateFormat(
-                                                'yyyy-MM-dd HH:mm',
+                                                'dd MMM yyyy • HH:mm',
                                               ).format(log.performedAt!),
                                               style: Theme.of(
                                                 context,
@@ -384,10 +384,23 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     String? newStatus,
   }) {
     if (previousStatus != null && newStatus != null) {
-      return '$performedByName • $previousStatus → $newStatus';
+      return '$performedByName • ${previousStatus.tr()} → ${newStatus.tr()}';
     }
 
     return performedByName;
+  }
+
+  IconData _logActionIcon(String action) {
+    switch (action) {
+      case 'created':
+        return Icons.add_circle_outline;
+      case 'status_changed':
+        return Icons.swap_horiz;
+      case 'overdue_escalation':
+        return Icons.warning_amber_outlined;
+      default:
+        return Icons.history;
+    }
   }
 }
 

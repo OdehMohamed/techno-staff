@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
+import 'package:techno_staff/features/attendance/presentation/screens/employee_monthly_attendance_screen.dart';
+import 'package:techno_staff/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/settings/presentation/screens/about_screen.dart';
 import '../../features/settings/presentation/screens/change_password_screen.dart';
@@ -21,6 +24,7 @@ import '../../features/tasks/presentation/screens/task_details_screen.dart';
 import '../../features/tasks/presentation/screens/recurring_tasks_screen.dart';
 import '../../features/tasks/presentation/screens/add_template_screen.dart';
 import '../../features/tasks/presentation/screens/edit_template_screen.dart';
+import '../../features/update/presentation/screens/update_required_screen.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -151,6 +155,27 @@ class AppRouter {
         final template = settings.arguments as TaskTemplateModel;
         return MaterialPageRoute(
           builder: (_) => EditTemplateScreen(template: template),
+          settings: settings,
+        );
+      case RouteNames.attendance:
+        return MaterialPageRoute(
+          builder: (_) => const AttendanceScreen(),
+          settings: settings,
+        );
+      case RouteNames.employeeMonthlyAttendance:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeeMonthlyAttendanceScreen(),
+          settings: settings,
+        );
+      case RouteNames.adminAttendance:
+        return MaterialPageRoute(
+          builder: (_) => const AdminAttendanceScreen(),
+          settings: settings,
+        );
+      case RouteNames.updateRequired:
+        return MaterialPageRoute(
+          builder: (_) =>
+              UpdateRequiredScreen(storeUrl: settings.arguments as String?),
           settings: settings,
         );
       default:

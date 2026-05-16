@@ -15,6 +15,7 @@ const i18n = {
     task_completed_body: "{task}",
     task_deadline_title: "Task Reminder ⏰",
     task_deadline_today_body: "Your task is due today: {task}",
+    task_deadline_72h_body: "Your task '{taskTitle}' is due in 3 days.",
     task_deadline_tomorrow_body: "Your task is due tomorrow: {task}",
     task_overdue_title: "Overdue Task ⚠️",
     task_overdue_body: "Your task is overdue: {task}",
@@ -28,6 +29,7 @@ const i18n = {
     task_completed_body: "{task}",
     task_deadline_title: "تذكير بالمهمة ⏰",
     task_deadline_today_body: "مهمتك مستحقة اليوم: {task}",
+    task_deadline_72h_body: "مهمتك '{taskTitle}' تستحق خلال 3 أيام.",
     task_deadline_tomorrow_body: "مهمتك مستحقة غداً: {task}",
     task_overdue_title: "مهمة متأخرة ⚠️",
     task_overdue_body: "مهمتك متأخرة: {task}",
@@ -233,6 +235,406 @@ exports.generateRecurringTaskInstances = onSchedule(
       }
     } catch (error) {
       console.error("Error generating recurring task instances:", error);
+    }
+  },
+);
+
+exports.recordAttendance = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const action = request.data && request.data.action;
+
+  if (action !== "check_in" && action !== "check_out") {
+    throw new HttpsError("invalid-argument", "Invalid attendance action");
+  }
+
+  const db = admin.firestore();
+  const now = new Date();
+  const date = ymdInJerusalem(now);
+  const userId = request.auth.uid;
+  const docId = `${userId}_${date}`;
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("permission-denied", "Current user record not found");
+  }
+  const userData = userDoc.data() || {};
+  const userName = userData.name || "Unknown";
+
+  const attendanceRef = db.collection("attendance").doc(docId);
+  const logRef = db.collection("attendance_logs").doc();
+
+  await db.runTransaction(async (txn) => {
+    const attendanceSnap = await txn.get(attendanceRef);
+    const previousValue = attendanceSnap.exists ? attendanceSnap.data() : null;
+
+    if (action === "check_in") {
+      const existingData = attendanceSnap.exists ? attendanceSnap.data() : {};
+      const sessions = Array.isArray(existingData.sessions)
+        ? existingData.sessions
+        : [];
+      const lastSession =
+        sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+      if (lastSession && lastSession.checkOutAt == null) {
+        throw new HttpsError("already-exists", "already-checked-in");
+      }
+
+      const newSession = {
+        checkInAt: admin.firestore.Timestamp.fromDate(now),
+        checkOutAt: null,
+        durationMinutes: null,
+      };
+
+      if (!attendanceSnap.exists) {
+        txn.set(attendanceRef, {
+          userId,
+          userName,
+          date,
+          status: "present",
+          isCorrected: false,
+          totalDurationMinutes: 0,
+          sessions: [newSession],
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        txn.update(attendanceRef, {
+          sessions: [...sessions, newSession],
+          status: "present",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      txn.set(logRef, {
+        attendanceId: docId,
+        userId,
+        action: "check_in",
+        performedBy: userId,
+        performedByName: userName,
+        previousValue,
+        newValue: {
+          session: "appended",
+          status: "present",
+        },
+        performedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    if (!attendanceSnap.exists) {
+      throw new HttpsError("failed-precondition", "not-checked-in");
+    }
+
+    const sessions = Array.isArray(attendanceSnap.data().sessions)
+      ? attendanceSnap.data().sessions
+      : [];
+    const openSession =
+      sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+    if (!openSession || openSession.checkOutAt != null) {
+      throw new HttpsError("failed-precondition", "not-checked-in");
+    }
+
+    const checkInAt = openSession.checkInAt.toDate();
+    const durationMinutes = Math.max(
+      0,
+      Math.round((now.getTime() - checkInAt.getTime()) / 60000),
+    );
+    const closedSession = {
+      ...openSession,
+      checkOutAt: admin.firestore.Timestamp.fromDate(now),
+      durationMinutes,
+    };
+    const updatedSessions = [...sessions.slice(0, -1), closedSession];
+    const totalDurationMinutes = updatedSessions.reduce(
+      (sum, session) => sum + (session.durationMinutes || 0),
+      0,
+    );
+
+    txn.update(attendanceRef, {
+      sessions: updatedSessions,
+      totalDurationMinutes,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    txn.set(logRef, {
+      attendanceId: docId,
+      userId,
+      action: "check_out",
+      performedBy: userId,
+      performedByName: userName,
+      previousValue,
+      newValue: {
+        session: "closed",
+        totalDurationMinutes,
+      },
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true, docId };
+});
+
+exports.adminCorrectAttendance = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const adminUid = request.auth.uid;
+  const db = admin.firestore();
+
+  const adminDoc = await db.collection("users").doc(adminUid).get();
+  if (!adminDoc.exists || (adminDoc.data() || {}).role !== "admin") {
+    throw new HttpsError(
+      "permission-denied",
+      "Only admins can correct attendance",
+    );
+  }
+
+  const adminName = (adminDoc.data() || {}).name || "Admin";
+  const userId = request.data && request.data.userId;
+  const date = request.data && request.data.date;
+
+  if (!userId || !date) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required correction payload",
+    );
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpsError("invalid-argument", "Invalid date format");
+  }
+
+  // New sessions-array path (primary).
+  const rawSessions =
+    request.data &&
+    Array.isArray(request.data.sessions) &&
+    request.data.sessions.length > 0
+      ? request.data.sessions
+      : null;
+
+  // Legacy fields path (backward compat — kept so old clients don't break).
+  const fields = (request.data && request.data.fields) || {};
+  const hasCheckInAt = Object.prototype.hasOwnProperty.call(fields, "checkInAt");
+  const hasCheckOutAt = Object.prototype.hasOwnProperty.call(fields, "checkOutAt");
+
+  if (!rawSessions && !hasCheckInAt) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Either sessions array or fields.checkInAt must be provided",
+    );
+  }
+
+  // notes can arrive as a top-level field (new path) or inside fields (legacy).
+  const notes =
+    request.data && request.data.notes !== undefined
+      ? request.data.notes
+      : fields.notes !== undefined
+        ? fields.notes
+        : undefined;
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "Target user not found");
+  }
+  const userName = (userDoc.data() || {}).name || "Unknown";
+
+  const docId = `${userId}_${date}`;
+  const attendanceRef = db.collection("attendance").doc(docId);
+  const logRef = db.collection("attendance_logs").doc();
+
+  await db.runTransaction(async (txn) => {
+    const attendanceSnap = await txn.get(attendanceRef);
+    const existing = attendanceSnap.exists ? attendanceSnap.data() : {};
+    const previousValue = attendanceSnap.exists ? existing : null;
+
+    const nextValue = {
+      isCorrected: true,
+      correctedBy: adminUid,
+      correctedByName: adminName,
+      correctedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // Preserve the original sessions on the first correction for auditability.
+    // Subsequent corrections leave originalSessions intact (first version wins).
+    if (!existing.isCorrected && Array.isArray(existing.sessions)) {
+      nextValue.originalSessions = existing.sessions;
+    }
+
+    if (notes !== undefined) {
+      nextValue.notes = notes == null ? null : String(notes);
+    }
+
+    if (rawSessions) {
+      // Validate, compute durations, and sort by checkInAt.
+      const parsed = rawSessions.map((s, idx) => {
+        const checkInDate = new Date(s.checkInAt);
+        if (Number.isNaN(checkInDate.getTime())) {
+          throw new HttpsError(
+            "invalid-argument",
+            `Session ${idx}: invalid checkInAt`,
+          );
+        }
+        const checkOutDate = s.checkOutAt ? new Date(s.checkOutAt) : null;
+        if (checkOutDate && Number.isNaN(checkOutDate.getTime())) {
+          throw new HttpsError(
+            "invalid-argument",
+            `Session ${idx}: invalid checkOutAt`,
+          );
+        }
+        const durationMinutes =
+          checkOutDate != null
+            ? Math.max(
+                0,
+                Math.round(
+                  (checkOutDate.getTime() - checkInDate.getTime()) / 60000,
+                ),
+              )
+            : null;
+        return {
+          checkInAt: admin.firestore.Timestamp.fromDate(checkInDate),
+          checkOutAt: checkOutDate
+            ? admin.firestore.Timestamp.fromDate(checkOutDate)
+            : null,
+          durationMinutes,
+        };
+      });
+
+      // Guarantee session ordering.
+      parsed.sort((a, b) => a.checkInAt.toMillis() - b.checkInAt.toMillis());
+
+      const totalDurationMinutes = parsed.reduce(
+        (sum, s) => sum + (s.durationMinutes || 0),
+        0,
+      );
+
+      nextValue.sessions = parsed;
+      nextValue.totalDurationMinutes = totalDurationMinutes;
+      nextValue.status = "present";
+    } else if (hasCheckInAt && hasCheckOutAt) {
+      // Legacy path: single check-in/check-out pair.
+      const parsedCheckInAt = new Date(fields.checkInAt);
+      const parsedCheckOutAt = new Date(fields.checkOutAt);
+      if (
+        Number.isNaN(parsedCheckInAt.getTime()) ||
+        Number.isNaN(parsedCheckOutAt.getTime())
+      ) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Invalid checkInAt/checkOutAt timestamp",
+        );
+      }
+
+      const durationMinutes = Math.max(
+        0,
+        Math.round(
+          (parsedCheckOutAt.getTime() - parsedCheckInAt.getTime()) / 60000,
+        ),
+      );
+
+      nextValue.sessions = [
+        {
+          checkInAt: admin.firestore.Timestamp.fromDate(parsedCheckInAt),
+          checkOutAt: admin.firestore.Timestamp.fromDate(parsedCheckOutAt),
+          durationMinutes,
+        },
+      ];
+      nextValue.totalDurationMinutes = durationMinutes;
+      nextValue.status = "present";
+    }
+
+    if (!attendanceSnap.exists) {
+      nextValue.userId = userId;
+      nextValue.userName = userName;
+      nextValue.date = date;
+      nextValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "sessions")) {
+        nextValue.sessions = [];
+      }
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "totalDurationMinutes")) {
+        nextValue.totalDurationMinutes = 0;
+      }
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "status")) {
+        nextValue.status = "absent";
+      }
+    }
+
+    txn.set(attendanceRef, nextValue, { merge: true });
+    txn.set(logRef, {
+      attendanceId: docId,
+      userId,
+      action: "admin_correction",
+      performedBy: adminUid,
+      performedByName: adminName,
+      previousValue,
+      newValue: {
+        sessions: nextValue.sessions,
+        notes: nextValue.notes,
+        isCorrected: true,
+        correctedBy: adminUid,
+      },
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true, docId };
+});
+
+exports.sendDailyAbsenceMarker = onSchedule(
+  {
+    schedule: "0 23 * * *",
+    timeZone: "Asia/Jerusalem",
+  },
+  async () => {
+    try {
+      const db = admin.firestore();
+      const today = ymdInJerusalem(new Date());
+
+      const employeesSnapshot = await db
+        .collection("users")
+        .where("isActive", "==", true)
+        .where("role", "==", "employee")
+        .get();
+
+      for (const employeeDoc of employeesSnapshot.docs) {
+        const employee = employeeDoc.data() || {};
+        const userId = employeeDoc.id;
+        const userName = employee.name || "Unknown";
+        const attendanceId = `${userId}_${today}`;
+        const attendanceRef = db.collection("attendance").doc(attendanceId);
+        const attendanceSnap = await attendanceRef.get();
+        const sessions =
+          attendanceSnap.exists && Array.isArray(attendanceSnap.data().sessions)
+            ? attendanceSnap.data().sessions
+            : [];
+
+        if (sessions.length > 0) {
+          continue;
+        }
+
+        const absentDoc = {
+          userId,
+          userName,
+          date: today,
+          status: "absent",
+          isCorrected: false,
+          totalDurationMinutes: 0,
+          sessions: [],
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (!attendanceSnap.exists) {
+          absentDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        }
+
+        await attendanceRef.set(absentDoc, { merge: true });
+      }
+    } catch (error) {
+      console.error("Error running daily absence marker:", error);
     }
   },
 );
@@ -510,96 +912,143 @@ exports.sendTaskDeadlineReminders = onSchedule(
       const db = admin.firestore();
 
       const now = new Date();
-      const tomorrowStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1,
-        0,
-        0,
-        0,
-        0,
-      );
-      const tomorrowEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 2,
-        0,
-        0,
-        0,
-        0,
-      );
+      const todayYmd = ymdInJerusalem(now);
+      const [year, month, day] = todayYmd.split("-").map(Number);
 
-      const tasksSnapshot = await db
-        .collection("tasks")
-        .where("status", "!=", "completed")
-        .where(
-          "dueDate",
-          ">=",
-          admin.firestore.Timestamp.fromDate(tomorrowStart),
-        )
-        .where("dueDate", "<", admin.firestore.Timestamp.fromDate(tomorrowEnd))
-        .get();
+      const jerusalemDay = (offsetDays) =>
+        new Date(Date.UTC(year, month - 1, day + offsetDays, 12, 0, 0));
 
-      if (tasksSnapshot.empty) {
-        console.log("No tasks due tomorrow.");
-        return;
-      }
+      const in72hStart = jerusalemMidnightAsUTC(jerusalemDay(3));
+      const in72hEnd = jerusalemMidnightAsUTC(jerusalemDay(4));
 
-      for (const doc of tasksSnapshot.docs) {
-        const task = doc.data();
-        const assignedTo = task.assignedTo;
-        const taskTitle = task.title || "Task";
+      const in24hStart = jerusalemMidnightAsUTC(jerusalemDay(1));
+      const in24hEnd = jerusalemMidnightAsUTC(jerusalemDay(2));
 
-        if (!assignedTo) continue;
+      const [snap72h, snap24h] = await Promise.all([
+        db
+          .collection("tasks")
+          .where("status", "!=", "completed")
+          .where(
+            "dueDate",
+            ">=",
+            admin.firestore.Timestamp.fromDate(in72hStart),
+          )
+          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in72hEnd))
+          .get(),
+        db
+          .collection("tasks")
+          .where("status", "!=", "completed")
+          .where(
+            "dueDate",
+            ">=",
+            admin.firestore.Timestamp.fromDate(in24hStart),
+          )
+          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in24hEnd))
+          .get(),
+      ]);
 
-        const userDoc = await db.collection("users").doc(assignedTo).get();
-        if (!userDoc.exists) continue;
+      const processThreshold = async ({
+        snapshot,
+        dedupField,
+        bodyKey,
+        bodyArgs,
+      }) => {
+        for (const taskDoc of snapshot.docs) {
+          try {
+            const task = taskDoc.data();
+            const taskId = taskDoc.id;
+            const assignedTo = task.assignedTo;
+            const taskTitle = task.title || "Task";
 
-        const userData = userDoc.data() || {};
-        const fcmToken = userData.fcmToken;
-        const languageCode = userData.languageCode || "en";
+            if (!assignedTo) {
+              continue;
+            }
 
-        if (!fcmToken) continue;
+            const sentAt = task[dedupField];
+            if (
+              sentAt &&
+              typeof sentAt.toDate === "function" &&
+              sameDayJerusalem(sentAt.toDate(), now)
+            ) {
+              continue;
+            }
 
-        await admin.messaging().send({
-          token: fcmToken,
-          notification: {
-            title: localize("task_deadline_title", {}, languageCode),
-            body: localize(
-              "task_deadline_tomorrow_body",
-              { task: taskTitle },
-              languageCode,
-            ),
-          },
-          data: {
-            taskId: doc.id,
-            type: "task_deadline_reminder",
-          },
-          android: {
-            priority: "high",
-            notification: {
-              channelId: "task_notifications",
-            },
-          },
-          apns: {
-            payload: {
-              aps: {
-                sound: "default",
+            const userDoc = await db.collection("users").doc(assignedTo).get();
+            if (!userDoc.exists) {
+              continue;
+            }
+
+            const userData = userDoc.data() || {};
+            if (userData.isActive === false) {
+              continue;
+            }
+
+            const languageCode = userData.languageCode || "en";
+            const fcmToken = userData.fcmToken || null;
+
+            await sendFCMNotification({
+              token: fcmToken,
+              notification: {
+                title: localize("task_deadline_title", {}, languageCode),
+                body: localize(bodyKey, bodyArgs(taskTitle), languageCode),
               },
-            },
-          },
-        });
+              data: {
+                taskId,
+                type: "task_deadline_reminder",
+              },
+              android: {
+                priority: "high",
+                notification: {
+                  channelId: "task_notifications",
+                },
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: "default",
+                  },
+                },
+              },
+            });
 
-        await createInAppNotification({
-          userId: assignedTo,
-          type: "task_deadline_reminder",
-          taskId: doc.id,
-          data: {
-            taskTitle: taskTitle,
-          },
-        });
-        console.log("Reminder sent for task:", doc.id);
-      }
+            await createInAppNotification({
+              userId: assignedTo,
+              type: "task_deadline_reminder",
+              taskId,
+              data: {
+                taskTitle,
+              },
+            });
+
+            await db
+              .collection("tasks")
+              .doc(taskId)
+              .update({
+                [dedupField]: admin.firestore.FieldValue.serverTimestamp(),
+              });
+          } catch (taskError) {
+            console.error("Error processing deadline reminder task:", {
+              taskId: taskDoc.id,
+              dedupField,
+              error: taskError,
+            });
+          }
+        }
+      };
+
+      await processThreshold({
+        snapshot: snap72h,
+        dedupField: "reminderSent72hAt",
+        bodyKey: "task_deadline_72h_body",
+        bodyArgs: (taskTitle) => ({ taskTitle }),
+      });
+
+      await processThreshold({
+        snapshot: snap24h,
+        dedupField: "reminderSent24hAt",
+        bodyKey: "task_deadline_tomorrow_body",
+        bodyArgs: (taskTitle) => ({ task: taskTitle }),
+      });
     } catch (error) {
       console.error("Error sending deadline reminders:", error);
     }
@@ -788,16 +1237,10 @@ exports.sendOverdueTaskEscalations = onSchedule(
           : null;
 
         const sameDayReminder =
-          lastReminderAt &&
-          lastReminderAt.getFullYear() === now.getFullYear() &&
-          lastReminderAt.getMonth() === now.getMonth() &&
-          lastReminderAt.getDate() === now.getDate();
+          lastReminderAt && sameDayJerusalem(lastReminderAt, now);
 
         const sameDayEscalation =
-          lastEscalationAt &&
-          lastEscalationAt.getFullYear() === now.getFullYear() &&
-          lastEscalationAt.getMonth() === now.getMonth() &&
-          lastEscalationAt.getDate() === now.getDate();
+          lastEscalationAt && sameDayJerusalem(lastEscalationAt, now);
 
         let employeeNotified = false;
         let adminsNotified = false;
@@ -1229,4 +1672,11 @@ async function createInAppNotification({ userId, type, taskId, data }) {
       isRead: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+}
+
+async function sendFCMNotification(message) {
+  if (!message || !message.token) {
+    return;
+  }
+  await admin.messaging().send(message);
 }

@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,9 +9,12 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/priority_badge.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../attendance/presentation/widgets/attendance_record_card.dart';
 import '../../presentation/cubit/reports_cubit.dart';
 import '../../presentation/cubit/reports_state.dart';
 import '../../../auth/domain/models/app_user.dart';
+import '../../../attendance/presentation/cubit/attendance_cubit.dart';
+import '../../../attendance/presentation/cubit/attendance_state.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -24,6 +26,7 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   AppUser? _selectedEmployee;
   DateTime _selectedMonth = DateTime.now();
+
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
   }
@@ -138,6 +141,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  String _hoursLabel(int totalMinutes) {
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${hours}h ${minutes}m';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,6 +163,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     state.errorMessage != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(state.errorMessage!.tr())),
+                  );
+                }
+
+                if (state.status == ReportsStatus.loaded &&
+                    state.selectedEmployee != null &&
+                    state.selectedMonth != null) {
+                  context.read<AttendanceCubit>().loadMonthlyAttendance(
+                    state.selectedEmployee!.id,
+                    state.selectedMonth!.year,
+                    state.selectedMonth!.month,
                   );
                 }
               },
@@ -223,7 +242,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
-                                  '${'selected_month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                                  '${'selected_month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
                                 ),
                                 trailing: const Icon(Icons.calendar_month),
                                 onTap: _pickMonth,
@@ -250,7 +269,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             title:
                                 '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
                             subtitle:
-                                '${'month'.tr()}: ${DateFormat('yyyy-MM').format(_selectedMonth)}',
+                                '${'month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
                           ),
                           const SizedBox(height: AppSizes.md),
 
@@ -284,40 +303,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           const SizedBox(height: AppSizes.lg),
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 900;
-                              final isMedium = constraints.maxWidth >= 600;
+                              final isWide = constraints.maxWidth >= 500;
 
                               if (isWide) {
-                                return Row(
-                                  children: [
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'total_tasks'.tr(),
-                                        value: totalTasks.toString(),
-                                        icon: Icons.task_outlined,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'completed'.tr(),
-                                        value: completedTasks.toString(),
-                                        icon: Icons.check_circle_outline,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: _ReportStatCard(
-                                        title: 'in_progress'.tr(),
-                                        value: inProgressTasks.toString(),
-                                        icon: Icons.pending_actions_outlined,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              if (isMedium) {
                                 return Row(
                                   children: [
                                     Expanded(
@@ -404,7 +392,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ),
                           LayoutBuilder(
                             builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 700;
+                              final isWide = constraints.maxWidth >= 500;
 
                               if (isWide) {
                                 return Row(
@@ -478,73 +466,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ),
                           ),
                           const SizedBox(height: AppSizes.md),
-
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final callable = FirebaseFunctions.instance
-                                    .httpsCallable('testTaskDeadlineReminders');
-
-                                final result = await callable.call();
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Reminder sent: ${result.data}',
-                                    ),
-                                  ),
-                                );
-                              } catch (_) {
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error sending reminder'),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.notifications_active),
-                            label: const Text('Test Reminder'),
-                          ),
-                          const SizedBox(height: AppSizes.md),
-
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              try {
-                                final callable = FirebaseFunctions.instance
-                                    .httpsCallable(
-                                      'testOverdueTaskEscalations',
-                                    );
-
-                                final result = await callable.call();
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Escalation sent: ${result.data}',
-                                    ),
-                                  ),
-                                );
-                              } catch (_) {
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error sending escalation'),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.notifications_active),
-                            label: const Text('Test Escalation'),
-                          ),
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(
                             title: 'tasks'.tr(),
@@ -599,7 +520,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                           _InfoChip(
                                             icon: Icons.calendar_today_outlined,
                                             label:
-                                                '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(task.dueDate)}',
+                                                '${'due_date'.tr()}: ${DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)}',
                                           ),
                                         ],
                                       ),
@@ -608,6 +529,91 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               },
                             ),
+                          const SizedBox(height: AppSizes.xl),
+                          SectionHeader(
+                            title: 'monthly_attendance'.tr(),
+                            subtitle: DateFormat.yMMMM(
+                              context.locale.languageCode,
+                            ).format(_selectedMonth),
+                          ),
+                          BlocBuilder<AttendanceCubit, AttendanceState>(
+                            builder: (context, attendanceState) {
+                              if (attendanceState.monthlyStatus ==
+                                  AttendanceLoadStatus.loading) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(AppSizes.md),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+
+                              if (attendanceState.monthlyStatus ==
+                                  AttendanceLoadStatus.error) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AppSizes.sm,
+                                  ),
+                                  child: Text(
+                                    (attendanceState.monthlyError ??
+                                            'network_error')
+                                        .tr(),
+                                  ),
+                                );
+                              }
+
+                              if (attendanceState.monthlyRecords.isEmpty) {
+                                return const EmptyStateWidget(
+                                  icon: Icons.calendar_month_outlined,
+                                  titleKey: 'no_attendance_records',
+                                );
+                              }
+
+                              final daysPresent = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'present')
+                                  .length;
+                              final daysAbsent = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'absent')
+                                  .length;
+                              final corrections = attendanceState.monthlyRecords
+                                  .where((r) => r.isCorrected)
+                                  .length;
+                              final totalMinutes = attendanceState
+                                  .monthlyRecords
+                                  .fold<int>(
+                                    0,
+                                    (sum, r) => sum + r.totalDurationMinutes,
+                                  );
+
+                              return Column(
+                                children: [
+                                  _MonthlyAttendanceSummaryCard(
+                                    daysPresent: daysPresent,
+                                    daysAbsent: daysAbsent,
+                                    totalHoursWorked: _hoursLabel(totalMinutes),
+                                    corrections: corrections,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount:
+                                        attendanceState.monthlyRecords.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: AppSizes.sm),
+                                    itemBuilder: (context, index) {
+                                      final record =
+                                          attendanceState.monthlyRecords[index];
+                                      return AttendanceRecordCard(
+                                        record: record,
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ],
                       ],
                     ),
@@ -705,6 +711,72 @@ class _LegendItem extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label),
       ],
+    );
+  }
+}
+
+class _MonthlyAttendanceSummaryCard extends StatelessWidget {
+  final int daysPresent;
+  final int daysAbsent;
+  final String totalHoursWorked;
+  final int corrections;
+
+  const _MonthlyAttendanceSummaryCard({
+    required this.daysPresent,
+    required this.daysAbsent,
+    required this.totalHoursWorked,
+    required this.corrections,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Wrap(
+        spacing: AppSizes.sm,
+        runSpacing: AppSizes.sm,
+        children: [
+          _SummaryChip(
+            label: 'days_present'.tr(),
+            value: daysPresent.toString(),
+          ),
+          _SummaryChip(label: 'days_absent'.tr(), value: daysAbsent.toString()),
+          _SummaryChip(
+            label: 'total_hours_worked'.tr(),
+            value: totalHoursWorked,
+          ),
+          _SummaryChip(
+            label: 'corrections'.tr(),
+            value: corrections.toString(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _SummaryChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 4),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
     );
   }
 }
