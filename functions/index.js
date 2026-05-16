@@ -245,8 +245,6 @@ exports.recordAttendance = onCall(async (request) => {
   }
 
   const action = request.data && request.data.action;
-  const biometricVerified =
-    !!(request.data && request.data.biometricVerified === true);
 
   if (action !== "check_in" && action !== "check_out") {
     throw new HttpsError("invalid-argument", "Invalid attendance action");
@@ -273,27 +271,43 @@ exports.recordAttendance = onCall(async (request) => {
     const previousValue = attendanceSnap.exists ? attendanceSnap.data() : null;
 
     if (action === "check_in") {
-      if (attendanceSnap.exists && attendanceSnap.data().checkInAt != null) {
-        throw new HttpsError("failed-precondition", "already-checked-in");
+      const existingData = attendanceSnap.exists ? attendanceSnap.data() : {};
+      const sessions = Array.isArray(existingData.sessions)
+        ? existingData.sessions
+        : [];
+      const lastSession =
+        sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+      if (lastSession && lastSession.checkOutAt == null) {
+        throw new HttpsError("already-exists", "already-checked-in");
       }
 
-      const nextValue = {
-        userId,
-        userName,
-        date,
-        checkInAt: admin.firestore.FieldValue.serverTimestamp(),
+      const newSession = {
+        checkInAt: admin.firestore.Timestamp.fromDate(now),
         checkOutAt: null,
-        biometricVerified,
-        status: "present",
         durationMinutes: null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       if (!attendanceSnap.exists) {
-        nextValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        txn.set(attendanceRef, {
+          userId,
+          userName,
+          date,
+          status: "present",
+          isCorrected: false,
+          totalDurationMinutes: 0,
+          sessions: [newSession],
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        txn.update(attendanceRef, {
+          sessions: [...sessions, newSession],
+          status: "present",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
-      txn.set(attendanceRef, nextValue, { merge: true });
       txn.set(logRef, {
         attendanceId: docId,
         userId,
@@ -302,43 +316,49 @@ exports.recordAttendance = onCall(async (request) => {
         performedByName: userName,
         previousValue,
         newValue: {
-          checkInAt: "serverTimestamp",
+          session: "appended",
           status: "present",
-          biometricVerified,
         },
         performedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return;
     }
 
-    if (!attendanceSnap.exists || attendanceSnap.data().checkInAt == null) {
+    if (!attendanceSnap.exists) {
       throw new HttpsError("failed-precondition", "not-checked-in");
     }
 
-    if (attendanceSnap.data().checkOutAt != null) {
-      throw new HttpsError("failed-precondition", "already-checked-out");
+    const sessions = Array.isArray(attendanceSnap.data().sessions)
+      ? attendanceSnap.data().sessions
+      : [];
+    const openSession =
+      sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+    if (!openSession || openSession.checkOutAt != null) {
+      throw new HttpsError("failed-precondition", "not-checked-in");
     }
 
-    const checkInAt = attendanceSnap.data().checkInAt.toDate();
+    const checkInAt = openSession.checkInAt.toDate();
     const durationMinutes = Math.max(
       0,
       Math.round((now.getTime() - checkInAt.getTime()) / 60000),
     );
-
-    txn.set(
-      attendanceRef,
-      {
-        userId,
-        userName,
-        date,
-        checkOutAt: admin.firestore.FieldValue.serverTimestamp(),
-        biometricVerified,
-        status: "present",
-        durationMinutes,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
+    const closedSession = {
+      ...openSession,
+      checkOutAt: admin.firestore.Timestamp.fromDate(now),
+      durationMinutes,
+    };
+    const updatedSessions = [...sessions.slice(0, -1), closedSession];
+    const totalDurationMinutes = updatedSessions.reduce(
+      (sum, session) => sum + (session.durationMinutes || 0),
+      0,
     );
+
+    txn.update(attendanceRef, {
+      sessions: updatedSessions,
+      totalDurationMinutes,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     txn.set(logRef, {
       attendanceId: docId,
       userId,
@@ -347,10 +367,8 @@ exports.recordAttendance = onCall(async (request) => {
       performedByName: userName,
       previousValue,
       newValue: {
-        checkOutAt: "serverTimestamp",
-        status: "present",
-        biometricVerified,
-        durationMinutes,
+        session: "closed",
+        totalDurationMinutes,
       },
       performedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -369,7 +387,10 @@ exports.adminCorrectAttendance = onCall(async (request) => {
 
   const adminDoc = await db.collection("users").doc(adminUid).get();
   if (!adminDoc.exists || (adminDoc.data() || {}).role !== "admin") {
-    throw new HttpsError("permission-denied", "Only admins can correct attendance");
+    throw new HttpsError(
+      "permission-denied",
+      "Only admins can correct attendance",
+    );
   }
 
   const adminName = (adminDoc.data() || {}).name || "Admin";
@@ -378,44 +399,29 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   const fields = (request.data && request.data.fields) || {};
 
   if (!userId || !date || typeof fields !== "object") {
-    throw new HttpsError("invalid-argument", "Missing required correction payload");
+    throw new HttpsError(
+      "invalid-argument",
+      "Missing required correction payload",
+    );
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new HttpsError("invalid-argument", "Invalid date format");
   }
 
-  const parsedFields = {};
-  if (Object.prototype.hasOwnProperty.call(fields, "checkInAt")) {
-    if (fields.checkInAt == null || fields.checkInAt === "") {
-      parsedFields.checkInAt = null;
-    } else {
-      const parsed = new Date(fields.checkInAt);
-      if (Number.isNaN(parsed.getTime())) {
-        throw new HttpsError("invalid-argument", "Invalid checkInAt timestamp");
-      }
-      parsedFields.checkInAt = admin.firestore.Timestamp.fromDate(parsed);
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(fields, "checkOutAt")) {
-    if (fields.checkOutAt == null || fields.checkOutAt === "") {
-      parsedFields.checkOutAt = null;
-    } else {
-      const parsed = new Date(fields.checkOutAt);
-      if (Number.isNaN(parsed.getTime())) {
-        throw new HttpsError("invalid-argument", "Invalid checkOutAt timestamp");
-      }
-      parsedFields.checkOutAt = admin.firestore.Timestamp.fromDate(parsed);
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(fields, "notes")) {
-    parsedFields.notes = fields.notes == null ? null : String(fields.notes);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(fields, "biometricVerified")) {
-    parsedFields.biometricVerified = !!fields.biometricVerified;
+  const hasCheckInAt = Object.prototype.hasOwnProperty.call(
+    fields,
+    "checkInAt",
+  );
+  const hasCheckOutAt = Object.prototype.hasOwnProperty.call(
+    fields,
+    "checkOutAt",
+  );
+  if (hasCheckInAt !== hasCheckOutAt) {
+    throw new HttpsError(
+      "invalid-argument",
+      "checkInAt and checkOutAt must both be provided",
+    );
   }
 
   const userDoc = await db.collection("users").doc(userId).get();
@@ -431,53 +437,68 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   await db.runTransaction(async (txn) => {
     const attendanceSnap = await txn.get(attendanceRef);
     const existing = attendanceSnap.exists ? attendanceSnap.data() : {};
-    const previousValue = attendanceSnap.exists
-      ? {
-          checkInAt: existing.checkInAt || null,
-          checkOutAt: existing.checkOutAt || null,
-          status: existing.status || null,
-          notes: existing.notes || null,
-          durationMinutes:
-            existing.durationMinutes == null ? null : existing.durationMinutes,
-        }
-      : null;
+    const previousValue = attendanceSnap.exists ? existing : null;
 
     const nextValue = {
-      ...parsedFields,
+      isCorrected: true,
       correctedBy: adminUid,
       correctedAt: admin.firestore.FieldValue.serverTimestamp(),
-      status: "manual",
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
+
+    if (Object.prototype.hasOwnProperty.call(fields, "notes")) {
+      nextValue.notes = fields.notes == null ? null : String(fields.notes);
+    }
+
+    if (hasCheckInAt && hasCheckOutAt) {
+      const parsedCheckInAt = new Date(fields.checkInAt);
+      const parsedCheckOutAt = new Date(fields.checkOutAt);
+      if (
+        Number.isNaN(parsedCheckInAt.getTime()) ||
+        Number.isNaN(parsedCheckOutAt.getTime())
+      ) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Invalid checkInAt/checkOutAt timestamp",
+        );
+      }
+
+      const checkInAt = admin.firestore.Timestamp.fromDate(parsedCheckInAt);
+      const checkOutAt = admin.firestore.Timestamp.fromDate(parsedCheckOutAt);
+      const durationMinutes = Math.max(
+        0,
+        Math.round(
+          (parsedCheckOutAt.getTime() - parsedCheckInAt.getTime()) / 60000,
+        ),
+      );
+
+      nextValue.sessions = [
+        {
+          checkInAt,
+          checkOutAt,
+          durationMinutes,
+        },
+      ];
+      nextValue.totalDurationMinutes = durationMinutes;
+      nextValue.status = "present";
+    }
 
     if (!attendanceSnap.exists) {
       nextValue.userId = userId;
       nextValue.userName = userName;
       nextValue.date = date;
       nextValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
-    }
-
-    const effectiveCheckIn =
-      Object.prototype.hasOwnProperty.call(nextValue, "checkInAt")
-        ? nextValue.checkInAt
-        : existing.checkInAt || null;
-    const effectiveCheckOut =
-      Object.prototype.hasOwnProperty.call(nextValue, "checkOutAt")
-        ? nextValue.checkOutAt
-        : existing.checkOutAt || null;
-
-    if (effectiveCheckIn && effectiveCheckOut) {
-      const durationMinutes = Math.max(
-        0,
-        Math.round(
-          (effectiveCheckOut.toDate().getTime() -
-            effectiveCheckIn.toDate().getTime()) /
-            60000,
-        ),
-      );
-      nextValue.durationMinutes = durationMinutes;
-    } else {
-      nextValue.durationMinutes = null;
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "sessions")) {
+        nextValue.sessions = [];
+      }
+      if (
+        !Object.prototype.hasOwnProperty.call(nextValue, "totalDurationMinutes")
+      ) {
+        nextValue.totalDurationMinutes = 0;
+      }
+      if (!Object.prototype.hasOwnProperty.call(nextValue, "status")) {
+        nextValue.status = "absent";
+      }
     }
 
     txn.set(attendanceRef, nextValue, { merge: true });
@@ -489,10 +510,9 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       performedByName: adminName,
       previousValue,
       newValue: {
-        ...parsedFields,
-        status: "manual",
+        ...fields,
+        isCorrected: true,
         correctedBy: adminUid,
-        durationMinutes: nextValue.durationMinutes,
       },
       performedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -524,8 +544,12 @@ exports.sendDailyAbsenceMarker = onSchedule(
         const attendanceId = `${userId}_${today}`;
         const attendanceRef = db.collection("attendance").doc(attendanceId);
         const attendanceSnap = await attendanceRef.get();
+        const sessions =
+          attendanceSnap.exists && Array.isArray(attendanceSnap.data().sessions)
+            ? attendanceSnap.data().sessions
+            : [];
 
-        if (attendanceSnap.exists && attendanceSnap.data().checkInAt != null) {
+        if (sessions.length > 0) {
           continue;
         }
 
@@ -534,6 +558,9 @@ exports.sendDailyAbsenceMarker = onSchedule(
           userName,
           date: today,
           status: "absent",
+          isCorrected: false,
+          totalDurationMinutes: 0,
+          sessions: [],
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 

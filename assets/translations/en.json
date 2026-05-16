@@ -278,5 +278,17 @@
   "correct_attendance": "Correct Attendance",
   "attendance_corrected": "Attendance record corrected",
   "today_attendance": "Today's Attendance",
+  "monthly_attendance": "Monthly Attendance",
+  "total_hours_worked": "Total Hours Worked",
+  "days_present": "Days Present",
+  "days_absent": "Days Absent",
+  "corrections": "Corrections",
+  "edit": "Edit",
+  "error": "Error",
+  "export_pdf": "Export PDF",
+  "exporting_pdf": "Exporting PDF...",
+  "failed_to_export_pdf": "Failed to export PDF",
+  "unknown_error": "Unknown error",
+  "task_notifications": "Task Notifications",
   "notes": "Notes"
 }

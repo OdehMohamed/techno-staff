@@ -72,17 +72,44 @@ class AttendanceRepository {
     return docs;
   }
 
+  Future<List<AttendanceModel>> fetchMonthlyAttendance(
+    String userId,
+    int year,
+    int month,
+  ) async {
+    final start =
+        '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-01';
+    final nextMonth = month == 12
+        ? '${year + 1}-01-01'
+        : '${year.toString().padLeft(4, '0')}-${(month + 1).toString().padLeft(2, '0')}-01';
+
+    final snapshot = await _firestore
+        .collection('attendance')
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: start)
+        .where('date', isLessThan: nextMonth)
+        .orderBy('date', descending: false)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   Future<void> adminCorrect({
     required String userId,
     required String date,
     required Map<String, dynamic> fields,
     String? notes,
   }) async {
+    final sanitizedFields = Map<String, dynamic>.from(fields)
+      ..remove('status');
+
     final callable = _functions.httpsCallable('adminCorrectAttendance');
     await callable.call({
       'userId': userId,
       'date': date,
-      'fields': {...fields, if (notes != null) 'notes': notes},
+      'fields': {...sanitizedFields, if (notes != null) 'notes': notes},
     });
   }
 

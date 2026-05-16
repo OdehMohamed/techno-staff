@@ -23,23 +23,18 @@ class AttendanceCheckButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCheckedIn = todayRecord?.checkInAt != null;
-    final hasCheckedOut = todayRecord?.checkOutAt != null;
+    final hasOpenSession = todayRecord?.hasOpenSession ?? false;
+    final canCheckIn = todayRecord == null || !hasOpenSession;
+    final canCheckOut = hasOpenSession;
 
     String actionKey = 'check_in';
     IconData icon = Icons.login;
-    VoidCallback? onPressed = onCheckIn;
+    VoidCallback? onPressed = canCheckIn ? onCheckIn : null;
 
-    if (hasCheckedIn && !hasCheckedOut) {
+    if (canCheckOut) {
       actionKey = 'check_out';
       icon = Icons.logout;
       onPressed = onCheckOut;
-    }
-
-    if (hasCheckedOut) {
-      actionKey = 'checked_out';
-      icon = Icons.check_circle_outline;
-      onPressed = null;
     }
 
     if (!isOnline) {
@@ -48,9 +43,7 @@ class AttendanceCheckButton extends StatelessWidget {
 
     final subtitleKey = !isOnline
         ? 'no_internet_for_attendance'
-        : hasCheckedOut
-        ? 'checked_out'
-        : hasCheckedIn
+        : hasOpenSession
         ? 'checked_in'
         : null;
 

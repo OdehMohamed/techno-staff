@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
+import 'package:techno_staff/features/attendance/presentation/screens/employee_monthly_attendance_screen.dart';
 import 'package:techno_staff/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/settings/presentation/screens/about_screen.dart';
@@ -159,6 +160,11 @@ class AppRouter {
       case RouteNames.attendance:
         return MaterialPageRoute(
           builder: (_) => const AttendanceScreen(),
+          settings: settings,
+        );
+      case RouteNames.employeeMonthlyAttendance:
+        return MaterialPageRoute(
+          builder: (_) => const EmployeeMonthlyAttendanceScreen(),
           settings: settings,
         );
       case RouteNames.adminAttendance:

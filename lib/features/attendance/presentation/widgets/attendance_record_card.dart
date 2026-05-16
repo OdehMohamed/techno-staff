@@ -31,6 +31,14 @@ class AttendanceRecordCard extends StatelessWidget {
                 ),
               ),
               _StatusChip(status: record.status),
+              if (record.isCorrected) ...[
+                const SizedBox(width: AppSizes.xs),
+                Icon(
+                  Icons.edit_outlined,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: AppSizes.sm),
@@ -43,15 +51,13 @@ class AttendanceRecordCard extends StatelessWidget {
             label: 'check_out_time'.tr(),
             value: _formatTime(record.checkOutAt),
           ),
-          if (record.durationMinutes != null) ...[
-            const SizedBox(height: AppSizes.xs),
-            Text(
-              'duration_minutes'.tr(
-                namedArgs: {'minutes': '${record.durationMinutes}'},
-              ),
-              style: Theme.of(context).textTheme.bodyMedium,
+          const SizedBox(height: AppSizes.xs),
+          Text(
+            'duration_minutes'.tr(
+              namedArgs: {'minutes': '${record.totalDurationMinutes}'},
             ),
-          ],
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
     );
@@ -94,7 +100,8 @@ class _StatusChip extends StatelessWidget {
     final statusKey = switch (status) {
       'present' => 'attendance_status_present',
       'absent' => 'attendance_status_absent',
-      'manual' => 'attendance_status_manual',
+      // Backward compatibility for old attendance docs.
+      'manual' => 'attendance_status_present',
       _ => 'attendance_status_present',
     };
 
@@ -102,10 +109,6 @@ class _StatusChip extends StatelessWidget {
       'absent' => (
           background: Theme.of(context).colorScheme.errorContainer,
           foreground: Theme.of(context).colorScheme.onErrorContainer,
-        ),
-      'manual' => (
-          background: Theme.of(context).colorScheme.tertiaryContainer,
-          foreground: Theme.of(context).colorScheme.onTertiaryContainer,
         ),
       _ => (
           background: Theme.of(context).colorScheme.primaryContainer,

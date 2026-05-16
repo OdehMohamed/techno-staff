@@ -65,6 +65,18 @@ class AppDrawer extends StatelessWidget {
                   Navigator.pushReplacementNamed(context, RouteNames.attendance);
                 },
               ),
+            if (user?.role == 'employee')
+              ListTile(
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: Text('monthly_attendance'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(
+                    context,
+                    RouteNames.employeeMonthlyAttendance,
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.task_outlined),
               title: Text('tasks'.tr()),

@@ -193,6 +193,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 if (state.historyStatus == AttendanceLoadStatus.loading &&
                     state.history.isEmpty)
                   const Center(child: CircularProgressIndicator())
+                else if (state.historyStatus == AttendanceLoadStatus.error)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSizes.sm),
+                    child: Text((state.historyError ?? 'network_error').tr()),
+                  )
                 else if (state.history.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSizes.sm),

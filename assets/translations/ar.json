@@ -278,5 +278,17 @@
   "correct_attendance": "تصحيح الحضور",
   "attendance_corrected": "تم تصحيح سجل الحضور",
   "today_attendance": "حضور اليوم",
+  "monthly_attendance": "الحضور الشهري",
+  "total_hours_worked": "إجمالي ساعات العمل",
+  "days_present": "أيام الحضور",
+  "days_absent": "أيام الغياب",
+  "corrections": "التصحيحات",
+  "edit": "تعديل",
+  "error": "خطأ",
+  "export_pdf": "تصدير PDF",
+  "exporting_pdf": "جاري تصدير PDF...",
+  "failed_to_export_pdf": "فشل في تصدير PDF",
+  "unknown_error": "خطأ غير معروف",
+  "task_notifications": "إشعارات المهام",
   "notes": "ملاحظات"
 }

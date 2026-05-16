@@ -24,25 +24,27 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     );
 
     _todaySubscription?.cancel();
-    _todaySubscription = _attendanceRepository.streamTodayRecord(userId).listen(
-      (record) {
-        emit(
-          state.copyWith(
-            todayStatus: AttendanceLoadStatus.loaded,
-            todayRecord: record,
-            clearTodayError: true,
-          ),
+    _todaySubscription = _attendanceRepository
+        .streamTodayRecord(userId)
+        .listen(
+          (record) {
+            emit(
+              state.copyWith(
+                todayStatus: AttendanceLoadStatus.loaded,
+                todayRecord: record,
+                clearTodayError: true,
+              ),
+            );
+          },
+          onError: (error) {
+            emit(
+              state.copyWith(
+                todayStatus: AttendanceLoadStatus.error,
+                todayError: 'network_error',
+              ),
+            );
+          },
         );
-      },
-      onError: (error) {
-        emit(
-          state.copyWith(
-            todayStatus: AttendanceLoadStatus.error,
-            todayError: 'network_error',
-          ),
-        );
-      },
-    );
   }
 
   Future<void> loadHistory(String userId) async {
@@ -134,22 +136,57 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   }
 
   Future<void> loadRoster(String date) async {
-    emit(state.copyWith(
-      rosterStatus: AttendanceLoadStatus.loading,
-      selectedDate: date,
-      clearRosterError: true,
-    ));
+    emit(
+      state.copyWith(
+        rosterStatus: AttendanceLoadStatus.loading,
+        selectedDate: date,
+        clearRosterError: true,
+      ),
+    );
     try {
       final records = await _attendanceRepository.fetchRosterForDate(date);
-      emit(state.copyWith(
-        rosterStatus: AttendanceLoadStatus.loaded,
-        roster: records,
-      ));
+      emit(
+        state.copyWith(
+          rosterStatus: AttendanceLoadStatus.loaded,
+          roster: records,
+        ),
+      );
     } catch (_) {
-      emit(state.copyWith(
-        rosterStatus: AttendanceLoadStatus.error,
-        rosterError: 'network_error',
-      ));
+      emit(
+        state.copyWith(
+          rosterStatus: AttendanceLoadStatus.error,
+          rosterError: 'network_error',
+        ),
+      );
+    }
+  }
+
+  Future<void> loadMonthlyAttendance(String userId, int year, int month) async {
+    emit(
+      state.copyWith(
+        monthlyStatus: AttendanceLoadStatus.loading,
+        clearMonthlyError: true,
+      ),
+    );
+    try {
+      final records = await _attendanceRepository.fetchMonthlyAttendance(
+        userId,
+        year,
+        month,
+      );
+      emit(
+        state.copyWith(
+          monthlyStatus: AttendanceLoadStatus.loaded,
+          monthlyRecords: records,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          monthlyStatus: AttendanceLoadStatus.error,
+          monthlyError: 'network_error',
+        ),
+      );
     }
   }
 
@@ -159,10 +196,12 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     required Map<String, dynamic> fields,
     String? notes,
   }) async {
-    emit(state.copyWith(
-      correctionStatus: AttendanceActionStatus.submitting,
-      clearCorrectionError: true,
-    ));
+    emit(
+      state.copyWith(
+        correctionStatus: AttendanceActionStatus.submitting,
+        clearCorrectionError: true,
+      ),
+    );
     try {
       await _attendanceRepository.adminCorrect(
         userId: userId,
@@ -171,20 +210,23 @@ class AttendanceCubit extends Cubit<AttendanceState> {
         notes: notes,
       );
       emit(state.copyWith(correctionStatus: AttendanceActionStatus.success));
-      await loadRoster(date);
     } catch (_) {
-      emit(state.copyWith(
-        correctionStatus: AttendanceActionStatus.error,
-        correctionError: 'network_error',
-      ));
+      emit(
+        state.copyWith(
+          correctionStatus: AttendanceActionStatus.error,
+          correctionError: 'network_error',
+        ),
+      );
     }
   }
 
   void clearCorrectionFeedback() {
-    emit(state.copyWith(
-      correctionStatus: AttendanceActionStatus.idle,
-      clearCorrectionError: true,
-    ));
+    emit(
+      state.copyWith(
+        correctionStatus: AttendanceActionStatus.idle,
+        clearCorrectionError: true,
+      ),
+    );
   }
 
   String _mapAttendanceError(Object error) {
@@ -199,9 +241,6 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       }
       if (combined.contains('not-checked-in')) {
         return 'not_checked_in_yet';
-      }
-      if (combined.contains('already-checked-out')) {
-        return 'already_checked_out';
       }
       if (code == 'unauthenticated') {
         return 'not_authorized';

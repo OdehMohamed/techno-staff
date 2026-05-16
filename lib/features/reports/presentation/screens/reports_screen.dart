@@ -9,10 +9,10 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/priority_badge.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../attendance/presentation/widgets/attendance_record_card.dart';
 import '../../presentation/cubit/reports_cubit.dart';
 import '../../presentation/cubit/reports_state.dart';
 import '../../../auth/domain/models/app_user.dart';
-import '../../../attendance/data/models/attendance_model.dart';
 import '../../../attendance/presentation/cubit/attendance_cubit.dart';
 import '../../../attendance/presentation/cubit/attendance_state.dart';
 
@@ -26,44 +26,17 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   AppUser? _selectedEmployee;
   DateTime _selectedMonth = DateTime.now();
-  late String _attendanceDateStr;
 
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
   }
 
-  String _todayJerusalemYmd() {
-    final nowJerusalem = DateTime.now().toUtc().add(const Duration(hours: 3));
-    return DateFormat('yyyy-MM-dd').format(nowJerusalem);
-  }
-
   @override
   void initState() {
     super.initState();
-    _attendanceDateStr = _todayJerusalemYmd();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportsCubit>().loadEmployees();
-      context.read<AttendanceCubit>().loadRoster(_attendanceDateStr);
     });
-  }
-
-  Future<void> _pickAttendanceDate() async {
-    final today = DateTime.now();
-    final firstDate = today.subtract(const Duration(days: 90));
-    final parsed = DateTime.tryParse(_attendanceDateStr) ?? today;
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: parsed,
-      firstDate: firstDate,
-      lastDate: today,
-    );
-
-    if (picked != null && mounted) {
-      final formatted = DateFormat('yyyy-MM-dd').format(picked);
-      setState(() => _attendanceDateStr = formatted);
-      context.read<AttendanceCubit>().loadRoster(formatted);
-    }
   }
 
   Future<void> _pickMonth() async {
@@ -168,6 +141,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  String _hoursLabel(int totalMinutes) {
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${hours}h ${minutes}m';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,6 +163,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     state.errorMessage != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(state.errorMessage!.tr())),
+                  );
+                }
+
+                if (state.status == ReportsStatus.loaded &&
+                    state.selectedEmployee != null &&
+                    state.selectedMonth != null) {
+                  context.read<AttendanceCubit>().loadMonthlyAttendance(
+                    state.selectedEmployee!.id,
+                    state.selectedMonth!.year,
+                    state.selectedMonth!.month,
                   );
                 }
               },
@@ -540,70 +529,91 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               },
                             ),
-                        ],
-                        // Attendance section (admin only — read-only roster)
-                        const SizedBox(height: AppSizes.xl),
-                        SectionHeader(
-                          title: 'attendance_management'.tr(),
-                          subtitle: 'today_attendance'.tr(),
-                        ),
-                        Builder(
-                          builder: (context) {
-                            final locale = context.locale.languageCode;
-                            final parsedDate =
-                                DateTime.tryParse(_attendanceDateStr);
-                            final dateLabel = parsedDate != null
-                                ? DateFormat.yMMMd(locale).format(parsedDate)
-                                : _attendanceDateStr;
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AppCard(
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(dateLabel),
-                                    trailing: const Icon(
-                                      Icons.calendar_today_outlined,
-                                    ),
-                                    onTap: _pickAttendanceDate,
+                          const SizedBox(height: AppSizes.xl),
+                          SectionHeader(
+                            title: 'monthly_attendance'.tr(),
+                            subtitle: DateFormat.yMMMM(
+                              context.locale.languageCode,
+                            ).format(_selectedMonth),
+                          ),
+                          BlocBuilder<AttendanceCubit, AttendanceState>(
+                            builder: (context, attendanceState) {
+                              if (attendanceState.monthlyStatus ==
+                                  AttendanceLoadStatus.loading) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(AppSizes.md),
+                                    child: CircularProgressIndicator(),
                                   ),
-                                ),
-                                const SizedBox(height: AppSizes.md),
-                                BlocBuilder<AttendanceCubit, AttendanceState>(
-                                  builder: (context, attendanceState) {
-                                    if (attendanceState.rosterStatus ==
-                                        AttendanceLoadStatus.loading) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
+                                );
+                              }
+
+                              if (attendanceState.monthlyStatus ==
+                                  AttendanceLoadStatus.error) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AppSizes.sm,
+                                  ),
+                                  child: Text(
+                                    (attendanceState.monthlyError ??
+                                            'network_error')
+                                        .tr(),
+                                  ),
+                                );
+                              }
+
+                              if (attendanceState.monthlyRecords.isEmpty) {
+                                return const EmptyStateWidget(
+                                  icon: Icons.calendar_month_outlined,
+                                  titleKey: 'no_attendance_records',
+                                );
+                              }
+
+                              final daysPresent = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'present')
+                                  .length;
+                              final daysAbsent = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'absent')
+                                  .length;
+                              final corrections = attendanceState.monthlyRecords
+                                  .where((r) => r.isCorrected)
+                                  .length;
+                              final totalMinutes =
+                                  attendanceState.monthlyRecords.fold<int>(
+                                0,
+                                (sum, r) => sum + r.totalDurationMinutes,
+                              );
+
+                              return Column(
+                                children: [
+                                  _MonthlyAttendanceSummaryCard(
+                                    daysPresent: daysPresent,
+                                    daysAbsent: daysAbsent,
+                                    totalHoursWorked: _hoursLabel(totalMinutes),
+                                    corrections: corrections,
+                                  ),
+                                  const SizedBox(height: AppSizes.md),
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount:
+                                        attendanceState.monthlyRecords.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: AppSizes.sm),
+                                    itemBuilder: (context, index) {
+                                      final record =
+                                          attendanceState.monthlyRecords[index];
+                                      return AttendanceRecordCard(
+                                        record: record,
                                       );
-                                    }
-                                    if (attendanceState.roster.isEmpty) {
-                                      return const EmptyStateWidget(
-                                        icon: Icons.people_outline,
-                                        titleKey: 'no_attendance_records',
-                                      );
-                                    }
-                                    return ListView.separated(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      itemCount: attendanceState.roster.length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(height: AppSizes.sm),
-                                      itemBuilder: (context, index) {
-                                        final record =
-                                            attendanceState.roster[index];
-                                        return _AttendanceRosterTile(
-                                          record: record,
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ],
-                            );
-                          },
-                        ),
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -704,79 +714,70 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-class _AttendanceRosterTile extends StatelessWidget {
-  final AttendanceModel record;
+class _MonthlyAttendanceSummaryCard extends StatelessWidget {
+  final int daysPresent;
+  final int daysAbsent;
+  final String totalHoursWorked;
+  final int corrections;
 
-  const _AttendanceRosterTile({required this.record});
+  const _MonthlyAttendanceSummaryCard({
+    required this.daysPresent,
+    required this.daysAbsent,
+    required this.totalHoursWorked,
+    required this.corrections,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(
-          record.userName.isNotEmpty ? record.userName : record.userId,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Row(
-          children: [
-            Text(_formatTime(record.checkInAt)),
-            const Text(' → '),
-            Text(_formatTime(record.checkOutAt)),
-          ],
-        ),
-        trailing: _RosterStatusChip(status: record.status),
+      child: Wrap(
+        spacing: AppSizes.sm,
+        runSpacing: AppSizes.sm,
+        children: [
+          _SummaryChip(
+            label: 'days_present'.tr(),
+            value: daysPresent.toString(),
+          ),
+          _SummaryChip(
+            label: 'days_absent'.tr(),
+            value: daysAbsent.toString(),
+          ),
+          _SummaryChip(
+            label: 'total_hours_worked'.tr(),
+            value: totalHoursWorked,
+          ),
+          _SummaryChip(
+            label: 'corrections'.tr(),
+            value: corrections.toString(),
+          ),
+        ],
       ),
     );
   }
-
-  String _formatTime(DateTime? dt) {
-    if (dt == null) return '-';
-    return DateFormat('HH:mm').format(dt.toLocal());
-  }
 }
 
-class _RosterStatusChip extends StatelessWidget {
-  final String status;
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final String value;
 
-  const _RosterStatusChip({required this.status});
+  const _SummaryChip({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    final statusKey = switch (status) {
-      'present' => 'attendance_status_present',
-      'absent' => 'attendance_status_absent',
-      'manual' => 'attendance_status_manual',
-      _ => 'attendance_status_present',
-    };
-
-    final colors = switch (status) {
-      'absent' => (
-          background: Theme.of(context).colorScheme.errorContainer,
-          foreground: Theme.of(context).colorScheme.onErrorContainer,
-        ),
-      'manual' => (
-          background: Theme.of(context).colorScheme.tertiaryContainer,
-          foreground: Theme.of(context).colorScheme.onTertiaryContainer,
-        ),
-      _ => (
-          background: Theme.of(context).colorScheme.primaryContainer,
-          foreground: Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
-    };
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        statusKey.tr(),
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: colors.foreground),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 4),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
+        ],
       ),
     );
   }
