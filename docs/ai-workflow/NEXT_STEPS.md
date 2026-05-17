@@ -28,33 +28,12 @@ _See `BACKLOG.md` v1.2 section for the locked ordered roadmap._
 
 ## Engineering
 
-### Admin alert on recurring task generation failure
-
-- **Category**: Engineering
-- **Why now**: `generateRecurringTaskInstances` has per-template try-catch with `console.error` only. Silent data gaps are not visible to admins.
-- **Sketch**: On Cloud Function template error, write to a Firestore `errors` collection or emit an in-app notification to admin users. Could reuse `createInAppNotification` helper.
-- **Open questions**: What severity threshold triggers an alert? Should it aggregate (one alert per failed run, not per template)? Does it require a new Firestore collection or can it write to `notifications`?
-
-### Firebase deploy step in release checklist
-
-- **Category**: Release
-- **Why now**: `firebase deploy --only functions,firestore:rules` is required after any release touching Cloud Functions or Firestore rules, but it is not prominently tracked in `docs/release-checklist.md`. Missing this step means recurring task generation and notification functions run on stale code in production.
-- **Sketch**: Add a mandatory post-merge step to `docs/release-checklist.md` with the exact deploy command and a note on which PRs require it (functions or rules changes).
-- **Open questions**: Should we add a CI check that fails if `functions/index.js` or `firestore.rules` changed but no deploy confirmation is present?
-
 ### Offline write queue user expectation
 
 - **Category**: UX / Engineering
 - **Why now**: The v1.1.0 connectivity banner tells users they're offline but doesn't explain whether actions taken offline will sync. Firestore persistence queues writes silently — a user who completes a task offline and sees no confirmation may retry, creating double-writes or unexpected state.
 - **Sketch**: After a write succeeds (Firestore local cache confirms), show a brief "Will sync when reconnected" indicator rather than full success. On reconnect, no extra UI needed — Firestore handles the sync.
 - **Open questions**: Is this a real pattern testers hit, or speculative? Defer until stabilization triage confirms it's an actual friction point.
-
-### CHANGELOG.md — v1.1.0 entry
-
-- **Category**: Release
-- **Why now**: The GitHub Release for v1.1.0 has full release notes, but `CHANGELOG.md` in the repo may not have a matching v1.1.0 section.
-- **Sketch**: Add a `## [1.1.0] — 2026-05-14` section to `CHANGELOG.md` mirroring the GitHub Release notes.
-- **Open questions**: None. Small documentation task.
 
 ## Architecture
 
