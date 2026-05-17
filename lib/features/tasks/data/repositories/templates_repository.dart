@@ -11,7 +11,7 @@ class TemplatesRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.taskTemplates)
         .orderBy('createdAt', descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
     return snapshot.docs
         .map((doc) => TaskTemplateModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -21,7 +21,7 @@ class TemplatesRepository {
     final doc = await _firestore
         .collection(FirebasePaths.taskTemplates)
         .doc(templateId)
-        .get();
+        .get(const GetOptions(source: Source.server));
     if (!doc.exists) return null;
     return TaskTemplateModel.fromMap(doc.id, doc.data()!);
   }

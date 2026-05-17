@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:techno_staff/core/constants/firebase_paths.dart';
 import '../models/in_app_notification_model.dart';
 
 class NotificationsRepository {
@@ -9,11 +10,11 @@ class NotificationsRepository {
 
   Future<List<InAppNotificationModel>> getNotifications(String userId) async {
     final snapshot = await _firestore
-        .collection('notifications')
+        .collection(FirebasePaths.notifications)
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .limit(30)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => InAppNotificationModel.fromMap(doc.id, doc.data()))
@@ -22,23 +23,24 @@ class NotificationsRepository {
 
   Future<int> getUnreadCount(String userId) async {
     final snapshot = await _firestore
-        .collection('notifications')
+        .collection(FirebasePaths.notifications)
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs.length;
   }
 
   Future<void> markAsRead(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).update({
-      'isRead': true,
-    });
+    await _firestore
+        .collection(FirebasePaths.notifications)
+        .doc(notificationId)
+        .update({'isRead': true});
   }
 
   Stream<List<InAppNotificationModel>> streamNotifications(String userId) {
     return _firestore
-        .collection('notifications')
+        .collection(FirebasePaths.notifications)
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .limit(30)
@@ -52,10 +54,10 @@ class NotificationsRepository {
 
   Future<void> markAllAsRead(String userId) async {
     final snapshot = await _firestore
-        .collection('notifications')
+        .collection(FirebasePaths.notifications)
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     final batch = _firestore.batch();
 

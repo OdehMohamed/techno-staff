@@ -9,7 +9,10 @@ class UserRepository {
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<AppUser?> getUserById(String uid) async {
-    final doc = await _firestore.collection(FirebasePaths.users).doc(uid).get();
+    final doc = await _firestore
+        .collection(FirebasePaths.users)
+        .doc(uid)
+        .get(const GetOptions(source: Source.server));
 
     if (!doc.exists || doc.data() == null) {
       return null;

@@ -13,7 +13,7 @@ class ReportsRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.users)
         .where('role', isEqualTo: 'employee')
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => AppUser.fromMap(doc.data(), doc.id))
@@ -32,7 +32,7 @@ class ReportsRepository {
         .where(FirebasePaths.assignedTo, isEqualTo: employeeId)
         .where('dueDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('dueDate', isLessThan: Timestamp.fromDate(end))
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))

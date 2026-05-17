@@ -4,7 +4,12 @@ class FirebasePaths {
   // Collections
   static const String users = 'users';
   static const String tasks = 'tasks';
+  static const String taskLogs = 'task_logs';
+  static const String notifications = 'notifications';
+  static const String attendance = 'attendance';
+  static const String attendanceLogs = 'attendance_logs';
   static const String taskTemplates = 'task_templates';
+  static const String fcmTokens = 'fcm_tokens';
   static const String config = 'config';
   static const String appSettings = 'app_settings';
 

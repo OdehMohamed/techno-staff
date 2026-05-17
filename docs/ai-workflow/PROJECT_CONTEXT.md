@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-05-08
+> Last updated: 2026-05-17
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -12,10 +12,12 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 **Techno Staff** is a Flutter + Firebase staff and task-management application with a role-based access model:
 
-- **Admin** — creates users, assigns tasks, monitors team performance via dashboards, exports PDF reports.
-- **Employee** — receives assigned tasks, updates their status, reads notifications.
+- **Admin** — creates users, assigns tasks, monitors team performance via dashboards, exports PDF reports, manages recurring task templates, reviews attendance, corrects attendance records.
+- **Employee** — receives assigned tasks, creates and assigns tasks, updates their status, tracks their own attendance, reads notifications.
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
+
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.2.0 features are merged to `main` and deployed. Next step is a binary store release.
 
 ## 2. Tech Stack
 
@@ -29,7 +31,9 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 | Charts              | `fl_chart` `^1.2.0`                          |
 | PDF                 | `pdf` `^3.12.0`, `printing` `^5.14.3`        |
 | Local notifications | `flutter_local_notifications` `^20.1.0`      |
-| Utilities           | `uuid`, `intl`, `path_provider`, `shared_preferences` |
+| Biometric auth      | `local_auth` `^3.0.1` (Android `USE_BIOMETRIC` + minSdk 23, iOS `NSFaceIDUsageDescription`) |
+| Connectivity        | `connectivity_plus` `^6.0.0`                 |
+| Utilities           | `uuid`, `intl`, `path_provider`, `shared_preferences`, `package_info_plus`, `url_launcher` |
 
 ### Backend (Firebase)
 
@@ -47,6 +51,7 @@ The app is bilingual (English + Arabic) with full RTL support and uses Firebase 
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 - Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
+- Translation parity enforced: `291 291 []` as of v1.2.0.
 
 ## 3. Architecture
 
@@ -56,12 +61,16 @@ Feature-first clean architecture under `lib/features/<feature>/`:
 lib/
 ├── app/                  # App bootstrap + top-level MultiBlocProvider wiring
 ├── core/                 # Routing, theme, constants, services (cross-cutting)
+│   ├── constants/        # app_colors, app_sizes, app_strings, app_assets, firebase_paths
+│   ├── routes/           # app_router.dart (onGenerateRoute switch), route_names.dart, app_navigator.dart
+│   ├── services/         # app_update_service.dart, notification_service.dart
+│   └── theme/            # AppTheme.lightTheme / darkTheme + ThemeCubit (persisted)
 ├── shared/widgets/       # Reusable UI components
 ├── features/
 │   └── <feature>/
 │       ├── data/         # Firestore DTOs + repositories
 │       ├── domain/       # Plain domain types (only where needed)
-│       └── presentation/ # cubit/ + screens/
+│       └── presentation/ # cubit/ + screens/ + widgets/
 ├── firebase_options.dart # Generated — do not hand-edit
 └── main.dart
 ```
@@ -70,50 +79,64 @@ All repositories and Cubits are constructed in `lib/app/app.dart` and injected i
 
 Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A global `AppNavigator.navigatorKey` lets background FCM handlers route without a `BuildContext`.
 
+**Firestore read discipline**: All repository reads use `GetOptions(source: Source.server)` to prevent stale Firestore cache from causing visible UX issues after mutations. Streams (`.snapshots()`) are always server-live and are unaffected.
+
 ## 4. Modules
 
 | Feature         | Role(s)  | Purpose                                                                                                                                                                                         |
 | --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `splash`        | all      | Boot + initial auth-state routing                                                                                                                                                               |
-| `auth`          | all      | Login, sign-out, FCM token registration on sign-in, FCM token cleanup on sign-out/account deletion, and automatic unauthenticated-state emission when Firebase invalidates the session server-side |
-| `admin`         | admin    | Admin home shell                                                                                                                                                                                |
-| `employee`      | employee | Employee home shell                                                                                                                                                                             |
-| `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable)                                                                                                                                |
-| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), client-side search/filter/sort, live countdown chip on list/details via adaptive screen-level ticker, counter task type with target/current count progress, details, create/edit/delete by creator or admin, status updates (assignee) |
-| `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend                                                                                                                                     |
-| `reports`       | admin    | Reporting + PDF export                                                                                                                                                                          |
-| `notifications` | all      | In-app notification feed with swipe-to-read and grouping                                                                                                                                        |
-| `settings`      | all      | Theme, language, sign out, About screen (version + privacy policy + licenses), delete account, edit profile (name), change password |
+| `splash`        | all      | Boot + mandatory version check (`AppUpdateService`) + initial auth-state routing                                                                                                               |
+| `update`        | all      | Non-dismissible `UpdateRequiredScreen` shown when installed version is below `config/app_settings.minimumAndroidVersion` / `minimumIosVersion`                                                  |
+| `auth`          | all      | Login, sign-out, FCM token registration on sign-in, FCM token cleanup on sign-out/account deletion, session revocation after password change, automatic unauthenticated-state emission when Firebase invalidates the session server-side |
+| `admin`         | admin    | Admin home shell (dashboard, task list with all-tasks tab)                                                                                                                                      |
+| `employee`      | employee | Employee home shell (task preview, countdown, quick actions)                                                                                                                                    |
+| `employees`     | admin    | Staff CRUD (creation goes through `createEmployeeUser` callable; activate/deactivate)                                                                                                           |
+| `tasks`         | all      | Task list with role-specific tabs (employee: assigned/created, admin: assigned/all), client-side search/filter/sort, live countdown chip via adaptive screen-level ticker, counter task type with target/current count + transactional increment, recurring task templates (admin-only, `task_templates` collection), task details with activity log, create/edit/delete by creator or admin, status updates (assignee) |
+| `dashboard`     | admin    | Charts, filters (today/week/month), team performance, trend, top performer, recent activity log, today's attendance summary card                                                                 |
+| `attendance`    | all      | Employee biometric check-in/out (server-authoritative timestamps via callable), multi-session daily records, session-level admin correction with audit trail (`originalSessions`), expandable attendance cards, employee personal history, monthly attendance view, admin roster view with date picker |
+| `reports`       | admin    | Task reporting by employee/month + attendance section, PDF export                                                                                                                               |
+| `notifications` | all      | In-app notification feed (server-written, client toggles `isRead`), real-time stream + unread count badge                                                                                       |
+| `settings`      | all      | Theme (persisted), language, sign out, About (version + privacy policy + licenses), delete account, edit profile (name), change password with session revocation                               |
 
 ## 5. Firestore Data Model
 
 | Collection                       | Client write access                                                                                                                                              | Notes                                                                                                |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` + `name` only                                                                                                      | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }` |
-| `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability; shape includes `taskType`, optional `targetCount`, and `currentCount` for counter tasks |
-| `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions                                                               |
-| `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed                                                                                 |
+| `users/{uid}`                    | admin: full; employee: own `fcmToken` + `languageCode` + `name` only                                                                                            | Read access is any authenticated user; shape: `{ email, name, role, isActive, fcmToken, languageCode, createdAt }`. **Note**: `fcmToken` is readable by all authenticated users — FCM token isolation to a separate collection is planned for the next release-hardening pass. |
+| `tasks/{taskId}`                 | any authenticated user can create when `assignedBy == auth.uid`; creator + admin: full update/delete (with immutable `assignedBy`); assignee: status fields + `currentCount` only | Rules enforce `onlyAllowedTaskStatusFieldsChanged` and `assignedBy` immutability; shape includes `taskType`, optional `targetCount`, `currentCount` for counter tasks; `templateId` for recurring instances |
+| `task_logs/{logId}`              | **none — server-only**                                                                                                                                           | Audit trail written by Cloud Functions; readable by task creator, assignee, and admins               |
+| `notifications/{notificationId}` | server writes; client toggles `isRead`                                                                                                                           | Per-user in-app feed; 30-item limit with real-time stream                                            |
+| `task_templates/{templateId}`    | admin: full (create/update/delete/pause); server: generates instances                                                                                            | Recurring task templates; instances written to `tasks/` with deterministic ID `{templateId}_{assigneeId}_{YYYY-MM-DD}` |
+| `attendance/{userId_YYYY-MM-DD}` | **none — server-only**                                                                                                                                           | Shape: `{ userId, userName, date, status, sessions[], totalDurationMinutes, isCorrected, originalSessions?, correctedBy?, correctedByName?, correctedAt?, notes? }` |
+| `attendance_logs/{logId}`        | **none — server-only**                                                                                                                                           | Audit trail for check-in/out and corrections                                                         |
+| `config/{configId}`              | admin only; **public read (unauthenticated)**                                                                                                                    | Only `config/app_settings` exists: `{ minimumAndroidVersion, minimumIosVersion, androidStoreUrl, iosStoreUrl }`. Public read is intentional — version check runs before auth gate. Never add sensitive data here. |
 
-Field-name constants live in `lib/core/constants/firebase_paths.dart`. String literals for Firestore paths are not allowed in feature code (see `RULES.md`).
+Field-name constants live in `lib/core/constants/firebase_paths.dart`. String literals for Firestore collection paths are not allowed in feature code — use `FirebasePaths.*` constants.
 
 ## 6. Cloud Functions
 
-Single file: `functions/index.js` (Node 22).
+Single file: `functions/index.js` (Node 22, ~1,700 lines).
 
-| Function                       | Trigger                            | Purpose                                                                             |
-| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------- |
-| `createEmployeeUser`           | callable (admin only)              | Create Firebase Auth user + `users/{uid}` doc                                       |
-| `sendTaskAssignedNotification` | Firestore `onCreate` tasks         | FCM push + log + in-app notification                                                |
-| `sendTaskStatusNotification`   | Firestore `onUpdate` tasks         | Notify admins + creator on completion; always log                                   |
-| `sendTaskDeadlineReminders`    | cron `0 9 * * *` (Asia/Jerusalem)  | 24h-before reminders                                                                |
-| `testTaskDeadlineReminders`    | admin-triggered callable           | Dry-run of the deadline reminder                                                    |
-| `sendOverdueTaskEscalations`   | cron `0 10 * * *` (Asia/Jerusalem) | Overdue escalation, deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt` |
-| `testOverdueTaskEscalations`   | admin-triggered callable           | Dry-run of the escalation                                                           |
-| `deleteUserAccount`            | callable (authenticated user)      | Delete caller's Firestore data + Firebase Auth account atomically                   |
-| `revokeUserSessions`          | callable (any signed-in user)      | Revokes all refresh tokens for the caller; used after password change to force other devices to re-authenticate |
-| `createInAppNotification`      | helper                             | Writes to `notifications` collection                                                |
+| Function                           | Trigger                              | Purpose                                                                             |
+| ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| `createEmployeeUser`               | callable (admin only)                | Create Firebase Auth user + `users/{uid}` doc                                       |
+| `revokeUserSessions`               | callable (authenticated user)        | Revoke all refresh tokens after password change; forces other-device re-auth         |
+| `deleteUserAccount`                | callable (authenticated user)        | Delete caller's Firestore data + Firebase Auth account atomically (preserves task history with "Deleted user" name) |
+| `sendTaskAssignedNotification`     | Firestore `onCreate` tasks           | FCM push + `task_logs` entry + in-app notification to assignee                      |
+| `sendTaskStatusNotification`       | Firestore `onUpdate` tasks           | Notify admins + creator on completion; always write a `task_logs` entry             |
+| `sendTaskDeadlineReminders`        | cron `0 9 * * *` (Asia/Jerusalem)    | Progressive 72h + 24h reminders; deduped via `reminderSent72hAt` / `reminderSent24hAt` per-task Timestamp fields |
+| `testTaskDeadlineReminders`        | callable (admin only)                | Dry-run of the deadline reminder sweep                                               |
+| `sendOverdueTaskEscalations`       | cron `0 10 * * *` (Asia/Jerusalem)   | Overdue escalation; deduped via `lastOverdueReminderAt` / `lastOverdueEscalationAt`; notifies assignee + admins |
+| `testOverdueTaskEscalations`       | callable (admin only)                | Dry-run of the escalation sweep                                                      |
+| `generateRecurringTaskInstances`   | cron `0 6 * * *` (Asia/Jerusalem)    | Generates daily/weekly/monthly task instances from active templates; layered idempotency (deterministic ID + transaction existence check); multi-assignee support; template errors are isolated per-template but currently only logged — in-app admin alert is a planned improvement |
+| `recordAttendance`                 | callable (authenticated user)        | Server-authoritative check-in/out; appends/closes sessions in a Firestore transaction; writes `attendance_logs` entry |
+| `adminCorrectAttendance`           | callable (admin only)                | Replaces sessions array with admin-provided correction; preserves `originalSessions` on first correction (audit trail); sorts sessions, computes durations; writes `correctedByName` |
+| `sendDailyAbsenceMarker`           | cron `0 23 * * *` (Asia/Jerusalem)   | Marks employees with no sessions today as `absent`; skips employees who already have a sessions entry |
+| `createInAppNotification`          | internal helper                      | Writes to `notifications` collection; used by all FCM-send paths                   |
 
-FCM push senders now localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).
+All FCM push senders localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).
+
+All Asia/Jerusalem date math uses `ymdInJerusalem` / `jerusalemMidnightAsUTC` / `sameDayJerusalem` helpers — no raw UTC math.
 
 ## 7. Notifications Pipeline
 
@@ -124,11 +147,11 @@ FCM push senders now localize `notification.title`/`notification.body` per recip
 - `FirebaseMessaging.onMessageOpenedApp`
 - `FirebaseMessaging.getInitialMessage`
 
-All four deep-link to `RouteNames.taskDetails` using the FCM payload's `taskId`. The FCM token is written to `users/{uid}.fcmToken` inside `AuthCubit._setupFCM` after a successful sign-in / auth check.
+All four deep-link to `RouteNames.taskDetails` using the FCM payload's `taskId`. The FCM token is written to `users/{uid}.fcmToken` inside `AuthCubit._setupFCM` after a successful sign-in / auth check. (FCM token isolation to a dedicated `fcm_tokens` collection is planned for the next release cycle.)
 
 ## 8. Theming, Constants, Shared Widgets
 
-- `lib/core/theme/` — `AppTheme.lightTheme`, `AppTheme.darkTheme`, `ThemeCubit` (persisted mode).
+- `lib/core/theme/` — `AppTheme.lightTheme`, `AppTheme.darkTheme`, `ThemeCubit` (persisted via `shared_preferences`).
 - `lib/core/constants/` — `app_colors.dart`, `app_sizes.dart`, `app_strings.dart`, `app_assets.dart`, `firebase_paths.dart`.
 - `lib/shared/widgets/` — `AppCard`, `AppDrawer`, `AppPieChart`, `ChartLegend`, `EmptyStateWidget`, `PriorityBadge`, `SectionHeader`, `StatusBadge`.
 
@@ -139,18 +162,30 @@ Reach for these before rolling anything bespoke.
 - JSON files in `assets/translations/` (`en.json`, `ar.json`).
 - Supported locales hard-coded in `main.dart`.
 - UI strings are always `'key'.tr()`. Error/state identifiers (e.g. `'not_authorized'`) are stored as translation keys too and resolved at the UI layer.
+- **Known**: `easy_localization` re-exports `package:intl/intl.dart` which defines its own `TextDirection` class, shadowing Flutter's `dart:ui` `TextDirection` enum. Files that use both `easy_localization` and `Directionality` must add `hide TextDirection` to the `easy_localization` import.
 
-## 10. Version & Branching
+## 10. Shorebird Patch Eligibility
 
-- **App version**: `1.0.0+1` (pre-release).
+| Surface | Patch-eligible |
+| ------- | -------------- |
+| Task status / counter / edit / templates UI | ✅ Pure Dart |
+| Attendance UI (screens, cards, correction sheet) | ❌ `local_auth` native plugin in feature tree |
+| FCM setup (background isolate) | ❌ Native |
+| `flutter_local_notifications` channel config | ❌ Native |
+| Translation JSON assets (`assets/translations/`) | ❓ **Untested** — verify on first Shorebird release build |
+
+Asset-patching verification is a mandatory step before the first Shorebird patch release. See `docs/release-checklist.md`.
+
+## 11. Version & Branching
+
+- **App version**: `1.1.0+3` in `pubspec.yaml` — **must be bumped to `1.2.0+4` before next store submission** (Phase 3 of the current release-hardening cycle).
 - **Production branch**: `main`.
-- **Integration branch**: `dev` — all feature work merges here first.
-- **Feature branches**: `feature/<short-name>` (many already merged).
+- **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.
 
 See `RULES.md` for the full git / commit policy.
 
-## 11. Links to Other Workflow Docs
+## 12. Links to Other Workflow Docs
 
 - [CURRENT_TASK.md](./CURRENT_TASK.md) — what we are working on right now.
 - [BACKLOG.md](./BACKLOG.md) — prioritized work queue.
@@ -158,3 +193,4 @@ See `RULES.md` for the full git / commit policy.
 - [RULES.md](./RULES.md) — coding rules, conventions, agent rules.
 - [NEXT_STEPS.md](./NEXT_STEPS.md) — forward-looking ideas (not yet committed).
 - [SESSION_LOG.md](./SESSION_LOG.md) — one entry per meaningful AI session.
+- [docs/release-checklist.md](../release-checklist.md) — pre-release verification steps.

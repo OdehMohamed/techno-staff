@@ -17,7 +17,7 @@ class TasksRepository {
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedTo, isEqualTo: userId)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -29,7 +29,7 @@ class TasksRepository {
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedBy, isEqualTo: userId)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -40,7 +40,7 @@ class TasksRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -82,7 +82,7 @@ class TasksRepository {
     final doc = await _firestore
         .collection(FirebasePaths.tasks)
         .doc(taskId)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     if (!doc.exists || doc.data() == null) {
       return null;
@@ -145,7 +145,7 @@ class TasksRepository {
     final doc = await _firestore
         .collection(FirebasePaths.users)
         .doc(userId)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     if (!doc.exists || doc.data() == null) {
       return '-';
@@ -166,10 +166,10 @@ class TasksRepository {
 
   Future<List<TaskLogModel>> getTaskLogs(String taskId) async {
     final snapshot = await _firestore
-        .collection('task_logs')
+        .collection(FirebasePaths.taskLogs)
         .where('taskId', isEqualTo: taskId)
         .orderBy('performedAt', descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskLogModel.fromMap(doc.id, doc.data()))

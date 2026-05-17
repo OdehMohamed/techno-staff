@@ -32,7 +32,7 @@ class DashboardRepository {
     }
     final usersSnapshot = await _firestore
         .collection(FirebasePaths.users)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     final tasksSnapshot = await _firestore
         .collection(FirebasePaths.tasks)
@@ -40,7 +40,7 @@ class DashboardRepository {
           FirebasePaths.createdAt,
           isGreaterThanOrEqualTo: Timestamp.fromDate(start),
         )
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     final employeesCount = usersSnapshot.docs
         .where((doc) => doc.data()[FirebasePaths.role] == 'employee')
@@ -115,7 +115,7 @@ class DashboardRepository {
     final tasksSnapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedTo, isEqualTo: userId)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     final totalTasks = tasksSnapshot.docs.length;
 
@@ -142,7 +142,7 @@ class DashboardRepository {
   Future<Map<String, dynamic>> getTopPerformer() async {
     final tasksSnapshot = await _firestore
         .collection(FirebasePaths.tasks)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     final Map<String, int> completedCount = {};
     final Map<String, int> activeCount = {};
@@ -196,10 +196,10 @@ class DashboardRepository {
 
   Future<List<Map<String, dynamic>>> getRecentActivities() async {
     final snapshot = await _firestore
-        .collection('task_logs')
+        .collection(FirebasePaths.taskLogs)
         .orderBy('performedAt', descending: true)
         .limit(10)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs.map((doc) {
       final data = doc.data();
@@ -215,7 +215,9 @@ class DashboardRepository {
   }
 
   Future<List<Map<String, dynamic>>> getTasksTrend() async {
-    final snapshot = await _firestore.collection(FirebasePaths.tasks).get();
+    final snapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .get(const GetOptions(source: Source.server));
 
     final Map<String, int> createdPerDay = {};
     final Map<String, int> completedPerDay = {};
