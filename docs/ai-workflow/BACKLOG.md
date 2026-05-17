@@ -208,6 +208,21 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 - **Description**: Employee check-in / check-out with biometric gate (`local_auth`, `biometricOnly: false`), server-authoritative timestamps via Cloud Function callables, flat `attendance/{userId}_{YYYY-MM-DD}` collection, v1 statuses `present|absent|manual` (late deferred to schedule-aware v2), daily absence cron at 23:00 Jerusalem, employee self-view in drawer, admin roster view + correction UI integrated into Reports screen, today's summary on admin dashboard. Full spec in `CURRENT_TASK.md`. Requires full binary release (native plugin). 26 new translation keys (parity target 272/272).
 - **Acceptance criteria**: All 18 checklist items in `CURRENT_TASK.md` pass. `flutter analyze` clean. `flutter test` green. `npm run lint` clean. Translation parity 272/272.
 
+#### 15. Release-hardening cycle + v1.2.0 finalization — `fix/release-hardening`
+
+- **Priority**: Should-fix (pre-release hardening + feature completion)
+- **Status**: Done — 2026-05-17
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.2.0
+- **Added**: 2026-05-17
+- **Description**: Full release-hardening and feature-completion pass spanning two branches (`fix/release-hardening`, `feat/attendance-stabilization` continuations). Covers five distinct work areas:
+  (1) **Security/data hardening**: `GetOptions(source: Source.server)` applied across all repositories; FCM tokens migrated to `fcm_tokens/{uid}` collection (`allow read: if false`); `createEmployeeUser` server-validates role; ESLint enforcement real (blanket disable removed, `require-jsdoc: off`, `max-len: 120`).
+  (2) **Work schedules**: `schedules/{userId}` Firestore collection; `ScheduleDay` + `WorkScheduleModel` + `ScheduleRepository`; admin schedule-edit sheet in Employees screen; `recordAttendance` now schedule-aware (`present`/`late`/`off_day_work`); `sendDailyAbsenceMarker` writes `off_day` for non-working days; employee off-day confirmation dialog; `AttendanceStatusChip` shared widget; 19 new i18n keys.
+  (3) **Task UX (T1–T4)**: `hasDueTime` flag + `DueDateTimePicker` for exact-time deadlines; `getCompletedTasks*` repository methods + 6 task indexes; Completed tab (recency grouping) in admin and employee task views; quick-filter chips (Overdue / Due Soon / High Priority) with group-collapse and single clear path.
+  (4) **Dashboard restructuring (Phase 4)**: Employee home `_TodayAttendanceCard` (loading placeholder, session status/time/duration, tappable); urgency-sorted task preview (5 cards, `_TaskDueLabel`). Admin dashboard `_AttendanceSummaryCard` (present+late headline, conditional chips); `_OverdueAlertCard` (errorContainer, conditional).
+  (5) **Reporting alignment**: `_MonthlyAttendanceSummaryCard` redesigned to match employee summary (rate bar, worked/not-worked grouping, correction row); attendance rate made schedule-aware on admin surface (`_countWorkingDays` + `loadEmployeeSchedule`); semantic parity restored with employee screen.
+- **Completed**: 2026-05-17 — PR #39 (`fix/release-hardening → main`). `flutter analyze` clean, `flutter test` green, `npm run lint` clean. Owner validation passed. Post-merge owner steps: `firebase deploy --only functions,firestore:rules,firestore:indexes`; store binary build; tag `v1.2.0`.
+
 ---
 
 ## Nice-to-have

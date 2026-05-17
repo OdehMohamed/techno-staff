@@ -71,7 +71,7 @@ service cloud.firestore {
 
       allow update: if isAdmin() || (
         isCurrentUser(userId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken', 'languageCode', 'name'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['languageCode', 'name'])
       );
 
       allow delete: if isAdmin();
@@ -120,6 +120,16 @@ service cloud.firestore {
     match /attendance_logs/{logId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    match /fcm_tokens/{userId} {
+      allow write: if isCurrentUser(userId);
+      allow read: if false;
+    }
+
+    match /schedules/{userId} {
+      allow read: if isAdmin() || isCurrentUser(userId);
+      allow write: if isAdmin();
     }
 
     match /config/{configId} {

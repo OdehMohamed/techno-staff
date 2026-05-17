@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
+import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -8,6 +10,7 @@ import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_state.dart';
+import '../../../../features/tasks/data/models/task_model.dart';
 import '../../../../features/tasks/presentation/cubit/tasks_cubit.dart';
 import '../../../../features/tasks/presentation/cubit/tasks_state.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -39,6 +42,16 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         context.read<NotificationsCubit>().listenToNotifications(user.id);
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthCubit>().state.user;
+      if (user != null) {
+        final att = context.read<AttendanceCubit>();
+        if (att.state.todayStatus == AttendanceLoadStatus.initial) {
+          att.startListeningToday(user.id);
+        }
+      }
+    });
   }
 
   Future<void> _loadData({bool silent = false}) async {
@@ -49,6 +62,21 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
       context.read<TasksCubit>().fetchTasksAssignedTo(user.id, silent: silent),
       context.read<DashboardCubit>().loadEmployeeStats(user.id, silent: silent),
     ]);
+  }
+
+  // Overdue tasks float to top; within each group, nearest deadline first.
+  List<TaskModel> _urgencySorted(List<TaskModel> tasks) {
+    final now = DateTime.now();
+    DateTime deadline(TaskModel t) => t.hasDueTime
+        ? t.dueDate
+        : DateTime(t.dueDate.year, t.dueDate.month, t.dueDate.day, 23, 59, 59);
+    return [...tasks]
+      ..sort((a, b) {
+        final aOverdue = deadline(a).isBefore(now);
+        final bOverdue = deadline(b).isBefore(now);
+        if (aOverdue != bOverdue) return aOverdue ? -1 : 1;
+        return deadline(a).compareTo(deadline(b));
+      });
   }
 
   @override
@@ -134,6 +162,8 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                                   ? null
                                   : '${'welcome_back'.tr()}, ${user.name}',
                             ),
+                            const SizedBox(height: AppSizes.md),
+                            const _TodayAttendanceCard(),
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 final isWide = constraints.maxWidth >= 700;
@@ -234,7 +264,9 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                               )
                             else
                               Column(
-                                children: tasks.take(3).map((task) {
+                                children: _urgencySorted(tasks)
+                                    .take(5)
+                                    .map((task) {
                                   return Padding(
                                     padding: const EdgeInsets.only(
                                       bottom: AppSizes.md,
@@ -280,8 +312,14 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: AppSizes.md),
-                                            PriorityBadge(
-                                              priority: task.priority,
+                                            Row(
+                                              children: [
+                                                PriorityBadge(
+                                                  priority: task.priority,
+                                                ),
+                                                const Spacer(),
+                                                _TaskDueLabel(task: task),
+                                              ],
                                             ),
                                           ],
                                         ),
@@ -290,7 +328,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                                   );
                                 }).toList(),
                               ),
-                            if (tasks.length > 3)
+                            if (tasks.length > 5)
                               Align(
                                 alignment: AlignmentDirectional.centerEnd,
                                 child: TextButton(
@@ -314,6 +352,143 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TodayAttendanceCard extends StatelessWidget {
+  const _TodayAttendanceCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AttendanceCubit, AttendanceState>(
+      builder: (context, state) {
+        if (state.todayStatus == AttendanceLoadStatus.initial ||
+            state.todayStatus == AttendanceLoadStatus.loading) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.md),
+            child: AppCard(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.md),
+                  Text(
+                    'today_attendance'.tr(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final record = state.todayRecord;
+
+        final Color iconColor;
+        final IconData icon;
+        if (record == null) {
+          iconColor = Theme.of(context).colorScheme.onSurfaceVariant;
+          icon = Icons.schedule_outlined;
+        } else if (record.hasOpenSession) {
+          iconColor = Colors.green.shade600;
+          icon = Icons.how_to_reg_outlined;
+        } else {
+          iconColor = Theme.of(context).colorScheme.primary;
+          icon = Icons.check_circle_outline;
+        }
+
+        final String statusLabel;
+        if (record == null) {
+          statusLabel = 'not_checked_in_yet'.tr();
+        } else if (record.hasOpenSession) {
+          statusLabel = 'checked_in'.tr();
+        } else {
+          statusLabel = 'checked_out'.tr();
+        }
+
+        String? timeLabel;
+        if (record != null && record.checkInAt != null) {
+          final checkInStr = DateFormat.Hm().format(record.checkInAt!);
+          if (record.hasOpenSession) {
+            timeLabel = '${'check_in_time'.tr()}: $checkInStr';
+          } else if (record.checkOutAt != null) {
+            final checkOutStr = DateFormat.Hm().format(record.checkOutAt!);
+            final dur = record.totalDurationMinutes;
+            final durStr =
+                dur >= 60 ? '${dur ~/ 60}h ${dur % 60}m' : '${dur}m';
+            timeLabel = '$checkInStr → $checkOutStr · $durStr';
+          }
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSizes.md),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => Navigator.pushNamed(context, RouteNames.attendance),
+            child: AppCard(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, color: iconColor),
+                  ),
+                  const SizedBox(width: AppSizes.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'today_attendance'.tr(),
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: AppSizes.xs),
+                        Text(
+                          statusLabel,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (timeLabel != null) ...[
+                          const SizedBox(height: AppSizes.xs),
+                          Text(
+                            timeLabel,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -357,6 +532,65 @@ class _EmployeeStatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TaskDueLabel extends StatelessWidget {
+  final TaskModel task;
+
+  const _TaskDueLabel({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final deadline = task.hasDueTime
+        ? task.dueDate
+        : DateTime(
+            task.dueDate.year,
+            task.dueDate.month,
+            task.dueDate.day,
+            23,
+            59,
+            59,
+          );
+    final isOverdue = deadline.isBefore(now);
+    final isDueToday = !isOverdue &&
+        task.dueDate.year == now.year &&
+        task.dueDate.month == now.month &&
+        task.dueDate.day == now.day;
+
+    final Color color;
+    if (isOverdue) {
+      color = Theme.of(context).colorScheme.error;
+    } else if (isDueToday) {
+      color = Colors.orange;
+    } else {
+      color = Theme.of(context).colorScheme.onSurfaceVariant;
+    }
+
+    final dateStr = DateFormat.yMMMd(
+      context.locale.languageCode,
+    ).format(task.dueDate);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isOverdue || isDueToday)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 4),
+            child: Icon(
+              isOverdue ? Icons.warning_amber_rounded : Icons.schedule_rounded,
+              size: 14,
+              color: color,
+            ),
+          ),
+        Text(
+          dateStr,
+          style:
+              Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+        ),
+      ],
     );
   }
 }

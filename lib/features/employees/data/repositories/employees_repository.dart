@@ -12,7 +12,7 @@ class EmployeesRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.users)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => AppUser.fromMap(doc.data(), doc.id))

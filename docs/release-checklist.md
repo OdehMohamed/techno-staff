@@ -1,42 +1,36 @@
 # Release Checklist
 
-A repeatable checklist for cutting a Techno Staff release. The first
-target is **v1.0.0**.
+A repeatable checklist for cutting a Techno Staff release.
 
 ## Pre-merge to `main`
 
-- [ ] All planned PRs merged into `dev`.
-- [ ] `flutter analyze`, `flutter test`, and `cd functions && npm run lint` all green on `dev`.
+- [ ] All planned feature branches merged and validated.
+- [ ] `flutter analyze`, `flutter test`, and `cd functions && npm run lint` all green.
 - [ ] Manual regression smoke test on a real Android 13+ device and an iOS device:
       sign-in, task list (admin and employee tabs), create/edit/delete task,
-      receive a push notification, About screen + privacy policy link, delete
-      account.
+      receive a push notification, About screen + privacy policy link, delete account.
+- [ ] **Attendance smoke test** — employee check-in (biometric prompt, session recorded),
+      check-out (duration shown), history screen; admin roster date-picker, correction
+      sheet, attendance report with rate bar and worked/not-worked grouping.
 
 ## Configuration items (one-time per release setup)
 
-- [ ] Create Firestore config doc for mandatory update gate: `config/app_settings`
-      with fields `minimumAndroidVersion`, `minimumIosVersion`,
-      `androidStoreUrl`, `iosStoreUrl`.
-- [ ] Deploy Firestore rules after update-gate changes:
+> Items marked ✅ are already complete and do not need to be repeated.
 
-      ```
-      firebase deploy --only firestore:rules
-      ```
+- ✅ Create Firestore config doc for mandatory update gate: `config/app_settings`
+  with fields `minimumAndroidVersion`, `minimumIosVersion`, `androidStoreUrl`, `iosStoreUrl`.
+  Update the minimum version values after each binary release that breaks backward compatibility.
+- ✅ Deploy initial Firestore rules (done via `firebase deploy --only firestore:rules`).
+  Re-run this command only when `firestore.rules` changes in a release.
+- ✅ Replace placeholder `support@example.com` in `docs/privacy-policy.md`.
+- ✅ Enable GitHub Pages: Branch `main`, Folder `/docs`.
+  URL: `https://odehmohamed.github.io/techno-staff/privacy-policy/`
+- ✅ iOS Crashlytics dSYM upload script configured in Xcode Run Script Phase.
+- ✅ **Android signed release keystore configured** — `android/key.properties` is in place.
+  Skip keytool steps below if keystore is already generated.
 
-- [ ] Replace placeholder `support@example.com` in `docs/privacy-policy.md`
-      with the team's real support address.
-- [ ] Enable GitHub Pages: repo Settings -> Pages -> Source: Deploy from a
-      branch -> Branch: `main`, Folder: `/docs` -> Save. Confirm
-      `https://odehmohamed.github.io/techno-staff/privacy-policy/` resolves.
-- [ ] iOS Crashlytics dSYM upload: open `ios/Runner.xcworkspace` in Xcode,
-      select the `Runner` target -> Build Phases -> add a Run Script Phase
-      with the FlutterFire-recommended `upload-symbols` invocation, and add
-      `$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)` to its Input Files. Without
-      this, iOS crashes are reported but stack traces are not symbolicated.
-- [ ] **Configure Android signed release keystore (one-time per project owner)** —
-      Required before any `flutter build appbundle --release` or upload to Play
-      Console. Skip this if the keystore is already generated and `android/key.properties`
-      is in place.
+  <details><summary>Keystore setup (first time only)</summary>
+
   1. Generate the upload keystore (run from anywhere — store it OUTSIDE the repo):
 
      ```
@@ -75,24 +69,38 @@ target is **v1.0.0**.
      If you get `Keystore file '/...jks' not found` → wrong path in
      `storeFile`.
 
+  </details>
+
 - [ ] iOS signing and provisioning: Apple Developer account, distribution
       certificate, App Store provisioning profile, configured in Xcode for
       the `Runner` target.
-- [ ] Enable Firestore scheduled backups: Firebase console -> Firestore ->
-      Backups -> configure daily scheduled backup.
+- [ ] Enable Firestore scheduled backups: Firebase console → Firestore →
+      Backups → configure daily scheduled backup.
 
 ## Release flow
 
-- [ ] Open release PR `dev -> main` titled `release: v1.0.0`. Body links the
-      CHANGELOG entry.
-- [ ] Use a merge commit (not squash) so per-feature history on `main`
-      remains traceable.
-- [ ] After merge, locally: `git checkout main && git pull`,
-      `git tag -a v1.0.0 -m "v1.0.0"`, `git push origin v1.0.0`.
-- [ ] Create a GitHub Release on the `v1.0.0` tag. Body = the v1.0.0 section
-      of `CHANGELOG.md`.
-- [ ] Bump `pubspec.yaml` build number for the next build (`1.0.0+2`) on
-      `dev` after the tag.
+- [ ] Merge the release branch into `main` with a merge commit (not squash)
+      so per-feature history remains traceable. PR title: `release: vX.Y.Z`.
+      Body links the CHANGELOG entry.
+- [ ] **Post-merge Firebase deploy** — required after any release that touches
+      Cloud Functions, Firestore rules, or Firestore indexes:
+      ```
+      firebase deploy --only functions,firestore:rules,firestore:indexes
+      ```
+      Run this from the repo root after `main` is up to date.
+- [ ] After merge, locally tag and push:
+      ```
+      git checkout main && git pull
+      git tag -a vX.Y.Z -m "vX.Y.Z"
+      git push origin vX.Y.Z
+      ```
+- [ ] Create a GitHub Release on the `vX.Y.Z` tag. Body = the matching
+      CHANGELOG section.
+- [ ] Update `config/app_settings` in Firestore console — bump
+      `minimumAndroidVersion` / `minimumIosVersion` if this release contains
+      breaking changes that require users to update (leave unchanged otherwise).
+- [ ] Bump `pubspec.yaml` version for the next development cycle on `main`
+      after the tag (e.g. `1.2.0+4` → `1.3.0+5`).
 
 ## Post-release verification
 
@@ -101,24 +109,36 @@ target is **v1.0.0**.
       should arrive within ~5 minutes).
 - [ ] Push notifications received by at least one admin and one employee
       user on the production build.
+- [ ] Attendance check-in/check-out works end-to-end on the production binary
+      (biometric prompt → session recorded → history screen shows entry).
+- [ ] `sendDailyAbsenceMarker` cron fires at 23:00 Jerusalem and creates
+      `absent` docs for employees with no check-in (verify in Firestore console
+      the following morning).
 - [ ] Firestore scheduled backup ran successfully (check Firebase console).
 
 ## Store submission
 
+**Choose one build path per release — Flutter-only or Shorebird binary:**
+
+**Flutter-only (current default until Shorebird is adopted):**
 - [ ] Android: `flutter build appbundle --release`, upload to Google Play
       Console internal track first, then production.
 - [ ] iOS: `flutter build ipa --release`, upload to App Store Connect via
       Xcode or `xcrun altool`. TestFlight first, then App Store review.
+
+**Shorebird binary (use once `shorebird_code_push` is in `pubspec.yaml`):**
+- See "Shorebird store binary release" section below.
+
 - [ ] Store listing metadata (descriptions, screenshots, keywords, support
       URL, privacy policy URL) populated in both consoles. Privacy URL must
       match the GitHub Pages address from above.
 
 ---
 
-Items below are deferred for post-v1.0.0 and tracked in
-`docs/ai-workflow/BACKLOG.md`: offline UX hardening, performance tuning, app
-size analysis, full dark mode QA, `task_logs/` cascade-delete, FCM notification
-on task delete, and major-version dependency bumps.
+Items tracked in `docs/ai-workflow/BACKLOG.md` and `NEXT_STEPS.md`:
+offline write-queue UX, late attendance status (schedule-aware v2),
+sign-out-all-devices Settings action, performance tuning, `task_logs/`
+cascade-delete, and major-version dependency bumps.
 
 ---
 

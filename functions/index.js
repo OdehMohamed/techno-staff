@@ -1,8 +1,7 @@
-/* eslint-disable */
-const { onCall, HttpsError } = require("firebase-functions/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
+const {onCall, HttpsError} = require("firebase-functions/https");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -92,7 +91,7 @@ function jerusalemDayOfWeek(date) {
     timeZone: "Asia/Jerusalem",
     weekday: "short",
   });
-  const map = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const map = {Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7};
   return map[formatter.format(date)];
 }
 
@@ -104,12 +103,63 @@ function jerusalemDayOfMonth(date) {
   return parseInt(formatter.format(date), 10);
 }
 
+function jerusalemHHMMMinutes(date) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const [h, m] = formatter.format(date).split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Returns "present" | "late" | "off_day_work" based on the employee's schedule.
+// scheduleData is the raw Firestore doc data (or null if no schedule doc exists).
+// dayOfWeek is 1=Mon … 7=Sun (matches Dart DateTime.weekday / jerusalemDayOfWeek).
+function checkInStatusForSchedule(scheduleData, now, dayOfWeek) {
+  if (!scheduleData) return "present";
+  const days = scheduleData.days || {};
+  const daySchedule = days[String(dayOfWeek)];
+  if (!daySchedule) return "present";
+  if (!daySchedule.isWorkingDay) return "off_day_work";
+  if (daySchedule.expectedStartTime) {
+    const grace = daySchedule.graceMinutes != null ?
+      daySchedule.graceMinutes :
+      (scheduleData.defaultGraceMinutes != null ? scheduleData.defaultGraceMinutes : 15);
+    const [startH, startM] = daySchedule.expectedStartTime.split(":").map(Number);
+    const deadlineMinutes = startH * 60 + startM + grace;
+    if (jerusalemHHMMMinutes(now) > deadlineMinutes) return "late";
+  }
+  return "present";
+}
+
 function jerusalemLastDayOfMonth(date) {
   // Last calendar day of the month containing `date` in Asia/Jerusalem.
   const ymd = ymdInJerusalem(date); // "YYYY-MM-DD"
   const [y, m] = ymd.split("-").map(Number);
   // JS Date with day=0 of the next month gives the last day of month m.
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+// ─── FCM token helpers ────────────────────────────────────────────────────────
+// Tokens are stored in fcm_tokens/{userId}.token, not on the users document,
+// so clients cannot read each other's FCM tokens. Admin SDK bypasses rules.
+
+async function getFcmToken(db, userId) {
+  const doc = await db.collection("fcm_tokens").doc(userId).get();
+  return doc.exists ? (doc.data().token || null) : null;
+}
+
+async function getFcmTokensBatch(db, userIds) {
+  if (userIds.length === 0) return {};
+  const refs = userIds.map((id) => db.collection("fcm_tokens").doc(id));
+  const docs = await db.getAll(...refs);
+  const result = {};
+  docs.forEach((doc) => {
+    result[doc.id] = doc.exists ? (doc.data().token || null) : null;
+  });
+  return result;
 }
 
 function shouldGenerateOn(recurrence, now) {
@@ -139,104 +189,129 @@ function shouldGenerateOn(recurrence, now) {
 // ─── Recurring task instance generator ───────────────────────────────────────
 
 exports.generateRecurringTaskInstances = onSchedule(
-  {
-    schedule: "0 6 * * *",
-    timeZone: "Asia/Jerusalem",
-  },
-  async () => {
-    try {
-      const db = admin.firestore();
-      const now = new Date();
-      const todayYMD = ymdInJerusalem(now);
-      const todayDueDate = jerusalemMidnightAsUTC(now);
+    {
+      schedule: "0 6 * * *",
+      timeZone: "Asia/Jerusalem",
+    },
+    async () => {
+      try {
+        const db = admin.firestore();
+        const now = new Date();
+        const todayYMD = ymdInJerusalem(now);
+        const todayDueDate = jerusalemMidnightAsUTC(now);
 
-      const snap = await db
-        .collection("task_templates")
-        .where("isActive", "==", true)
-        .get();
+        const snap = await db
+            .collection("task_templates")
+            .where("isActive", "==", true)
+            .get();
 
-      for (const templateDoc of snap.docs) {
-        try {
-          const template = templateDoc.data();
-          if (!shouldGenerateOn(template.recurrence, now)) continue;
+        for (const templateDoc of snap.docs) {
+          try {
+            const template = templateDoc.data();
+            if (!shouldGenerateOn(template.recurrence, now)) continue;
 
-          // Support both legacy single-assignee and new multi-assignee templates.
-          const assigneeIds =
+            // Support both legacy single-assignee and new multi-assignee templates.
+            const assigneeIds =
             Array.isArray(template.assignedToIds) &&
-            template.assignedToIds.length > 0
-              ? template.assignedToIds
-              : template.assignedTo
-                ? [template.assignedTo]
-                : [];
-          const assigneeNames =
+            template.assignedToIds.length > 0 ?
+              template.assignedToIds :
+              template.assignedTo ?
+                [template.assignedTo] :
+                [];
+            const assigneeNames =
             Array.isArray(template.assignedToNames) &&
-            template.assignedToNames.length > 0
-              ? template.assignedToNames
-              : template.assignedToName
-                ? [template.assignedToName]
-                : [];
+            template.assignedToNames.length > 0 ?
+              template.assignedToNames :
+              template.assignedToName ?
+                [template.assignedToName] :
+                [];
 
-          if (assigneeIds.length === 0) continue;
+            if (assigneeIds.length === 0) continue;
 
-          for (let i = 0; i < assigneeIds.length; i++) {
-            const assigneeId = assigneeIds[i];
-            const assigneeName = assigneeNames[i] || "";
-            // One instance per (template, assignee, date) — deterministic ID is
-            // the sole idempotency gate; existence check is inside the transaction.
-            const instanceId = `${templateDoc.id}_${assigneeId}_${todayYMD}`;
-            const instanceRef = db.collection("tasks").doc(instanceId);
+            for (let i = 0; i < assigneeIds.length; i++) {
+              const assigneeId = assigneeIds[i];
+              const assigneeName = assigneeNames[i] || "";
+              // One instance per (template, assignee, date) — deterministic ID is
+              // the sole idempotency gate; existence check is inside the transaction.
+              const instanceId = `${templateDoc.id}_${assigneeId}_${todayYMD}`;
+              const instanceRef = db.collection("tasks").doc(instanceId);
 
-            await db.runTransaction(async (txn) => {
-              const freshTemplate = await txn.get(templateDoc.ref);
-              if (!freshTemplate.exists) return;
-              const freshData = freshTemplate.data() || {};
-              if (freshData.isActive !== true) return;
+              await db.runTransaction(async (txn) => {
+                const freshTemplate = await txn.get(templateDoc.ref);
+                if (!freshTemplate.exists) return;
+                const freshData = freshTemplate.data() || {};
+                if (freshData.isActive !== true) return;
 
-              const existingInstance = await txn.get(instanceRef);
-              if (existingInstance.exists) return; // already generated
+                const existingInstance = await txn.get(instanceRef);
+                if (existingInstance.exists) return; // already generated
 
-              const instance = {
-                title: freshData.title || "",
-                description: freshData.description || "",
-                assignedTo: assigneeId,
-                assignedToName: assigneeName,
-                assignedBy: freshData.assignedBy || "",
-                assignedByName: freshData.assignedByName || "",
-                priority: freshData.priority || "medium",
-                status: "pending",
-                taskType: freshData.taskType || "standard",
-                currentCount: 0,
-                dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
-                createdAt: admin.firestore.Timestamp.fromDate(now),
-                updatedAt: admin.firestore.Timestamp.fromDate(now),
-                completedAt: null,
-                templateId: templateDoc.id,
-              };
-              if (freshData.taskType === "counter" && freshData.targetCount) {
-                instance.targetCount = freshData.targetCount;
-              }
+                const instance = {
+                  title: freshData.title || "",
+                  description: freshData.description || "",
+                  assignedTo: assigneeId,
+                  assignedToName: assigneeName,
+                  assignedBy: freshData.assignedBy || "",
+                  assignedByName: freshData.assignedByName || "",
+                  priority: freshData.priority || "medium",
+                  status: "pending",
+                  taskType: freshData.taskType || "standard",
+                  currentCount: 0,
+                  dueDate: admin.firestore.Timestamp.fromDate(todayDueDate),
+                  createdAt: admin.firestore.Timestamp.fromDate(now),
+                  updatedAt: admin.firestore.Timestamp.fromDate(now),
+                  completedAt: null,
+                  templateId: templateDoc.id,
+                };
+                if (freshData.taskType === "counter" && freshData.targetCount) {
+                  instance.targetCount = freshData.targetCount;
+                }
 
-              txn.set(instanceRef, instance);
+                txn.set(instanceRef, instance);
+              });
+            }
+
+            // lastGeneratedAt is metadata only — written after all assignees are
+            // processed so a partial-run crash leaves it unset for the next retry.
+            await templateDoc.ref.update({
+              lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
+              updatedAt: admin.firestore.Timestamp.fromDate(now),
             });
+          } catch (templateError) {
+            console.error(
+                `Error processing template ${templateDoc.id}:`,
+                templateError,
+            );
+            // Alert all admins in-app so template failures surface beyond logs.
+            try {
+              const adminsSnap = await db
+                  .collection("users")
+                  .where("role", "==", "admin")
+                  .get();
+              await Promise.all(
+                  adminsSnap.docs.map((adminDoc) =>
+                    createInAppNotification({
+                      userId: adminDoc.id,
+                      type: "recurring_template_error",
+                      taskId: null,
+                      data: {
+                        templateId: templateDoc.id,
+                        error: templateError.message || "Unknown error",
+                      },
+                    }),
+                  ),
+              );
+            } catch (alertError) {
+              console.error(
+                  "Failed to send template-error admin alert:",
+                  alertError,
+              );
+            }
           }
-
-          // lastGeneratedAt is metadata only — written after all assignees are
-          // processed so a partial-run crash leaves it unset for the next retry.
-          await templateDoc.ref.update({
-            lastGeneratedAt: admin.firestore.Timestamp.fromDate(now),
-            updatedAt: admin.firestore.Timestamp.fromDate(now),
-          });
-        } catch (templateError) {
-          console.error(
-            `Error processing template ${templateDoc.id}:`,
-            templateError,
-          );
         }
+      } catch (error) {
+        console.error("Error generating recurring task instances:", error);
       }
-    } catch (error) {
-      console.error("Error generating recurring task instances:", error);
-    }
-  },
+    },
 );
 
 exports.recordAttendance = onCall(async (request) => {
@@ -263,6 +338,11 @@ exports.recordAttendance = onCall(async (request) => {
   const userData = userDoc.data() || {};
   const userName = userData.name || "Unknown";
 
+  const scheduleDoc = await db.collection("schedules").doc(userId).get();
+  const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : null;
+  const dayOfWeek = jerusalemDayOfWeek(now);
+  const checkInStatus = checkInStatusForSchedule(scheduleData, now, dayOfWeek);
+
   const attendanceRef = db.collection("attendance").doc(docId);
   const logRef = db.collection("attendance_logs").doc();
 
@@ -272,9 +352,9 @@ exports.recordAttendance = onCall(async (request) => {
 
     if (action === "check_in") {
       const existingData = attendanceSnap.exists ? attendanceSnap.data() : {};
-      const sessions = Array.isArray(existingData.sessions)
-        ? existingData.sessions
-        : [];
+      const sessions = Array.isArray(existingData.sessions) ?
+        existingData.sessions :
+        [];
       const lastSession =
         sessions.length > 0 ? sessions[sessions.length - 1] : null;
 
@@ -293,7 +373,7 @@ exports.recordAttendance = onCall(async (request) => {
           userId,
           userName,
           date,
-          status: "present",
+          status: checkInStatus,
           isCorrected: false,
           totalDurationMinutes: 0,
           sessions: [newSession],
@@ -303,7 +383,7 @@ exports.recordAttendance = onCall(async (request) => {
       } else {
         txn.update(attendanceRef, {
           sessions: [...sessions, newSession],
-          status: "present",
+          status: checkInStatus,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
@@ -317,7 +397,7 @@ exports.recordAttendance = onCall(async (request) => {
         previousValue,
         newValue: {
           session: "appended",
-          status: "present",
+          status: checkInStatus,
         },
         performedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -328,9 +408,9 @@ exports.recordAttendance = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "not-checked-in");
     }
 
-    const sessions = Array.isArray(attendanceSnap.data().sessions)
-      ? attendanceSnap.data().sessions
-      : [];
+    const sessions = Array.isArray(attendanceSnap.data().sessions) ?
+      attendanceSnap.data().sessions :
+      [];
     const openSession =
       sessions.length > 0 ? sessions[sessions.length - 1] : null;
 
@@ -340,8 +420,8 @@ exports.recordAttendance = onCall(async (request) => {
 
     const checkInAt = openSession.checkInAt.toDate();
     const durationMinutes = Math.max(
-      0,
-      Math.round((now.getTime() - checkInAt.getTime()) / 60000),
+        0,
+        Math.round((now.getTime() - checkInAt.getTime()) / 60000),
     );
     const closedSession = {
       ...openSession,
@@ -350,8 +430,8 @@ exports.recordAttendance = onCall(async (request) => {
     };
     const updatedSessions = [...sessions.slice(0, -1), closedSession];
     const totalDurationMinutes = updatedSessions.reduce(
-      (sum, session) => sum + (session.durationMinutes || 0),
-      0,
+        (sum, session) => sum + (session.durationMinutes || 0),
+        0,
     );
 
     txn.update(attendanceRef, {
@@ -374,7 +454,7 @@ exports.recordAttendance = onCall(async (request) => {
     });
   });
 
-  return { success: true, docId };
+  return {success: true, docId};
 });
 
 exports.adminCorrectAttendance = onCall(async (request) => {
@@ -388,8 +468,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   const adminDoc = await db.collection("users").doc(adminUid).get();
   if (!adminDoc.exists || (adminDoc.data() || {}).role !== "admin") {
     throw new HttpsError(
-      "permission-denied",
-      "Only admins can correct attendance",
+        "permission-denied",
+        "Only admins can correct attendance",
     );
   }
 
@@ -399,8 +479,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
 
   if (!userId || !date) {
     throw new HttpsError(
-      "invalid-argument",
-      "Missing required correction payload",
+        "invalid-argument",
+        "Missing required correction payload",
     );
   }
 
@@ -412,9 +492,9 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   const rawSessions =
     request.data &&
     Array.isArray(request.data.sessions) &&
-    request.data.sessions.length > 0
-      ? request.data.sessions
-      : null;
+    request.data.sessions.length > 0 ?
+      request.data.sessions :
+      null;
 
   // Legacy fields path (backward compat — kept so old clients don't break).
   const fields = (request.data && request.data.fields) || {};
@@ -423,18 +503,18 @@ exports.adminCorrectAttendance = onCall(async (request) => {
 
   if (!rawSessions && !hasCheckInAt) {
     throw new HttpsError(
-      "invalid-argument",
-      "Either sessions array or fields.checkInAt must be provided",
+        "invalid-argument",
+        "Either sessions array or fields.checkInAt must be provided",
     );
   }
 
   // notes can arrive as a top-level field (new path) or inside fields (legacy).
   const notes =
-    request.data && request.data.notes !== undefined
-      ? request.data.notes
-      : fields.notes !== undefined
-        ? fields.notes
-        : undefined;
+    request.data && request.data.notes !== undefined ?
+      request.data.notes :
+      fields.notes !== undefined ?
+        fields.notes :
+        undefined;
 
   const userDoc = await db.collection("users").doc(userId).get();
   if (!userDoc.exists) {
@@ -475,31 +555,31 @@ exports.adminCorrectAttendance = onCall(async (request) => {
         const checkInDate = new Date(s.checkInAt);
         if (Number.isNaN(checkInDate.getTime())) {
           throw new HttpsError(
-            "invalid-argument",
-            `Session ${idx}: invalid checkInAt`,
+              "invalid-argument",
+              `Session ${idx}: invalid checkInAt`,
           );
         }
         const checkOutDate = s.checkOutAt ? new Date(s.checkOutAt) : null;
         if (checkOutDate && Number.isNaN(checkOutDate.getTime())) {
           throw new HttpsError(
-            "invalid-argument",
-            `Session ${idx}: invalid checkOutAt`,
+              "invalid-argument",
+              `Session ${idx}: invalid checkOutAt`,
           );
         }
         const durationMinutes =
-          checkOutDate != null
-            ? Math.max(
+          checkOutDate != null ?
+            Math.max(
                 0,
                 Math.round(
-                  (checkOutDate.getTime() - checkInDate.getTime()) / 60000,
+                    (checkOutDate.getTime() - checkInDate.getTime()) / 60000,
                 ),
-              )
-            : null;
+            ) :
+            null;
         return {
           checkInAt: admin.firestore.Timestamp.fromDate(checkInDate),
-          checkOutAt: checkOutDate
-            ? admin.firestore.Timestamp.fromDate(checkOutDate)
-            : null,
+          checkOutAt: checkOutDate ?
+            admin.firestore.Timestamp.fromDate(checkOutDate) :
+            null,
           durationMinutes,
         };
       });
@@ -508,8 +588,8 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       parsed.sort((a, b) => a.checkInAt.toMillis() - b.checkInAt.toMillis());
 
       const totalDurationMinutes = parsed.reduce(
-        (sum, s) => sum + (s.durationMinutes || 0),
-        0,
+          (sum, s) => sum + (s.durationMinutes || 0),
+          0,
       );
 
       nextValue.sessions = parsed;
@@ -524,16 +604,16 @@ exports.adminCorrectAttendance = onCall(async (request) => {
         Number.isNaN(parsedCheckOutAt.getTime())
       ) {
         throw new HttpsError(
-          "invalid-argument",
-          "Invalid checkInAt/checkOutAt timestamp",
+            "invalid-argument",
+            "Invalid checkInAt/checkOutAt timestamp",
         );
       }
 
       const durationMinutes = Math.max(
-        0,
-        Math.round(
-          (parsedCheckOutAt.getTime() - parsedCheckInAt.getTime()) / 60000,
-        ),
+          0,
+          Math.round(
+              (parsedCheckOutAt.getTime() - parsedCheckInAt.getTime()) / 60000,
+          ),
       );
 
       nextValue.sessions = [
@@ -563,7 +643,7 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       }
     }
 
-    txn.set(attendanceRef, nextValue, { merge: true });
+    txn.set(attendanceRef, nextValue, {merge: true});
     txn.set(logRef, {
       attendanceId: docId,
       userId,
@@ -581,62 +661,81 @@ exports.adminCorrectAttendance = onCall(async (request) => {
     });
   });
 
-  return { success: true, docId };
+  return {success: true, docId};
 });
 
 exports.sendDailyAbsenceMarker = onSchedule(
-  {
-    schedule: "0 23 * * *",
-    timeZone: "Asia/Jerusalem",
-  },
-  async () => {
-    try {
-      const db = admin.firestore();
-      const today = ymdInJerusalem(new Date());
+    {
+      schedule: "0 23 * * *",
+      timeZone: "Asia/Jerusalem",
+    },
+    async () => {
+      try {
+        const db = admin.firestore();
+        const now = new Date();
+        const today = ymdInJerusalem(now);
+        const todayDayOfWeek = jerusalemDayOfWeek(now);
 
-      const employeesSnapshot = await db
-        .collection("users")
-        .where("isActive", "==", true)
-        .where("role", "==", "employee")
-        .get();
+        const employeesSnapshot = await db
+            .collection("users")
+            .where("isActive", "==", true)
+            .where("role", "==", "employee")
+            .get();
 
-      for (const employeeDoc of employeesSnapshot.docs) {
-        const employee = employeeDoc.data() || {};
-        const userId = employeeDoc.id;
-        const userName = employee.name || "Unknown";
-        const attendanceId = `${userId}_${today}`;
-        const attendanceRef = db.collection("attendance").doc(attendanceId);
-        const attendanceSnap = await attendanceRef.get();
-        const sessions =
-          attendanceSnap.exists && Array.isArray(attendanceSnap.data().sessions)
-            ? attendanceSnap.data().sessions
-            : [];
+        for (const employeeDoc of employeesSnapshot.docs) {
+          const employee = employeeDoc.data() || {};
+          const userId = employeeDoc.id;
+          const userName = employee.name || "Unknown";
+          const attendanceId = `${userId}_${today}`;
+          const attendanceRef = db.collection("attendance").doc(attendanceId);
+          const attendanceSnap = await attendanceRef.get();
+          const sessions =
+          attendanceSnap.exists && Array.isArray(attendanceSnap.data().sessions) ?
+            attendanceSnap.data().sessions :
+            [];
 
-        if (sessions.length > 0) {
-          continue;
+          if (sessions.length > 0) {
+            // Employee already has sessions — leave the doc untouched.
+            continue;
+          }
+
+          // Read the employee's schedule to decide absent vs off_day.
+          let markerStatus = "absent";
+          try {
+            const scheduleDoc = await db.collection("schedules").doc(userId).get();
+            if (scheduleDoc.exists) {
+              const scheduleData = scheduleDoc.data() || {};
+              const days = scheduleData.days || {};
+              const daySchedule = days[String(todayDayOfWeek)];
+              if (daySchedule && !daySchedule.isWorkingDay) {
+                markerStatus = "off_day";
+              }
+            }
+          } catch (scheduleErr) {
+            console.warn(`Could not read schedule for ${userId}, defaulting to absent:`, scheduleErr);
+          }
+
+          const markerDoc = {
+            userId,
+            userName,
+            date: today,
+            status: markerStatus,
+            isCorrected: false,
+            totalDurationMinutes: 0,
+            sessions: [],
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          if (!attendanceSnap.exists) {
+            markerDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
+          }
+
+          await attendanceRef.set(markerDoc, {merge: true});
         }
-
-        const absentDoc = {
-          userId,
-          userName,
-          date: today,
-          status: "absent",
-          isCorrected: false,
-          totalDurationMinutes: 0,
-          sessions: [],
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        if (!attendanceSnap.exists) {
-          absentDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
-        }
-
-        await attendanceRef.set(absentDoc, { merge: true });
+      } catch (error) {
+        console.error("Error running daily absence marker:", error);
       }
-    } catch (error) {
-      console.error("Error running daily absence marker:", error);
-    }
-  },
+    },
 );
 
 exports.createEmployeeUser = onCall(async (request) => {
@@ -646,25 +745,32 @@ exports.createEmployeeUser = onCall(async (request) => {
       throw new HttpsError("unauthenticated", "User must be logged in");
     }
 
-    const { email, password, name, role } = request.data;
+    const {email, password, name, role} = request.data;
 
     // 🧠 تحقق من البيانات
     if (!email || !password || !name || !role) {
       throw new HttpsError("invalid-argument", "Missing required fields");
     }
 
+    if (!["admin", "employee"].includes(role)) {
+      throw new HttpsError(
+          "invalid-argument",
+          "role must be 'admin' or 'employee'",
+      );
+    }
+
     const db = admin.firestore();
 
     // 🔐 تحقق أن المستخدم Admin
     const currentUserDoc = await db
-      .collection("users")
-      .doc(request.auth.uid)
-      .get();
+        .collection("users")
+        .doc(request.auth.uid)
+        .get();
 
     if (!currentUserDoc.exists) {
       throw new HttpsError(
-        "permission-denied",
-        "Current user record not found",
+          "permission-denied",
+          "Current user record not found",
       );
     }
 
@@ -672,8 +778,8 @@ exports.createEmployeeUser = onCall(async (request) => {
 
     if (!currentUserData || currentUserData.role !== "admin") {
       throw new HttpsError(
-        "permission-denied",
-        "Only admins can create employees",
+          "permission-denied",
+          "Only admins can create employees",
       );
     }
 
@@ -709,350 +815,350 @@ exports.createEmployeeUser = onCall(async (request) => {
 });
 
 exports.sendTaskAssignedNotification = onDocumentCreated(
-  "tasks/{taskId}",
-  async (event) => {
-    try {
-      const snapshot = event.data;
+    "tasks/{taskId}",
+    async (event) => {
+      try {
+        const snapshot = event.data;
 
-      if (!snapshot) {
-        console.log("No task data found.");
-        return;
-      }
-
-      const task = snapshot.data();
-      const db = admin.firestore();
-
-      const assignedTo = task.assignedTo;
-      const assignedBy = task.assignedBy;
-      const taskTitle = task.title || "New Task";
-
-      if (!assignedTo) {
-        console.log("No assignedTo found in task.");
-        return;
-      }
-
-      const assignedUserDoc = await db
-        .collection("users")
-        .doc(assignedTo)
-        .get();
-
-      if (!assignedUserDoc.exists) {
-        console.log("Assigned user not found.");
-        return;
-      }
-
-      const assignedUserData = assignedUserDoc.data() || {};
-      const fcmToken = assignedUserData && assignedUserData.fcmToken;
-      const languageCode = assignedUserData.languageCode || "en";
-
-      if (!fcmToken) {
-        console.log("Assigned user has no FCM token.");
-        return;
-      }
-
-      let assignedByName = "Someone";
-      if (assignedBy) {
-        const assignedByDoc = await db
-          .collection("users")
-          .doc(assignedBy)
-          .get();
-        if (assignedByDoc.exists) {
-          const assignedByData = assignedByDoc.data();
-          assignedByName = (assignedByData && assignedByData.name) || "Someone";
+        if (!snapshot) {
+          console.log("No task data found.");
+          return;
         }
-      }
 
-      const message = {
-        token: fcmToken,
-        notification: {
-          title: localize("task_assigned_title", {}, languageCode),
-          body: localize(
-            "task_assigned_body",
-            { by: assignedByName, task: taskTitle },
-            languageCode,
-          ),
-        },
-        data: {
-          taskId: event.params.taskId,
-          type: "task_assigned",
-          click_action: "FLUTTER_NOTIFICATION_CLICK",
-        },
-        android: {
-          priority: "high",
+        const task = snapshot.data();
+        const db = admin.firestore();
+
+        const assignedTo = task.assignedTo;
+        const assignedBy = task.assignedBy;
+        const taskTitle = task.title || "New Task";
+
+        if (!assignedTo) {
+          console.log("No assignedTo found in task.");
+          return;
+        }
+
+        const assignedUserDoc = await db
+            .collection("users")
+            .doc(assignedTo)
+            .get();
+
+        if (!assignedUserDoc.exists) {
+          console.log("Assigned user not found.");
+          return;
+        }
+
+        const assignedUserData = assignedUserDoc.data() || {};
+        const fcmToken = await getFcmToken(db, assignedTo);
+        const languageCode = assignedUserData.languageCode || "en";
+
+        if (!fcmToken) {
+          console.log("Assigned user has no FCM token.");
+          return;
+        }
+
+        let assignedByName = "Someone";
+        if (assignedBy) {
+          const assignedByDoc = await db
+              .collection("users")
+              .doc(assignedBy)
+              .get();
+          if (assignedByDoc.exists) {
+            const assignedByData = assignedByDoc.data();
+            assignedByName = (assignedByData && assignedByData.name) || "Someone";
+          }
+        }
+
+        const message = {
+          token: fcmToken,
           notification: {
-            channelId: "task_notifications",
+            title: localize("task_assigned_title", {}, languageCode),
+            body: localize(
+                "task_assigned_body",
+                {by: assignedByName, task: taskTitle},
+                languageCode,
+            ),
           },
-        },
-      };
+          data: {
+            taskId: event.params.taskId,
+            type: "task_assigned",
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "task_notifications",
+            },
+          },
+        };
 
-      const response = await admin.messaging().send(message);
-      console.log("Successfully sent notification:", response);
+        const response = await admin.messaging().send(message);
+        console.log("Successfully sent notification:", response);
 
-      await db.collection("task_logs").add({
-        taskId: event.params.taskId,
-        taskTitle: task.title || "",
-        action: "created",
-        newStatus: task.status || "pending",
-        performedBy: assignedBy || null,
-        performedByName: assignedByName,
-        performedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        await db.collection("task_logs").add({
+          taskId: event.params.taskId,
+          taskTitle: task.title || "",
+          action: "created",
+          newStatus: task.status || "pending",
+          performedBy: assignedBy || null,
+          performedByName: assignedByName,
+          performedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-      await createInAppNotification({
-        userId: assignedTo,
-        type: "task_assigned",
-        taskId: event.params.taskId,
-        data: {
-          taskTitle: taskTitle,
-          assignedByName: assignedByName,
-        },
-      });
-    } catch (error) {
-      console.error("Error sending task notification:", error);
-    }
-  },
+        await createInAppNotification({
+          userId: assignedTo,
+          type: "task_assigned",
+          taskId: event.params.taskId,
+          data: {
+            taskTitle: taskTitle,
+            assignedByName: assignedByName,
+          },
+        });
+      } catch (error) {
+        console.error("Error sending task notification:", error);
+      }
+    },
 );
 
 exports.sendTaskStatusNotification = onDocumentUpdated(
-  "tasks/{taskId}",
-  async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
+    "tasks/{taskId}",
+    async (event) => {
+      const before = event.data.before.data();
+      const after = event.data.after.data();
 
-    const currentUserId = after.updatedBy || null;
-    const currentUserName = after.updatedByName || "Unknown";
+      const currentUserId = after.updatedBy || null;
+      const currentUserName = after.updatedByName || "Unknown";
 
-    console.log("Task status update trigger fired");
-    console.log("Before status:", before.status);
-    console.log("After status:", after.status);
+      console.log("Task status update trigger fired");
+      console.log("Before status:", before.status);
+      console.log("After status:", after.status);
 
-    if (before.status === after.status) return;
+      if (before.status === after.status) return;
 
-    const db = admin.firestore();
+      const db = admin.firestore();
 
-    if (after.status === "completed") {
-      const assignedById = after.assignedBy;
+      if (after.status === "completed") {
+        const assignedById = after.assignedBy;
 
-      const adminsSnapshot = await db
-        .collection("users")
-        .where("role", "==", "admin")
-        .get();
+        const adminsSnapshot = await db
+            .collection("users")
+            .where("role", "==", "admin")
+            .get();
 
-      const adminUserIds = new Set();
+        const adminUserIds = new Set();
 
-      adminsSnapshot.forEach((doc) => {
-        adminUserIds.add(doc.id);
-      });
+        adminsSnapshot.forEach((doc) => {
+          adminUserIds.add(doc.id);
+        });
 
-      if (assignedById && assignedById !== currentUserId) {
-        adminUserIds.add(assignedById);
-      }
+        if (assignedById && assignedById !== currentUserId) {
+          adminUserIds.add(assignedById);
+        }
 
-      for (const userId of adminUserIds) {
-        const recipientDoc = await db.collection("users").doc(userId).get();
-        const recipientData = recipientDoc.data() || {};
-        const recipientToken = recipientData.fcmToken;
-        const languageCode = recipientData.languageCode || "en";
+        for (const userId of adminUserIds) {
+          const recipientDoc = await db.collection("users").doc(userId).get();
+          const recipientData = recipientDoc.data() || {};
+          const recipientToken = await getFcmToken(db, userId);
+          const languageCode = recipientData.languageCode || "en";
 
-        if (recipientToken) {
-          await admin.messaging().send({
-            token: recipientToken,
-            notification: {
-              title: localize("task_completed_title", {}, languageCode),
-              body: localize(
-                "task_completed_body",
-                { task: after.title || "" },
-                languageCode,
-              ),
-            },
+          if (recipientToken) {
+            await admin.messaging().send({
+              token: recipientToken,
+              notification: {
+                title: localize("task_completed_title", {}, languageCode),
+                body: localize(
+                    "task_completed_body",
+                    {task: after.title || ""},
+                    languageCode,
+                ),
+              },
+              data: {
+                taskId: event.params.taskId,
+              },
+            });
+          }
+        }
+
+        for (const userId of adminUserIds) {
+          await createInAppNotification({
+            userId: userId,
+            type: "task_completed",
+            taskId: event.params.taskId,
             data: {
-              taskId: event.params.taskId,
+              taskTitle: after.title || "",
+              performedByName: currentUserName,
             },
           });
         }
       }
 
-      for (const userId of adminUserIds) {
-        await createInAppNotification({
-          userId: userId,
-          type: "task_completed",
-          taskId: event.params.taskId,
-          data: {
-            taskTitle: after.title || "",
-            performedByName: currentUserName,
-          },
-        });
-      }
-    }
+      console.log("Writing task log for task:", event.params.taskId);
 
-    console.log("Writing task log for task:", event.params.taskId);
+      await db.collection("task_logs").add({
+        taskId: event.params.taskId,
+        taskTitle: after.title || "",
+        action: "status_changed",
+        previousStatus: before.status || null,
+        newStatus: after.status || null,
+        performedBy: currentUserId,
+        performedByName: currentUserName,
+        performedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-    await db.collection("task_logs").add({
-      taskId: event.params.taskId,
-      taskTitle: after.title || "",
-      action: "status_changed",
-      previousStatus: before.status || null,
-      newStatus: after.status || null,
-      performedBy: currentUserId,
-      performedByName: currentUserName,
-      performedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    console.log("Task log written successfully");
-  },
+      console.log("Task log written successfully");
+    },
 );
 
 exports.sendTaskDeadlineReminders = onSchedule(
-  {
-    schedule: "0 9 * * *",
-    timeZone: "Asia/Jerusalem",
-  },
-  async () => {
-    try {
-      const db = admin.firestore();
+    {
+      schedule: "0 9 * * *",
+      timeZone: "Asia/Jerusalem",
+    },
+    async () => {
+      try {
+        const db = admin.firestore();
 
-      const now = new Date();
-      const todayYmd = ymdInJerusalem(now);
-      const [year, month, day] = todayYmd.split("-").map(Number);
+        const now = new Date();
+        const todayYmd = ymdInJerusalem(now);
+        const [year, month, day] = todayYmd.split("-").map(Number);
 
-      const jerusalemDay = (offsetDays) =>
-        new Date(Date.UTC(year, month - 1, day + offsetDays, 12, 0, 0));
+        const jerusalemDay = (offsetDays) =>
+          new Date(Date.UTC(year, month - 1, day + offsetDays, 12, 0, 0));
 
-      const in72hStart = jerusalemMidnightAsUTC(jerusalemDay(3));
-      const in72hEnd = jerusalemMidnightAsUTC(jerusalemDay(4));
+        const in72hStart = jerusalemMidnightAsUTC(jerusalemDay(3));
+        const in72hEnd = jerusalemMidnightAsUTC(jerusalemDay(4));
 
-      const in24hStart = jerusalemMidnightAsUTC(jerusalemDay(1));
-      const in24hEnd = jerusalemMidnightAsUTC(jerusalemDay(2));
+        const in24hStart = jerusalemMidnightAsUTC(jerusalemDay(1));
+        const in24hEnd = jerusalemMidnightAsUTC(jerusalemDay(2));
 
-      const [snap72h, snap24h] = await Promise.all([
-        db
-          .collection("tasks")
-          .where("status", "!=", "completed")
-          .where(
-            "dueDate",
-            ">=",
-            admin.firestore.Timestamp.fromDate(in72hStart),
-          )
-          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in72hEnd))
-          .get(),
-        db
-          .collection("tasks")
-          .where("status", "!=", "completed")
-          .where(
-            "dueDate",
-            ">=",
-            admin.firestore.Timestamp.fromDate(in24hStart),
-          )
-          .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in24hEnd))
-          .get(),
-      ]);
+        const [snap72h, snap24h] = await Promise.all([
+          db
+              .collection("tasks")
+              .where("status", "!=", "completed")
+              .where(
+                  "dueDate",
+                  ">=",
+                  admin.firestore.Timestamp.fromDate(in72hStart),
+              )
+              .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in72hEnd))
+              .get(),
+          db
+              .collection("tasks")
+              .where("status", "!=", "completed")
+              .where(
+                  "dueDate",
+                  ">=",
+                  admin.firestore.Timestamp.fromDate(in24hStart),
+              )
+              .where("dueDate", "<", admin.firestore.Timestamp.fromDate(in24hEnd))
+              .get(),
+        ]);
 
-      const processThreshold = async ({
-        snapshot,
-        dedupField,
-        bodyKey,
-        bodyArgs,
-      }) => {
-        for (const taskDoc of snapshot.docs) {
-          try {
-            const task = taskDoc.data();
-            const taskId = taskDoc.id;
-            const assignedTo = task.assignedTo;
-            const taskTitle = task.title || "Task";
+        const processThreshold = async ({
+          snapshot,
+          dedupField,
+          bodyKey,
+          bodyArgs,
+        }) => {
+          for (const taskDoc of snapshot.docs) {
+            try {
+              const task = taskDoc.data();
+              const taskId = taskDoc.id;
+              const assignedTo = task.assignedTo;
+              const taskTitle = task.title || "Task";
 
-            if (!assignedTo) {
-              continue;
-            }
+              if (!assignedTo) {
+                continue;
+              }
 
-            const sentAt = task[dedupField];
-            if (
-              sentAt &&
+              const sentAt = task[dedupField];
+              if (
+                sentAt &&
               typeof sentAt.toDate === "function" &&
               sameDayJerusalem(sentAt.toDate(), now)
-            ) {
-              continue;
-            }
+              ) {
+                continue;
+              }
 
-            const userDoc = await db.collection("users").doc(assignedTo).get();
-            if (!userDoc.exists) {
-              continue;
-            }
+              const userDoc = await db.collection("users").doc(assignedTo).get();
+              if (!userDoc.exists) {
+                continue;
+              }
 
-            const userData = userDoc.data() || {};
-            if (userData.isActive === false) {
-              continue;
-            }
+              const userData = userDoc.data() || {};
+              if (userData.isActive === false) {
+                continue;
+              }
 
-            const languageCode = userData.languageCode || "en";
-            const fcmToken = userData.fcmToken || null;
+              const languageCode = userData.languageCode || "en";
+              const fcmToken = await getFcmToken(db, assignedTo);
 
-            await sendFCMNotification({
-              token: fcmToken,
-              notification: {
-                title: localize("task_deadline_title", {}, languageCode),
-                body: localize(bodyKey, bodyArgs(taskTitle), languageCode),
-              },
-              data: {
-                taskId,
-                type: "task_deadline_reminder",
-              },
-              android: {
-                priority: "high",
+              await sendFCMNotification({
+                token: fcmToken,
                 notification: {
-                  channelId: "task_notifications",
+                  title: localize("task_deadline_title", {}, languageCode),
+                  body: localize(bodyKey, bodyArgs(taskTitle), languageCode),
                 },
-              },
-              apns: {
-                payload: {
-                  aps: {
-                    sound: "default",
+                data: {
+                  taskId,
+                  type: "task_deadline_reminder",
+                },
+                android: {
+                  priority: "high",
+                  notification: {
+                    channelId: "task_notifications",
                   },
                 },
-              },
-            });
-
-            await createInAppNotification({
-              userId: assignedTo,
-              type: "task_deadline_reminder",
-              taskId,
-              data: {
-                taskTitle,
-              },
-            });
-
-            await db
-              .collection("tasks")
-              .doc(taskId)
-              .update({
-                [dedupField]: admin.firestore.FieldValue.serverTimestamp(),
+                apns: {
+                  payload: {
+                    aps: {
+                      sound: "default",
+                    },
+                  },
+                },
               });
-          } catch (taskError) {
-            console.error("Error processing deadline reminder task:", {
-              taskId: taskDoc.id,
-              dedupField,
-              error: taskError,
-            });
+
+              await createInAppNotification({
+                userId: assignedTo,
+                type: "task_deadline_reminder",
+                taskId,
+                data: {
+                  taskTitle,
+                },
+              });
+
+              await db
+                  .collection("tasks")
+                  .doc(taskId)
+                  .update({
+                    [dedupField]: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+            } catch (taskError) {
+              console.error("Error processing deadline reminder task:", {
+                taskId: taskDoc.id,
+                dedupField,
+                error: taskError,
+              });
+            }
           }
-        }
-      };
+        };
 
-      await processThreshold({
-        snapshot: snap72h,
-        dedupField: "reminderSent72hAt",
-        bodyKey: "task_deadline_72h_body",
-        bodyArgs: (taskTitle) => ({ taskTitle }),
-      });
+        await processThreshold({
+          snapshot: snap72h,
+          dedupField: "reminderSent72hAt",
+          bodyKey: "task_deadline_72h_body",
+          bodyArgs: (taskTitle) => ({taskTitle}),
+        });
 
-      await processThreshold({
-        snapshot: snap24h,
-        dedupField: "reminderSent24hAt",
-        bodyKey: "task_deadline_tomorrow_body",
-        bodyArgs: (taskTitle) => ({ task: taskTitle }),
-      });
-    } catch (error) {
-      console.error("Error sending deadline reminders:", error);
-    }
-  },
+        await processThreshold({
+          snapshot: snap24h,
+          dedupField: "reminderSent24hAt",
+          bodyKey: "task_deadline_tomorrow_body",
+          bodyArgs: (taskTitle) => ({task: taskTitle}),
+        });
+      } catch (error) {
+        console.error("Error sending deadline reminders:", error);
+      }
+    },
 );
 exports.testTaskDeadlineReminders = onCall(async (request) => {
   try {
@@ -1063,14 +1169,14 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
     const db = admin.firestore();
 
     const currentUserDoc = await db
-      .collection("users")
-      .doc(request.auth.uid)
-      .get();
+        .collection("users")
+        .doc(request.auth.uid)
+        .get();
 
     if (!currentUserDoc.exists) {
       throw new HttpsError(
-        "permission-denied",
-        "Current user record not found",
+          "permission-denied",
+          "Current user record not found",
       );
     }
 
@@ -1078,37 +1184,37 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
 
     if (!currentUserData || currentUserData.role !== "admin") {
       throw new HttpsError(
-        "permission-denied",
-        "Only admins can test reminders",
+          "permission-denied",
+          "Only admins can test reminders",
       );
     }
 
     const now = new Date();
     const start = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0,
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0,
     );
     const end = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-      0,
-      0,
-      0,
-      0,
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        0,
+        0,
+        0,
+        0,
     );
 
     const tasksSnapshot = await db
-      .collection("tasks")
-      .where("status", "!=", "completed")
-      .where("dueDate", ">=", admin.firestore.Timestamp.fromDate(start))
-      .where("dueDate", "<", admin.firestore.Timestamp.fromDate(end))
-      .get();
+        .collection("tasks")
+        .where("status", "!=", "completed")
+        .where("dueDate", ">=", admin.firestore.Timestamp.fromDate(start))
+        .where("dueDate", "<", admin.firestore.Timestamp.fromDate(end))
+        .get();
 
     if (tasksSnapshot.empty) {
       return {
@@ -1131,7 +1237,7 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
       if (!userDoc.exists) continue;
 
       const userData = userDoc.data() || {};
-      const fcmToken = userData.fcmToken;
+      const fcmToken = await getFcmToken(db, assignedTo);
       const languageCode = userData.languageCode || "en";
 
       if (!fcmToken) continue;
@@ -1141,9 +1247,9 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
         notification: {
           title: localize("task_deadline_title", {}, languageCode),
           body: localize(
-            "task_deadline_today_body",
-            { task: taskTitle },
-            languageCode,
+              "task_deadline_today_body",
+              {task: taskTitle},
+              languageCode,
           ),
         },
         data: {
@@ -1185,207 +1291,198 @@ exports.testTaskDeadlineReminders = onCall(async (request) => {
 });
 
 exports.sendOverdueTaskEscalations = onSchedule(
-  {
-    schedule: "0 10 * * *",
-    timeZone: "Asia/Jerusalem",
-  },
-  async () => {
-    try {
-      const db = admin.firestore();
+    {
+      schedule: "0 10 * * *",
+      timeZone: "Asia/Jerusalem",
+    },
+    async () => {
+      try {
+        const db = admin.firestore();
 
-      const now = new Date();
-      const nowTimestamp = admin.firestore.Timestamp.fromDate(now);
+        const now = new Date();
+        const nowTimestamp = admin.firestore.Timestamp.fromDate(now);
 
-      const tasksSnapshot = await db
-        .collection("tasks")
-        .where("status", "!=", "completed")
-        .where("dueDate", "<", nowTimestamp)
-        .get();
+        const tasksSnapshot = await db
+            .collection("tasks")
+            .where("status", "!=", "completed")
+            .where("dueDate", "<", nowTimestamp)
+            .get();
 
-      if (tasksSnapshot.empty) {
-        console.log("No overdue tasks found.");
-        return;
-      }
-
-      const adminsSnapshot = await db
-        .collection("users")
-        .where("role", "==", "admin")
-        .get();
-
-      const adminTokens = [];
-      adminsSnapshot.forEach((doc) => {
-        const data = doc.data() || {};
-        if (data.fcmToken) {
-          adminTokens.push(data.fcmToken);
+        if (tasksSnapshot.empty) {
+          console.log("No overdue tasks found.");
+          return;
         }
-      });
 
-      for (const doc of tasksSnapshot.docs) {
-        const task = doc.data();
-        const taskId = doc.id;
+        const adminsSnapshot = await db
+            .collection("users")
+            .where("role", "==", "admin")
+            .get();
 
-        const assignedTo = task.assignedTo;
-        const assignedToName = task.assignedToName || "Employee";
-        const taskTitle = task.title || "Task";
+        const adminIds = adminsSnapshot.docs.map((doc) => doc.id);
+        const adminTokenMap = await getFcmTokensBatch(db, adminIds);
 
-        const lastReminderAt = task.lastOverdueReminderAt
-          ? task.lastOverdueReminderAt.toDate()
-          : null;
+        for (const doc of tasksSnapshot.docs) {
+          const task = doc.data();
+          const taskId = doc.id;
 
-        const lastEscalationAt = task.lastOverdueEscalationAt
-          ? task.lastOverdueEscalationAt.toDate()
-          : null;
+          const assignedTo = task.assignedTo;
+          const assignedToName = task.assignedToName || "Employee";
+          const taskTitle = task.title || "Task";
 
-        const sameDayReminder =
+          const lastReminderAt = task.lastOverdueReminderAt ?
+          task.lastOverdueReminderAt.toDate() :
+          null;
+
+          const lastEscalationAt = task.lastOverdueEscalationAt ?
+          task.lastOverdueEscalationAt.toDate() :
+          null;
+
+          const sameDayReminder =
           lastReminderAt && sameDayJerusalem(lastReminderAt, now);
 
-        const sameDayEscalation =
+          const sameDayEscalation =
           lastEscalationAt && sameDayJerusalem(lastEscalationAt, now);
 
-        let employeeNotified = false;
-        let adminsNotified = false;
+          let employeeNotified = false;
+          let adminsNotified = false;
 
-        // 1) Notify assigned employee
-        if (assignedTo && !sameDayReminder) {
-          const userDoc = await db.collection("users").doc(assignedTo).get();
+          // 1) Notify assigned employee
+          if (assignedTo && !sameDayReminder) {
+            const userDoc = await db.collection("users").doc(assignedTo).get();
 
-          if (userDoc.exists) {
-            const userData = userDoc.data() || {};
-            const employeeToken = userData.fcmToken;
-            const languageCode = userData.languageCode || "en";
+            if (userDoc.exists) {
+              const userData = userDoc.data() || {};
+              const employeeToken = await getFcmToken(db, assignedTo);
+              const languageCode = userData.languageCode || "en";
 
-            if (employeeToken) {
+              if (employeeToken) {
+                await admin.messaging().send({
+                  token: employeeToken,
+                  notification: {
+                    title: localize("task_overdue_title", {}, languageCode),
+                    body: localize(
+                        "task_overdue_body",
+                        {task: taskTitle},
+                        languageCode,
+                    ),
+                  },
+                  data: {
+                    taskId: taskId,
+                    type: "task_overdue_reminder",
+                  },
+                  android: {
+                    priority: "high",
+                    notification: {
+                      channelId: "task_notifications",
+                    },
+                  },
+                  apns: {
+                    payload: {
+                      aps: {
+                        sound: "default",
+                      },
+                    },
+                  },
+                });
+
+                employeeNotified = true;
+              }
+            }
+          }
+
+          await createInAppNotification({
+            userId: assignedTo,
+            type: "task_overdue_reminder",
+            taskId: taskId,
+            data: {
+              taskTitle: taskTitle,
+            },
+          });
+
+          // 2) Notify admins
+          if (adminIds.length > 0 && !sameDayEscalation) {
+            let sentToAnyAdmin = false;
+
+            for (const adminDoc of adminsSnapshot.docs) {
+              const adminToken = adminTokenMap[adminDoc.id];
+              const adminData = adminDoc.data() || {};
+              const languageCode = adminData.languageCode || "en";
+
+              if (!adminToken) {
+                continue;
+              }
+
               await admin.messaging().send({
-                token: employeeToken,
+                token: adminToken,
                 notification: {
-                  title: localize("task_overdue_title", {}, languageCode),
+                  title: localize(
+                      "task_overdue_escalation_title",
+                      {},
+                      languageCode,
+                  ),
                   body: localize(
-                    "task_overdue_body",
-                    { task: taskTitle },
-                    languageCode,
+                      "task_overdue_escalation_body",
+                      {employee: assignedToName, task: taskTitle},
+                      languageCode,
                   ),
                 },
                 data: {
                   taskId: taskId,
-                  type: "task_overdue_reminder",
-                },
-                android: {
-                  priority: "high",
-                  notification: {
-                    channelId: "task_notifications",
-                  },
-                },
-                apns: {
-                  payload: {
-                    aps: {
-                      sound: "default",
-                    },
-                  },
+                  type: "task_overdue_escalation",
                 },
               });
 
-              employeeNotified = true;
+              sentToAnyAdmin = true;
             }
+
+            adminsNotified = sentToAnyAdmin;
           }
-        }
-
-        await createInAppNotification({
-          userId: assignedTo,
-          type: "task_overdue_reminder",
-          taskId: taskId,
-          data: {
-            taskTitle: taskTitle,
-          },
-        });
-
-        // 2) Notify admins
-        if (adminTokens.length > 0 && !sameDayEscalation) {
-          let sentToAnyAdmin = false;
 
           for (const adminDoc of adminsSnapshot.docs) {
-            const adminUserDoc = await db
-              .collection("users")
-              .doc(adminDoc.id)
-              .get();
-            const adminUserData = adminUserDoc.data() || {};
-            const adminToken = adminUserData.fcmToken;
-            const languageCode = adminUserData.languageCode || "en";
-
-            if (!adminToken) {
-              continue;
-            }
-
-            await admin.messaging().send({
-              token: adminToken,
-              notification: {
-                title: localize(
-                  "task_overdue_escalation_title",
-                  {},
-                  languageCode,
-                ),
-                body: localize(
-                  "task_overdue_escalation_body",
-                  { employee: assignedToName, task: taskTitle },
-                  languageCode,
-                ),
-              },
+            await createInAppNotification({
+              userId: adminDoc.id,
+              type: "task_overdue_escalation",
+              taskId: taskId,
               data: {
-                taskId: taskId,
-                type: "task_overdue_escalation",
+                taskTitle: taskTitle,
+                assignedToName: assignedToName,
               },
             });
-
-            sentToAnyAdmin = true;
           }
 
-          adminsNotified = sentToAnyAdmin;
-        }
+          const updateData = {};
 
-        for (const adminDoc of adminsSnapshot.docs) {
-          await createInAppNotification({
-            userId: adminDoc.id,
-            type: "task_overdue_escalation",
-            taskId: taskId,
-            data: {
-              taskTitle: taskTitle,
-              assignedToName: assignedToName,
-            },
-          });
-        }
-
-        const updateData = {};
-
-        if (employeeNotified) {
-          updateData.lastOverdueReminderAt =
+          if (employeeNotified) {
+            updateData.lastOverdueReminderAt =
             admin.firestore.FieldValue.serverTimestamp();
-        }
+          }
 
-        if (adminsNotified) {
-          updateData.lastOverdueEscalationAt =
+          if (adminsNotified) {
+            updateData.lastOverdueEscalationAt =
             admin.firestore.FieldValue.serverTimestamp();
+          }
+
+          if (employeeNotified || adminsNotified) {
+            await db.collection("tasks").doc(taskId).update(updateData);
+
+            await db.collection("task_logs").add({
+              taskId: taskId,
+              taskTitle: task.title || "",
+              action: "overdue_escalation",
+              previousStatus: task.status || null,
+              newStatus: task.status || null,
+              performedBy: null,
+              performedByName: "System",
+              performedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
         }
 
-        if (employeeNotified || adminsNotified) {
-          await db.collection("tasks").doc(taskId).update(updateData);
-
-          await db.collection("task_logs").add({
-            taskId: taskId,
-            taskTitle: task.title || "",
-            action: "overdue_escalation",
-            previousStatus: task.status || null,
-            newStatus: task.status || null,
-            performedBy: null,
-            performedByName: "System",
-            performedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        console.log("Overdue escalation job completed.");
+      } catch (error) {
+        console.error("Error sending overdue escalations:", error);
       }
-
-      console.log("Overdue escalation job completed.");
-    } catch (error) {
-      console.error("Error sending overdue escalations:", error);
-    }
-  },
+    },
 );
 
 exports.testOverdueTaskEscalations = onCall(async (request) => {
@@ -1397,14 +1494,14 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
     const db = admin.firestore();
 
     const currentUserDoc = await db
-      .collection("users")
-      .doc(request.auth.uid)
-      .get();
+        .collection("users")
+        .doc(request.auth.uid)
+        .get();
 
     if (!currentUserDoc.exists) {
       throw new HttpsError(
-        "permission-denied",
-        "Current user record not found",
+          "permission-denied",
+          "Current user record not found",
       );
     }
 
@@ -1412,8 +1509,8 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
 
     if (!currentUserData || currentUserData.role !== "admin") {
       throw new HttpsError(
-        "permission-denied",
-        "Only admins can test escalations",
+          "permission-denied",
+          "Only admins can test escalations",
       );
     }
 
@@ -1421,10 +1518,10 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
     const nowTimestamp = admin.firestore.Timestamp.fromDate(now);
 
     const tasksSnapshot = await db
-      .collection("tasks")
-      .where("status", "!=", "completed")
-      .where("dueDate", "<", nowTimestamp)
-      .get();
+        .collection("tasks")
+        .where("status", "!=", "completed")
+        .where("dueDate", "<", nowTimestamp)
+        .get();
 
     if (tasksSnapshot.empty) {
       return {
@@ -1435,17 +1532,12 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
     }
 
     const adminsSnapshot = await db
-      .collection("users")
-      .where("role", "==", "admin")
-      .get();
+        .collection("users")
+        .where("role", "==", "admin")
+        .get();
 
-    const adminTokens = [];
-    adminsSnapshot.forEach((doc) => {
-      const data = doc.data() || {};
-      if (data.fcmToken) {
-        adminTokens.push(data.fcmToken);
-      }
-    });
+    const adminIds = adminsSnapshot.docs.map((doc) => doc.id);
+    const adminTokenMap = await getFcmTokensBatch(db, adminIds);
 
     let sentCount = 0;
 
@@ -1461,7 +1553,7 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
         const userDoc = await db.collection("users").doc(assignedTo).get();
         if (userDoc.exists) {
           const userData = userDoc.data() || {};
-          const employeeToken = userData.fcmToken;
+          const employeeToken = await getFcmToken(db, assignedTo);
           const languageCode = userData.languageCode || "en";
 
           if (employeeToken) {
@@ -1470,9 +1562,9 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
               notification: {
                 title: localize("task_overdue_title", {}, languageCode),
                 body: localize(
-                  "task_overdue_body",
-                  { task: taskTitle },
-                  languageCode,
+                    "task_overdue_body",
+                    {task: taskTitle},
+                    languageCode,
                 ),
               },
               data: {
@@ -1499,15 +1591,11 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
         }
       }
 
-      if (adminTokens.length > 0) {
+      if (adminIds.length > 0) {
         for (const adminDoc of adminsSnapshot.docs) {
-          const adminUserDoc = await db
-            .collection("users")
-            .doc(adminDoc.id)
-            .get();
-          const adminUserData = adminUserDoc.data() || {};
-          const adminToken = adminUserData.fcmToken;
-          const languageCode = adminUserData.languageCode || "en";
+          const adminToken = adminTokenMap[adminDoc.id];
+          const adminData = adminDoc.data() || {};
+          const languageCode = adminData.languageCode || "en";
 
           if (!adminToken) {
             continue;
@@ -1517,14 +1605,14 @@ exports.testOverdueTaskEscalations = onCall(async (request) => {
             token: adminToken,
             notification: {
               title: localize(
-                "task_overdue_escalation_title",
-                {},
-                languageCode,
+                  "task_overdue_escalation_title",
+                  {},
+                  languageCode,
               ),
               body: localize(
-                "task_overdue_escalation_body",
-                { employee: assignedToName, task: taskTitle },
-                languageCode,
+                  "task_overdue_escalation_body",
+                  {employee: assignedToName, task: taskTitle},
+                  languageCode,
               ),
             },
             data: {
@@ -1573,34 +1661,32 @@ exports.deleteUserAccount = onCall(async (request) => {
   const uid = request.auth.uid;
   const db = admin.firestore();
 
-  try {
-    // Helper: batch-update documents in chunks of 500
-    async function batchUpdate(docs, updateFn) {
-      const CHUNK = 500;
-      for (let i = 0; i < docs.length; i += CHUNK) {
-        const batch = db.batch();
-        docs
+  async function batchUpdate(docs, updateFn) {
+    const CHUNK = 500;
+    for (let i = 0; i < docs.length; i += CHUNK) {
+      const batch = db.batch();
+      docs
           .slice(i, i + CHUNK)
           .forEach((doc) => batch.update(doc.ref, updateFn(doc)));
-        await batch.commit();
-      }
+      await batch.commit();
     }
+  }
 
-    // Helper: batch-delete documents in chunks of 500
-    async function batchDelete(docs) {
-      const CHUNK = 500;
-      for (let i = 0; i < docs.length; i += CHUNK) {
-        const batch = db.batch();
-        docs.slice(i, i + CHUNK).forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
-      }
+  async function batchDelete(docs) {
+    const CHUNK = 500;
+    for (let i = 0; i < docs.length; i += CHUNK) {
+      const batch = db.batch();
+      docs.slice(i, i + CHUNK).forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
     }
+  }
 
+  try {
     // Step 1: tasks assigned BY this user → overwrite assignedByName
     const assignedBySnap = await db
-      .collection("tasks")
-      .where("assignedBy", "==", uid)
-      .get();
+        .collection("tasks")
+        .where("assignedBy", "==", uid)
+        .get();
     if (!assignedBySnap.empty) {
       await batchUpdate(assignedBySnap.docs, () => ({
         assignedByName: "Deleted user",
@@ -1609,9 +1695,9 @@ exports.deleteUserAccount = onCall(async (request) => {
 
     // Step 2: tasks assigned TO this user → overwrite assignedToName
     const assignedToSnap = await db
-      .collection("tasks")
-      .where("assignedTo", "==", uid)
-      .get();
+        .collection("tasks")
+        .where("assignedTo", "==", uid)
+        .get();
     if (!assignedToSnap.empty) {
       await batchUpdate(assignedToSnap.docs, () => ({
         assignedToName: "Deleted user",
@@ -1620,9 +1706,9 @@ exports.deleteUserAccount = onCall(async (request) => {
 
     // Step 3: notifications belonging to this user → delete
     const notificationsSnap = await db
-      .collection("notifications")
-      .where("userId", "==", uid)
-      .get();
+        .collection("notifications")
+        .where("userId", "==", uid)
+        .get();
     if (!notificationsSnap.empty) {
       await batchDelete(notificationsSnap.docs);
     }
@@ -1630,10 +1716,13 @@ exports.deleteUserAccount = onCall(async (request) => {
     // Step 4: user Firestore doc → delete
     await db.collection("users").doc(uid).delete();
 
+    // Step 4.5: FCM token doc → delete
+    await db.collection("fcm_tokens").doc(uid).delete().catch(() => {});
+
     // Step 5: Firebase Auth account → delete (last; if this fails the user can retry)
     await admin.auth().deleteUser(uid);
 
-    return { success: true };
+    return {success: true};
   } catch (error) {
     console.error("Error deleting user account:", error);
 
@@ -1651,27 +1740,27 @@ exports.revokeUserSessions = onCall(async (request) => {
   }
   try {
     await admin.auth().revokeRefreshTokens(request.auth.uid);
-    return { success: true };
+    return {success: true};
   } catch (error) {
     console.error("revokeUserSessions failed", error);
     throw new HttpsError("internal", "Failed to revoke sessions");
   }
 });
 
-async function createInAppNotification({ userId, type, taskId, data }) {
+async function createInAppNotification({userId, type, taskId, data}) {
   if (!userId) return;
 
   await admin
-    .firestore()
-    .collection("notifications")
-    .add({
-      userId,
-      type,
-      taskId: taskId || null,
-      data: data || {},
-      isRead: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      .firestore()
+      .collection("notifications")
+      .add({
+        userId,
+        type,
+        taskId: taskId || null,
+        data: data || {},
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 }
 
 async function sendFCMNotification(message) {

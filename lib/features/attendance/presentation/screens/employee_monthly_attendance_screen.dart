@@ -8,6 +8,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../data/models/work_schedule_model.dart';
 import '../cubit/attendance_cubit.dart';
 import '../cubit/attendance_state.dart';
 import '../widgets/attendance_record_card.dart';
@@ -37,11 +38,11 @@ class _EmployeeMonthlyAttendanceScreenState
       if (user == null) {
         return;
       }
-      context.read<AttendanceCubit>().loadMonthlyAttendance(
-        user.id,
-        _year,
-        _month,
-      );
+      final cubit = context.read<AttendanceCubit>();
+      cubit.loadMonthlyAttendance(user.id, _year, _month);
+      if (cubit.state.mySchedule == null) {
+        cubit.loadMySchedule(user.id);
+      }
     });
   }
 
@@ -137,10 +138,19 @@ class _EmployeeMonthlyAttendanceScreenState
                   }
 
                   final daysPresent = state.monthlyRecords
-                      .where((r) => r.status == 'present')
+                      .where((r) => r.status == 'present' || r.status == 'manual')
+                      .length;
+                  final daysLate = state.monthlyRecords
+                      .where((r) => r.status == 'late')
                       .length;
                   final daysAbsent = state.monthlyRecords
                       .where((r) => r.status == 'absent')
+                      .length;
+                  final daysOff = state.monthlyRecords
+                      .where((r) => r.status == 'off_day')
+                      .length;
+                  final daysOffWork = state.monthlyRecords
+                      .where((r) => r.status == 'off_day_work')
                       .length;
                   final corrections = state.monthlyRecords
                       .where((r) => r.isCorrected)
@@ -150,6 +160,18 @@ class _EmployeeMonthlyAttendanceScreenState
                     (sum, r) => sum + r.totalDurationMinutes,
                   );
                   final totalHoursLabel = _hoursLabel(totalMinutes);
+
+                  final daysWorked = daysPresent + daysLate + daysOffWork;
+                  double? attendanceRate;
+                  final schedule = state.mySchedule;
+                  if (schedule != null) {
+                    final workingDays =
+                        _countWorkingDays(schedule, _year, _month);
+                    if (workingDays > 0) {
+                      attendanceRate =
+                          (daysWorked / workingDays * 100).clamp(0.0, 100.0);
+                    }
+                  }
 
                   return RefreshIndicator(
                     onRefresh: () async {
@@ -166,9 +188,13 @@ class _EmployeeMonthlyAttendanceScreenState
                         if (index == 0) {
                           return _MonthlySummaryCard(
                             daysPresent: daysPresent,
+                            daysLate: daysLate,
                             daysAbsent: daysAbsent,
+                            daysOff: daysOff,
+                            daysOffWork: daysOffWork,
                             totalHoursWorked: totalHoursLabel,
                             corrections: corrections,
+                            attendanceRate: attendanceRate,
                           );
                         }
 
@@ -193,39 +219,156 @@ class _EmployeeMonthlyAttendanceScreenState
   }
 }
 
+int _countWorkingDays(WorkScheduleModel schedule, int year, int month) {
+  final daysInMonth = DateTime(year, month + 1, 0).day;
+  var count = 0;
+  for (var day = 1; day <= daysInMonth; day++) {
+    final weekday = DateTime(year, month, day).weekday;
+    final daySchedule = schedule.days[weekday.toString()];
+    if (daySchedule?.isWorkingDay ?? true) count++;
+  }
+  return count;
+}
+
+// ─── Summary card ─────────────────────────────────────────────────────────────
+
 class _MonthlySummaryCard extends StatelessWidget {
   final int daysPresent;
+  final int daysLate;
   final int daysAbsent;
+  final int daysOff;
+  final int daysOffWork;
   final String totalHoursWorked;
   final int corrections;
+  final double? attendanceRate;
 
   const _MonthlySummaryCard({
     required this.daysPresent,
+    required this.daysLate,
     required this.daysAbsent,
+    required this.daysOff,
+    required this.daysOffWork,
     required this.totalHoursWorked,
     required this.corrections,
+    required this.attendanceRate,
   });
+
+  Color _rateColor(ColorScheme cs, double rate) {
+    if (rate >= 80) return cs.primary;
+    if (rate >= 60) return cs.tertiary;
+    return cs.error;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return AppCard(
-      child: Wrap(
-        spacing: AppSizes.sm,
-        runSpacing: AppSizes.sm,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SummaryChip(
-            label: 'days_present'.tr(),
-            value: daysPresent.toString(),
+          // Attendance rate (only when schedule data is available)
+          if (attendanceRate != null) ...[
+            Row(
+              children: [
+                Text(
+                  'attendance_rate'.tr(),
+                  style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const Spacer(),
+                Text(
+                  '${attendanceRate!.round()}%',
+                  style: tt.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: _rateColor(cs, attendanceRate!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.xs),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                value: attendanceRate! / 100,
+                color: _rateColor(cs, attendanceRate!),
+                backgroundColor: cs.surfaceContainerHighest,
+              ),
+            ),
+            const Divider(height: AppSizes.lg),
+          ],
+
+          // Worked group
+          Text(
+            'worked'.tr(),
+            style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
-          _SummaryChip(label: 'days_absent'.tr(), value: daysAbsent.toString()),
-          _SummaryChip(
-            label: 'total_hours_worked'.tr(),
-            value: totalHoursWorked,
+          const SizedBox(height: AppSizes.xs),
+          Wrap(
+            spacing: AppSizes.xs,
+            runSpacing: AppSizes.xs,
+            children: [
+              _SummaryChip(
+                label: 'days_present'.tr(),
+                value: daysPresent.toString(),
+              ),
+              if (daysLate > 0)
+                _SummaryChip(
+                  label: 'days_late'.tr(),
+                  value: daysLate.toString(),
+                ),
+              if (daysOffWork > 0)
+                _SummaryChip(
+                  label: 'days_off_work'.tr(),
+                  value: daysOffWork.toString(),
+                ),
+              _SummaryChip(
+                label: 'total_hours_worked'.tr(),
+                value: totalHoursWorked,
+              ),
+            ],
           ),
-          _SummaryChip(
-            label: 'corrections'.tr(),
-            value: corrections.toString(),
+
+          const SizedBox(height: AppSizes.sm),
+
+          // Not-worked group
+          Text(
+            'not_worked'.tr(),
+            style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
+          const SizedBox(height: AppSizes.xs),
+          Wrap(
+            spacing: AppSizes.xs,
+            runSpacing: AppSizes.xs,
+            children: [
+              _SummaryChip(
+                label: 'days_absent'.tr(),
+                value: daysAbsent.toString(),
+              ),
+              if (daysOff > 0)
+                _SummaryChip(
+                  label: 'days_off'.tr(),
+                  value: daysOff.toString(),
+                ),
+            ],
+          ),
+
+          // Corrections (shown only when > 0)
+          if (corrections > 0) ...[
+            const SizedBox(height: AppSizes.sm),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_outlined, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: AppSizes.xs),
+                Text(
+                  '$corrections ${'corrections'.tr()}',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

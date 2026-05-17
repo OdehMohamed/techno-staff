@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
+import '../../../../shared/widgets/attendance_status_chip.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../attendance/data/models/attendance_model.dart';
@@ -207,7 +208,7 @@ class _RosterRowState extends State<_RosterRow> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
-                    _AttendanceStatusChip(status: record.status),
+                    AttendanceStatusChip(status: record.status),
                     if (record.isCorrected) ...[
                       const SizedBox(width: AppSizes.xs),
                       Icon(
@@ -374,57 +375,6 @@ class _RosterExpandedSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─── Status chip ─────────────────────────────────────────────────────────────
-
-class _AttendanceStatusChip extends StatelessWidget {
-  final String status;
-
-  const _AttendanceStatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final statusKey = switch (status) {
-      'present' => 'attendance_status_present',
-      'absent' => 'attendance_status_absent',
-      'manual' => 'attendance_status_present',
-      _ => 'attendance_status_present',
-    };
-
-    final colors = switch (status) {
-      'absent' => (
-          background: Theme.of(context).colorScheme.errorContainer,
-          foreground: Theme.of(context).colorScheme.onErrorContainer,
-        ),
-      'manual' => (
-          background: Theme.of(context).colorScheme.tertiaryContainer,
-          foreground: Theme.of(context).colorScheme.onTertiaryContainer,
-        ),
-      _ => (
-          background: Theme.of(context).colorScheme.primaryContainer,
-          foreground: Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.sm,
-        vertical: AppSizes.xs,
-      ),
-      decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        statusKey.tr(),
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: colors.foreground),
-      ),
     );
   }
 }

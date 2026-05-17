@@ -4,16 +4,22 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/attendance_model.dart';
+import '../../data/models/work_schedule_model.dart';
 import '../../data/repositories/attendance_repository.dart';
+import '../../data/repositories/schedule_repository.dart';
 import 'attendance_state.dart';
 
 class AttendanceCubit extends Cubit<AttendanceState> {
   final AttendanceRepository _attendanceRepository;
+  final ScheduleRepository _scheduleRepository;
   StreamSubscription<AttendanceModel?>? _todaySubscription;
 
-  AttendanceCubit({required AttendanceRepository attendanceRepository})
-    : _attendanceRepository = attendanceRepository,
-      super(const AttendanceState());
+  AttendanceCubit({
+    required AttendanceRepository attendanceRepository,
+    required ScheduleRepository scheduleRepository,
+  }) : _attendanceRepository = attendanceRepository,
+       _scheduleRepository = scheduleRepository,
+       super(const AttendanceState());
 
   void startListeningToday(String userId) {
     emit(
@@ -225,6 +231,95 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       state.copyWith(
         correctionStatus: AttendanceActionStatus.idle,
         clearCorrectionError: true,
+      ),
+    );
+  }
+
+  // ── Schedule methods ──────────────────────────────────────────────────────
+
+  Future<void> loadMySchedule(String userId) async {
+    emit(
+      state.copyWith(
+        scheduleStatus: AttendanceLoadStatus.loading,
+        clearScheduleError: true,
+      ),
+    );
+    try {
+      final schedule = await _scheduleRepository.fetchSchedule(userId);
+      emit(
+        state.copyWith(
+          scheduleStatus: AttendanceLoadStatus.loaded,
+          mySchedule: schedule,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          scheduleStatus: AttendanceLoadStatus.error,
+          scheduleError: 'network_error',
+        ),
+      );
+    }
+  }
+
+  Future<void> loadEmployeeSchedule(String userId, String userName) async {
+    emit(
+      state.copyWith(
+        editingScheduleStatus: AttendanceLoadStatus.loading,
+        clearEditingSchedule: true,
+      ),
+    );
+    try {
+      final schedule = await _scheduleRepository.fetchSchedule(userId);
+      emit(
+        state.copyWith(
+          editingScheduleStatus: AttendanceLoadStatus.loaded,
+          editingSchedule:
+              schedule ?? WorkScheduleModel.defaultFor(userId: userId, userName: userName),
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          editingScheduleStatus: AttendanceLoadStatus.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> saveSchedule(
+    WorkScheduleModel schedule, {
+    required String updatedBy,
+    required String updatedByName,
+  }) async {
+    emit(
+      state.copyWith(
+        scheduleSaveStatus: AttendanceActionStatus.submitting,
+        clearScheduleSaveError: true,
+      ),
+    );
+    try {
+      await _scheduleRepository.saveSchedule(
+        schedule,
+        updatedBy: updatedBy,
+        updatedByName: updatedByName,
+      );
+      emit(state.copyWith(scheduleSaveStatus: AttendanceActionStatus.success));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          scheduleSaveStatus: AttendanceActionStatus.error,
+          scheduleSaveError: 'network_error',
+        ),
+      );
+    }
+  }
+
+  void clearScheduleSaveFeedback() {
+    emit(
+      state.copyWith(
+        scheduleSaveStatus: AttendanceActionStatus.idle,
+        clearScheduleSaveError: true,
       ),
     );
   }

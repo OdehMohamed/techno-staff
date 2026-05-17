@@ -16,7 +16,7 @@ class AppUpdateService {
       final doc = await FirebaseFirestore.instance
           .collection(FirebasePaths.config)
           .doc(FirebasePaths.appSettings)
-          .get();
+          .get(const GetOptions(source: Source.server));
 
       if (!doc.exists) {
         return (required: false, storeUrl: null);

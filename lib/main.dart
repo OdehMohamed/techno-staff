@@ -12,6 +12,7 @@ import 'package:techno_staff/core/routes/app_navigator.dart';
 import 'package:techno_staff/core/routes/route_names.dart';
 import 'package:techno_staff/core/services/notification_service.dart';
 import 'package:techno_staff/features/attendance/data/repositories/attendance_repository.dart';
+import 'package:techno_staff/features/attendance/data/repositories/schedule_repository.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
 import 'package:techno_staff/features/dashboard/data/repositories/dashboard_repository.dart';
 import 'package:techno_staff/features/dashboard/presentation/cubit/dashboard_cubit.dart';
@@ -114,6 +115,7 @@ Future<void> main() async {
   final reportsRepository = ReportsRepository();
   final pdfReportService = PdfReportService();
   final attendanceRepository = AttendanceRepository();
+  final scheduleRepository = ScheduleRepository();
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -160,7 +162,10 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) =>
-                AttendanceCubit(attendanceRepository: attendanceRepository),
+                AttendanceCubit(
+                  attendanceRepository: attendanceRepository,
+                  scheduleRepository: scheduleRepository,
+                ),
           ),
           BlocProvider(
             create: (_) =>

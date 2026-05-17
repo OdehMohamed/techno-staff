@@ -16,8 +16,10 @@ class TasksRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedTo, isEqualTo: userId)
+        .where(FirebasePaths.status, isNotEqualTo: 'completed')
+        .orderBy(FirebasePaths.status)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -28,8 +30,10 @@ class TasksRepository {
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedBy, isEqualTo: userId)
+        .where(FirebasePaths.status, isNotEqualTo: 'completed')
+        .orderBy(FirebasePaths.status)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -39,8 +43,48 @@ class TasksRepository {
   Future<List<TaskModel>> getAllTasks() async {
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
+        .where(FirebasePaths.status, isNotEqualTo: 'completed')
+        .orderBy(FirebasePaths.status)
         .orderBy(FirebasePaths.createdAt, descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
+
+    return snapshot.docs
+        .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Future<List<TaskModel>> getCompletedTasksAssignedTo(String userId) async {
+    final snapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .where(FirebasePaths.assignedTo, isEqualTo: userId)
+        .where(FirebasePaths.status, isEqualTo: 'completed')
+        .orderBy(FirebasePaths.completedAt, descending: true)
+        .get(const GetOptions(source: Source.server));
+
+    return snapshot.docs
+        .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Future<List<TaskModel>> getCompletedTasksCreatedBy(String userId) async {
+    final snapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .where(FirebasePaths.assignedBy, isEqualTo: userId)
+        .where(FirebasePaths.status, isEqualTo: 'completed')
+        .orderBy(FirebasePaths.completedAt, descending: true)
+        .get(const GetOptions(source: Source.server));
+
+    return snapshot.docs
+        .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Future<List<TaskModel>> getAllCompletedTasks() async {
+    final snapshot = await _firestore
+        .collection(FirebasePaths.tasks)
+        .where(FirebasePaths.status, isEqualTo: 'completed')
+        .orderBy(FirebasePaths.completedAt, descending: true)
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskModel.fromMap(doc.id, doc.data()))
@@ -82,7 +126,7 @@ class TasksRepository {
     final doc = await _firestore
         .collection(FirebasePaths.tasks)
         .doc(taskId)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     if (!doc.exists || doc.data() == null) {
       return null;
@@ -145,7 +189,7 @@ class TasksRepository {
     final doc = await _firestore
         .collection(FirebasePaths.users)
         .doc(userId)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     if (!doc.exists || doc.data() == null) {
       return '-';
@@ -166,10 +210,10 @@ class TasksRepository {
 
   Future<List<TaskLogModel>> getTaskLogs(String taskId) async {
     final snapshot = await _firestore
-        .collection('task_logs')
+        .collection(FirebasePaths.taskLogs)
         .where('taskId', isEqualTo: taskId)
         .orderBy('performedAt', descending: true)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => TaskLogModel.fromMap(doc.id, doc.data()))

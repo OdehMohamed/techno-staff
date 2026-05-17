@@ -20,6 +20,7 @@ class TaskModel {
   final int? targetCount;
   final int currentCount;
   final String? templateId;
+  final bool hasDueTime;
 
   TaskModel({
     required this.id,
@@ -41,7 +42,20 @@ class TaskModel {
     this.targetCount,
     this.currentCount = 0,
     this.templateId,
+    this.hasDueTime = false,
   });
+
+  /// Returns a UTC DateTime representing 23:59:59 in Jerusalem (UTC+3) for
+  /// the given calendar date. Use this when storing date-only due dates so
+  /// overdue logic fires correctly after the due day ends.
+  static DateTime dueDateEndOfDay(DateTime calendarDate) {
+    return DateTime.utc(
+      calendarDate.year,
+      calendarDate.month,
+      calendarDate.day,
+      20, 59, 59, // 23:59:59 Jerusalem (UTC+3)
+    );
+  }
 
   bool get isCounter => taskType == 'counter';
 
@@ -80,6 +94,7 @@ class TaskModel {
           ? data['currentCount'] as int
           : 0,
       templateId: data['templateId'] as String?,
+      hasDueTime: data['hasDueTime'] as bool? ?? false,
     );
   }
 
@@ -105,6 +120,7 @@ class TaskModel {
       if (targetCount != null) 'targetCount': targetCount,
       'currentCount': currentCount,
       if (templateId != null) 'templateId': templateId,
+      'hasDueTime': hasDueTime,
     };
   }
 
@@ -130,6 +146,7 @@ class TaskModel {
     int? targetCount,
     int? currentCount,
     String? templateId,
+    bool? hasDueTime,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -151,6 +168,7 @@ class TaskModel {
       targetCount: clearTargetCount ? null : (targetCount ?? this.targetCount),
       currentCount: currentCount ?? this.currentCount,
       templateId: templateId ?? this.templateId,
+      hasDueTime: hasDueTime ?? this.hasDueTime,
     );
   }
 }

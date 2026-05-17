@@ -64,7 +64,7 @@ class AttendanceRepository {
     final snapshot = await _firestore
         .collection('attendance')
         .where('date', isEqualTo: date)
-        .get();
+        .get(const GetOptions(source: Source.server));
     final docs = snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -89,7 +89,7 @@ class AttendanceRepository {
         .where('date', isGreaterThanOrEqualTo: start)
         .where('date', isLessThan: nextMonth)
         .orderBy('date', descending: false)
-        .get();
+        .get(const GetOptions(source: Source.server));
 
     return snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))

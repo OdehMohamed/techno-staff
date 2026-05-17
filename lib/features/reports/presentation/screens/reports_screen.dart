@@ -13,8 +13,20 @@ import '../../../attendance/presentation/widgets/attendance_record_card.dart';
 import '../../presentation/cubit/reports_cubit.dart';
 import '../../presentation/cubit/reports_state.dart';
 import '../../../auth/domain/models/app_user.dart';
+import '../../../attendance/data/models/work_schedule_model.dart';
 import '../../../attendance/presentation/cubit/attendance_cubit.dart';
 import '../../../attendance/presentation/cubit/attendance_state.dart';
+
+int _countWorkingDays(WorkScheduleModel schedule, int year, int month) {
+  final daysInMonth = DateTime(year, month + 1, 0).day;
+  var count = 0;
+  for (var day = 1; day <= daysInMonth; day++) {
+    final weekday = DateTime(year, month, day).weekday;
+    final daySchedule = schedule.days[weekday.toString()];
+    if (daySchedule?.isWorkingDay ?? true) count++;
+  }
+  return count;
+}
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -173,6 +185,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     state.selectedEmployee!.id,
                     state.selectedMonth!.year,
                     state.selectedMonth!.month,
+                  );
+                  context.read<AttendanceCubit>().loadEmployeeSchedule(
+                    state.selectedEmployee!.id,
+                    state.selectedEmployee!.name,
                   );
                 }
               },
@@ -570,28 +586,60 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               }
 
                               final daysPresent = attendanceState.monthlyRecords
-                                  .where((r) => r.status == 'present')
+                                  .where((r) =>
+                                      r.status == 'present' ||
+                                      r.status == 'manual')
+                                  .length;
+                              final daysLate = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'late')
                                   .length;
                               final daysAbsent = attendanceState.monthlyRecords
                                   .where((r) => r.status == 'absent')
                                   .length;
+                              final daysOff = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'off_day')
+                                  .length;
+                              final daysOffWork = attendanceState.monthlyRecords
+                                  .where((r) => r.status == 'off_day_work')
+                                  .length;
                               final corrections = attendanceState.monthlyRecords
                                   .where((r) => r.isCorrected)
                                   .length;
-                              final totalMinutes = attendanceState
-                                  .monthlyRecords
+                              final totalMinutes = attendanceState.monthlyRecords
                                   .fold<int>(
                                     0,
                                     (sum, r) => sum + r.totalDurationMinutes,
                                   );
 
+                              final daysWorked =
+                                  daysPresent + daysLate + daysOffWork;
+                              final schedule =
+                                  attendanceState.editingSchedule;
+                              double? attendanceRate;
+                              if (schedule != null) {
+                                final workingDays = _countWorkingDays(
+                                  schedule,
+                                  _selectedMonth.year,
+                                  _selectedMonth.month,
+                                );
+                                if (workingDays > 0) {
+                                  attendanceRate =
+                                      (daysWorked / workingDays * 100)
+                                          .clamp(0.0, 100.0);
+                                }
+                              }
+
                               return Column(
                                 children: [
                                   _MonthlyAttendanceSummaryCard(
                                     daysPresent: daysPresent,
+                                    daysLate: daysLate,
                                     daysAbsent: daysAbsent,
+                                    daysOff: daysOff,
+                                    daysOffWork: daysOffWork,
                                     totalHoursWorked: _hoursLabel(totalMinutes),
                                     corrections: corrections,
+                                    attendanceRate: attendanceRate,
                                   ),
                                   const SizedBox(height: AppSizes.md),
                                   ListView.separated(
@@ -717,37 +765,133 @@ class _LegendItem extends StatelessWidget {
 
 class _MonthlyAttendanceSummaryCard extends StatelessWidget {
   final int daysPresent;
+  final int daysLate;
   final int daysAbsent;
+  final int daysOff;
+  final int daysOffWork;
   final String totalHoursWorked;
   final int corrections;
+  final double? attendanceRate;
 
   const _MonthlyAttendanceSummaryCard({
     required this.daysPresent,
+    required this.daysLate,
     required this.daysAbsent,
+    required this.daysOff,
+    required this.daysOffWork,
     required this.totalHoursWorked,
     required this.corrections,
+    required this.attendanceRate,
   });
+
+  Color _rateColor(ColorScheme cs, double rate) {
+    if (rate >= 80) return cs.primary;
+    if (rate >= 60) return cs.tertiary;
+    return cs.error;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return AppCard(
-      child: Wrap(
-        spacing: AppSizes.sm,
-        runSpacing: AppSizes.sm,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SummaryChip(
-            label: 'days_present'.tr(),
-            value: daysPresent.toString(),
+          if (attendanceRate != null) ...[
+            Row(
+              children: [
+                Text(
+                  'attendance_rate'.tr(),
+                  style: tt.titleSmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const Spacer(),
+                Text(
+                  '${attendanceRate!.round()}%',
+                  style: tt.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: _rateColor(cs, attendanceRate!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.xs),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                value: attendanceRate! / 100,
+                color: _rateColor(cs, attendanceRate!),
+                backgroundColor: cs.surfaceContainerHighest,
+              ),
+            ),
+            const Divider(height: AppSizes.lg),
+          ],
+          Text(
+            'worked'.tr(),
+            style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
-          _SummaryChip(label: 'days_absent'.tr(), value: daysAbsent.toString()),
-          _SummaryChip(
-            label: 'total_hours_worked'.tr(),
-            value: totalHoursWorked,
+          const SizedBox(height: AppSizes.xs),
+          Wrap(
+            spacing: AppSizes.xs,
+            runSpacing: AppSizes.xs,
+            children: [
+              _SummaryChip(
+                label: 'days_present'.tr(),
+                value: daysPresent.toString(),
+              ),
+              if (daysLate > 0)
+                _SummaryChip(
+                  label: 'days_late'.tr(),
+                  value: daysLate.toString(),
+                ),
+              if (daysOffWork > 0)
+                _SummaryChip(
+                  label: 'days_off_work'.tr(),
+                  value: daysOffWork.toString(),
+                ),
+              _SummaryChip(
+                label: 'total_hours_worked'.tr(),
+                value: totalHoursWorked,
+              ),
+            ],
           ),
-          _SummaryChip(
-            label: 'corrections'.tr(),
-            value: corrections.toString(),
+          const SizedBox(height: AppSizes.sm),
+          Text(
+            'not_worked'.tr(),
+            style: tt.labelMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
+          const SizedBox(height: AppSizes.xs),
+          Wrap(
+            spacing: AppSizes.xs,
+            runSpacing: AppSizes.xs,
+            children: [
+              _SummaryChip(
+                label: 'days_absent'.tr(),
+                value: daysAbsent.toString(),
+              ),
+              if (daysOff > 0)
+                _SummaryChip(
+                  label: 'days_off'.tr(),
+                  value: daysOff.toString(),
+                ),
+            ],
+          ),
+          if (corrections > 0) ...[
+            const SizedBox(height: AppSizes.sm),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_outlined, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: AppSizes.xs),
+                Text(
+                  '$corrections ${'corrections'.tr()}',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -1,5 +1,7 @@
 name: techno_staff
-description: "Bilingual (en/ar) staff and task-management app for the Techno team — role-based, with Firebase Auth/Firestore/Functions and FCM-driven notifications."
+description: "Bilingual (en/ar) staff and task-management app for the Techno
+  team — role-based, with Firebase Auth/Firestore/Functions and FCM-driven
+  notifications."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -16,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+3
+version: 1.2.0+4
 
 environment:
   sdk: ^3.9.2
@@ -52,17 +54,13 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
   shared_preferences: ^2.5.5
+  shorebird_code_push: ^2.0.6
   url_launcher: ^6.3.2
   uuid: ^4.5.3
 
 dev_dependencies:
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
 
@@ -78,6 +76,7 @@ flutter:
     - assets/images/logo.png
     - assets/translations/
     - assets/fonts/
+    - shorebird.yaml
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
@@ -105,7 +104,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
 flutter_launcher_icons:
   android: true
   ios: true

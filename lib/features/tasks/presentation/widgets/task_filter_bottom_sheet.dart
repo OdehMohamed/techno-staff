@@ -120,16 +120,6 @@ class _TaskFilterBottomSheetState extends State<TaskFilterBottomSheet> {
                       });
                     },
                   ),
-                  _buildChoiceChip(
-                    label: 'completed'.tr(),
-                    value: 'completed',
-                    groupValue: _statusFilter,
-                    onSelected: (value) {
-                      setState(() {
-                        _statusFilter = value;
-                      });
-                    },
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
