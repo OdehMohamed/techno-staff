@@ -147,11 +147,9 @@ class AuthCubit extends Cubit<AuthState> {
     if (firebaseUser != null) {
       try {
         await FirebaseFirestore.instance
-            .collection(FirebasePaths.users)
+            .collection(FirebasePaths.fcmTokens)
             .doc(firebaseUser.uid)
-            .update({
-              'fcmToken': FieldValue.delete(),
-            });
+            .delete();
       } catch (e, stack) {
         await FirebaseCrashlytics.instance.recordError(e, stack);
       }
@@ -241,9 +239,13 @@ class AuthCubit extends Cubit<AuthState> {
     }
 
     if (token != null) {
-      await FirebaseFirestore.instance.collection(FirebasePaths.users).doc(userId).update({
-        'fcmToken': token,
-      });
+      await FirebaseFirestore.instance
+          .collection(FirebasePaths.fcmTokens)
+          .doc(userId)
+          .set({
+            'token': token,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
     }
   }
 
