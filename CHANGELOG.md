@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-17
+
+### Added
+
+- Attendance system — server-authoritative check-in/check-out via biometric-guarded callable (`recordAttendance`); multi-session daily records; `attendance/{userId_YYYY-MM-DD}` document shape with `sessions[]`, `totalDurationMinutes`, and `status` (present/absent/late).
+- Admin attendance roster — date-picker view of all employees' daily status; expandable session cards; admin correction sheet (`adminCorrectAttendance` callable) with audit trail preserved in `originalSessions`.
+- Employee attendance history screen — scrollable personal record with expandable daily cards; monthly attendance summary view with per-status counts.
+- Daily absence marker — Cloud Function cron (`sendDailyAbsenceMarker`, 23:00 Asia/Jerusalem) marks employees with no sessions as `absent`; idempotent, skips employees with existing session data.
+- Attendance section in admin Reports screen — per-employee monthly breakdown alongside the existing task report; included in PDF export.
+- Today's attendance summary card on the admin Dashboard screen.
+- Recurring task templates — admin-only template management (daily / weekly / monthly recurrence); `generateRecurringTaskInstances` cron generates deterministic instances per assignee per day with layered idempotency; multi-assignee template support.
+- `testTaskDeadlineReminders` and `testOverdueTaskEscalations` admin-callable dry-run functions for deadline/escalation pipelines.
+- Recurring template errors now surface to all admins via in-app notification instead of only appearing in Cloud Functions logs.
+
+### Changed
+
+- FCM token storage moved from `users/{uid}.fcmToken` to a dedicated `fcm_tokens/{uid}` collection (`allow read: if false`); clients can no longer read each other's push tokens. Cloud Functions use admin SDK to bypass rules. Existing users receive a passive migration — token is written to the new location on next sign-in.
+- `createEmployeeUser` callable now rejects any `role` value outside `admin | employee` at the server layer.
+- All Firestore `.get()` reads across every repository now use `GetOptions(source: Source.server)` to prevent stale cache from surfacing after mutations (tasks, employees, reports, notifications, attendance, update-gate config, role reads at auth time).
+- All Firestore collection path string literals replaced with `FirebasePaths.*` constants throughout the codebase.
+- ESLint enforcement is now real — blanket `/* eslint-disable */` suppressor removed from `functions/index.js`; `require-jsdoc` turned off and `max-len` set to 120 in `.eslintrc.js`; all formatting violations auto-fixed; predeploy lint gate now catches real violations.
+
+### Fixed
+
+- Attendance records correctly use Asia/Jerusalem wall-clock date for all session grouping and daily-marker logic; no raw UTC date math.
+- Admin correction preserves the original sessions array in `originalSessions` on first correction only, so the initial employee-recorded state is never overwritten by subsequent admin edits.
+
+### Security
+
+- FCM token isolation: tokens no longer readable by any authenticated client (previously any signed-in user could read any other user's FCM token from the `users` collection). Isolated to `fcm_tokens` collection with `allow read: if false`.
+- `deleteUserAccount` now cleans up `fcm_tokens/{uid}` in addition to the `users/{uid}` doc and notification history.
+
+## [1.1.0] - 2026-05-14
+
 ### Added
 
 - Counter task type — tasks with a target count and an increment button on the assignee's card; completion is derived from progress and persisted as the task's status so existing dashboards / reports / notifications continue to work unchanged.
@@ -60,5 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed all `debugPrint` calls from `lib/`, eliminating release-log leakage of FCM tokens, user IDs, and task metadata (PR #11).
 - Tightened Firestore rules to require `assignedBy` immutability on task updates (PR #6).
 
-[Unreleased]: https://github.com/OdehMohamed/techno-staff/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/OdehMohamed/techno-staff/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/OdehMohamed/techno-staff/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/OdehMohamed/techno-staff/releases/tag/v1.0.0
