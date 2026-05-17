@@ -103,6 +103,37 @@ function jerusalemDayOfMonth(date) {
   return parseInt(formatter.format(date), 10);
 }
 
+function jerusalemHHMMMinutes(date) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const [h, m] = formatter.format(date).split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Returns "present" | "late" | "off_day_work" based on the employee's schedule.
+// scheduleData is the raw Firestore doc data (or null if no schedule doc exists).
+// dayOfWeek is 1=Mon … 7=Sun (matches Dart DateTime.weekday / jerusalemDayOfWeek).
+function checkInStatusForSchedule(scheduleData, now, dayOfWeek) {
+  if (!scheduleData) return "present";
+  const days = scheduleData.days || {};
+  const daySchedule = days[String(dayOfWeek)];
+  if (!daySchedule) return "present";
+  if (!daySchedule.isWorkingDay) return "off_day_work";
+  if (daySchedule.expectedStartTime) {
+    const grace = daySchedule.graceMinutes != null ?
+      daySchedule.graceMinutes :
+      (scheduleData.defaultGraceMinutes != null ? scheduleData.defaultGraceMinutes : 15);
+    const [startH, startM] = daySchedule.expectedStartTime.split(":").map(Number);
+    const deadlineMinutes = startH * 60 + startM + grace;
+    if (jerusalemHHMMMinutes(now) > deadlineMinutes) return "late";
+  }
+  return "present";
+}
+
 function jerusalemLastDayOfMonth(date) {
   // Last calendar day of the month containing `date` in Asia/Jerusalem.
   const ymd = ymdInJerusalem(date); // "YYYY-MM-DD"
@@ -307,6 +338,11 @@ exports.recordAttendance = onCall(async (request) => {
   const userData = userDoc.data() || {};
   const userName = userData.name || "Unknown";
 
+  const scheduleDoc = await db.collection("schedules").doc(userId).get();
+  const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : null;
+  const dayOfWeek = jerusalemDayOfWeek(now);
+  const checkInStatus = checkInStatusForSchedule(scheduleData, now, dayOfWeek);
+
   const attendanceRef = db.collection("attendance").doc(docId);
   const logRef = db.collection("attendance_logs").doc();
 
@@ -337,7 +373,7 @@ exports.recordAttendance = onCall(async (request) => {
           userId,
           userName,
           date,
-          status: "present",
+          status: checkInStatus,
           isCorrected: false,
           totalDurationMinutes: 0,
           sessions: [newSession],
@@ -347,7 +383,7 @@ exports.recordAttendance = onCall(async (request) => {
       } else {
         txn.update(attendanceRef, {
           sessions: [...sessions, newSession],
-          status: "present",
+          status: checkInStatus,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
@@ -361,7 +397,7 @@ exports.recordAttendance = onCall(async (request) => {
         previousValue,
         newValue: {
           session: "appended",
-          status: "present",
+          status: checkInStatus,
         },
         performedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -636,7 +672,9 @@ exports.sendDailyAbsenceMarker = onSchedule(
     async () => {
       try {
         const db = admin.firestore();
-        const today = ymdInJerusalem(new Date());
+        const now = new Date();
+        const today = ymdInJerusalem(now);
+        const todayDayOfWeek = jerusalemDayOfWeek(now);
 
         const employeesSnapshot = await db
             .collection("users")
@@ -657,14 +695,31 @@ exports.sendDailyAbsenceMarker = onSchedule(
             [];
 
           if (sessions.length > 0) {
+            // Employee already has sessions — leave the doc untouched.
             continue;
           }
 
-          const absentDoc = {
+          // Read the employee's schedule to decide absent vs off_day.
+          let markerStatus = "absent";
+          try {
+            const scheduleDoc = await db.collection("schedules").doc(userId).get();
+            if (scheduleDoc.exists) {
+              const scheduleData = scheduleDoc.data() || {};
+              const days = scheduleData.days || {};
+              const daySchedule = days[String(todayDayOfWeek)];
+              if (daySchedule && !daySchedule.isWorkingDay) {
+                markerStatus = "off_day";
+              }
+            }
+          } catch (scheduleErr) {
+            console.warn(`Could not read schedule for ${userId}, defaulting to absent:`, scheduleErr);
+          }
+
+          const markerDoc = {
             userId,
             userName,
             date: today,
-            status: "absent",
+            status: markerStatus,
             isCorrected: false,
             totalDurationMinutes: 0,
             sessions: [],
@@ -672,10 +727,10 @@ exports.sendDailyAbsenceMarker = onSchedule(
           };
 
           if (!attendanceSnap.exists) {
-            absentDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
+            markerDoc.createdAt = admin.firestore.FieldValue.serverTimestamp();
           }
 
-          await attendanceRef.set(absentDoc, {merge: true});
+          await attendanceRef.set(markerDoc, {merge: true});
         }
       } catch (error) {
         console.error("Error running daily absence marker:", error);

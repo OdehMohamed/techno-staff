@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/attendance_status_chip.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/models/attendance_session.dart';
 
@@ -44,7 +45,7 @@ class _AttendanceRecordCardState extends State<AttendanceRecordCard> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
-                    _StatusChip(status: record.status),
+                    AttendanceStatusChip(status: record.status),
                     if (record.isCorrected) ...[
                       const SizedBox(width: AppSizes.xs),
                       Icon(
@@ -215,51 +216,6 @@ class _SessionDetailRow extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final statusKey = switch (status) {
-      'present' => 'attendance_status_present',
-      'absent' => 'attendance_status_absent',
-      'manual' => 'attendance_status_present',
-      _ => 'attendance_status_present',
-    };
-
-    final colors = switch (status) {
-      'absent' => (
-          background: Theme.of(context).colorScheme.errorContainer,
-          foreground: Theme.of(context).colorScheme.onErrorContainer,
-        ),
-      _ => (
-          background: Theme.of(context).colorScheme.primaryContainer,
-          foreground: Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.sm,
-        vertical: AppSizes.xs,
-      ),
-      decoration: BoxDecoration(
-        color: colors.background,
-        borderRadius: BorderRadius.circular(AppSizes.sm),
-      ),
-      child: Text(
-        statusKey.tr(),
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(color: colors.foreground),
       ),
     );
   }

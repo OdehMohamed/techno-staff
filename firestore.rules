@@ -127,6 +127,11 @@ service cloud.firestore {
       allow read: if false;
     }
 
+    match /schedules/{userId} {
+      allow read: if isAdmin() || isCurrentUser(userId);
+      allow write: if isAdmin();
+    }
+
     match /config/{configId} {
       allow read: if true;
       allow write: if isAdmin();

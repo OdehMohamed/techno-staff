@@ -11,6 +11,7 @@ import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_p
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../../../features/dashboard/presentation/cubit/dashboard_state.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -156,6 +157,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           ],
                         ),
+                        if (overdueOpenTasks > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSizes.md),
+                            child: _OverdueAlertCard(
+                              count: overdueOpenTasks,
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                RouteNames.tasks,
+                              ),
+                            ),
+                          ),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final isWide = constraints.maxWidth >= 500;
@@ -214,16 +226,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           },
                         ),
                         const SizedBox(height: AppSizes.md),
-                        // Today's attendance summary card
                         BlocBuilder<AttendanceCubit, AttendanceState>(
                           builder: (context, attendanceState) {
-                            final presentCount = attendanceState.roster
-                                .where((r) => r.status == 'present')
+                            final roster = attendanceState.roster;
+                            final presentCount = roster
+                                .where((r) =>
+                                    r.status == 'present' ||
+                                    r.status == 'off_day_work')
                                 .length;
-                            return _DashboardStatCard(
-                              title: 'today_attendance'.tr(),
-                              value: presentCount.toString(),
-                              icon: Icons.how_to_reg_outlined,
+                            final lateCount = roster
+                                .where((r) => r.status == 'late')
+                                .length;
+                            final absentCount = roster
+                                .where((r) => r.status == 'absent')
+                                .length;
+                            return _AttendanceSummaryCard(
+                              presentCount: presentCount,
+                              lateCount: lateCount,
+                              absentCount: absentCount,
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                RouteNames.adminAttendance,
+                              ),
                             );
                           },
                         ),
@@ -718,6 +742,172 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
+    );
+  }
+}
+
+class _OverdueAlertCard extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _OverdueAlertCard({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.md),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: colorScheme.onErrorContainer,
+              size: 28,
+            ),
+            const SizedBox(width: AppSizes.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'open_overdue'.tr(),
+                    style: textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  Text(
+                    count.toString(),
+                    style: textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward, color: colorScheme.onErrorContainer),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceSummaryCard extends StatelessWidget {
+  final int presentCount;
+  final int lateCount;
+  final int absentCount;
+  final VoidCallback onTap;
+
+  const _AttendanceSummaryCard({
+    required this.presentCount,
+    required this.lateCount,
+    required this.absentCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(Icons.how_to_reg_outlined, color: color),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'today_attendance'.tr(),
+                        style: textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: AppSizes.xs),
+                      Text(
+                        (presentCount + lateCount).toString(),
+                        style: textTheme.headlineMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+            if (lateCount > 0 || absentCount > 0) ...[
+              const SizedBox(height: AppSizes.sm),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (lateCount > 0)
+                    _AttendanceChip(
+                      label:
+                          '$lateCount ${'attendance_status_late'.tr().toLowerCase()}',
+                      color: Colors.orange,
+                    ),
+                  if (absentCount > 0)
+                    _AttendanceChip(
+                      label:
+                          '$absentCount ${'attendance_status_absent'.tr().toLowerCase()}',
+                      color: colorScheme.error,
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _AttendanceChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

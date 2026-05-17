@@ -11,6 +11,7 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_drawer.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../data/models/work_schedule_model.dart';
 import '../cubit/attendance_cubit.dart';
 import '../cubit/attendance_state.dart';
 import '../widgets/attendance_check_button.dart';
@@ -45,6 +46,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final attendanceCubit = context.read<AttendanceCubit>();
       attendanceCubit.startListeningToday(user.id);
       attendanceCubit.loadHistory(user.id);
+      attendanceCubit.loadMySchedule(user.id);
     });
   }
 
@@ -80,10 +82,43 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return true;
   }
 
+  bool _isTodayOffDay() {
+    final schedule = context.read<AttendanceCubit>().state.mySchedule;
+    if (schedule == null) return false;
+    final dayKey = DateTime.now().weekday.toString();
+    return schedule.days[dayKey]?.isWorkingDay == false;
+  }
+
+  Future<bool> _confirmOffDayCheckIn() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('off_day_check_in_title'.tr()),
+            content: Text('off_day_check_in_message'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('cancel'.tr()),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('continue_check_in'.tr()),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Future<void> _handleAttendanceAction({required bool isCheckIn}) async {
     if (!_isOnline) {
       _showSnackBar('no_internet_for_attendance');
       return;
+    }
+
+    if (isCheckIn && _isTodayOffDay()) {
+      final confirmed = await _confirmOffDayCheckIn();
+      if (!confirmed) return;
     }
 
     try {
@@ -191,6 +226,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   onCheckIn: () => _handleAttendanceAction(isCheckIn: true),
                   onCheckOut: () => _handleAttendanceAction(isCheckIn: false),
                 ),
+                if (state.mySchedule != null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  SectionHeader(title: 'schedule'.tr()),
+                  _ScheduleStrip(schedule: state.mySchedule!),
+                ],
                 const SizedBox(height: AppSizes.lg),
                 SectionHeader(title: 'attendance_history'.tr()),
                 if (state.historyStatus == AttendanceLoadStatus.loading &&
@@ -218,6 +258,62 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// ─── Schedule strip ───────────────────────────────────────────────────────────
+
+class _ScheduleStrip extends StatelessWidget {
+  final WorkScheduleModel schedule;
+
+  const _ScheduleStrip({required this.schedule});
+
+  static final _refMonday = DateTime(2024, 1, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = context.locale.languageCode;
+    final todayWeekday = DateTime.now().weekday;
+    final cs = Theme.of(context).colorScheme;
+
+    return Row(
+      children: List.generate(7, (i) {
+        final dayKey = (i + 1).toString();
+        final label = DateFormat('EEEEE', locale).format(
+          _refMonday.add(Duration(days: i)),
+        );
+        final isToday = (i + 1) == todayWeekday;
+        final isWorkingDay = schedule.days[dayKey]?.isWorkingDay ?? true;
+
+        final bg = isWorkingDay
+            ? cs.primaryContainer
+            : cs.surfaceContainerHighest;
+        final fg = isWorkingDay ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+
+        return Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(vertical: AppSizes.xs),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(AppSizes.sm),
+              border: isToday
+                  ? Border.all(color: cs.primary, width: 2)
+                  : null,
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: fg,
+                    fontWeight:
+                        isToday ? FontWeight.bold : FontWeight.normal,
+                  ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
