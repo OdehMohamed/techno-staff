@@ -1,30 +1,100 @@
 # Current Task
 
-> No active task.
+> **Branch `feat/attendance-stabilization` is merge-ready.** All code complete, validation passed, docs updated (2026-05-17). Execute the merge sequence below.
 
-`fix/release-hardening` branch — release-hardening cycle complete through Phase 3. All changes are on this branch and committed. Phase 4 (Shorebird verification) is next before the binary release.
+## Work done this session on feat/attendance-stabilization
 
-## Release-hardening summary (fix/release-hardening)
+### T1 — Data layer (done)
+- `task_model.dart`: `hasDueTime` in `fromMap` / `toMap` / `copyWith`
+- `FirebasePaths.completedAt` constant added
+- `tasks_repository.dart`: `getCompletedTasksAssignedTo`, `getCompletedTasksCreatedBy`, `getAllCompletedTasks`
+- `firestore.indexes.json`: 3 completed-task indexes + 3 active-task indexes (total 6 task indexes)
+- `tasks_state.dart` + `tasks_cubit.dart`: `completedTasks` / `completedTasksStatus` / `fetchCompletedTasks`
 
-### Phase 1 — Source.server audit + FirebasePaths constants (done 2026-05-17)
-- `GetOptions(source: Source.server)` applied to every Firestore `.get()` across all repositories (tasks, employees, reports, notifications, attendance, update-gate config, role check at auth time)
-- All string literals for Firestore collection paths replaced with `FirebasePaths.*` constants
-- `PROJECT_CONTEXT.md` fully rewritten to v1.2.0 state
+### T2 — Deadline-time UI (done)
+- `DueDateTimePicker` shared widget (add_task + edit_task screens)
+- `hasDueTime`-aware `CountdownChip` (orange "due today" window for date-only)
+- `_effectiveDeadline` helper in tasks_screen for correct urgency grouping
+- `task_details_screen`: conditional time display based on `hasDueTime`
 
-### Phase 2 — FCM token isolation + security fixes (done 2026-05-17, deployed)
-- FCM tokens moved from `users/{uid}.fcmToken` to `fcm_tokens/{uid}` collection (`allow read: if false`)
-- All Cloud Functions updated to read via admin SDK (`getFcmToken` / `getFcmTokensBatch` helpers)
-- `deleteUserAccount` cleans up `fcm_tokens/{uid}`
-- `createEmployeeUser` rejects invalid `role` values at the callable layer
-- `generateRecurringTaskInstances` alerts all admins via in-app notification on template errors
-- `/* eslint-disable */` suppressor removed; ESLint now enforced by the real predeploy pipeline
-- Deploy: `firestore:rules` first, then `functions` — both succeeded cleanly on 2026-05-17
+### T3 — Completed tab (done)
+- Third "Completed" tab in both admin and employee task views
+- Lazy loading (only fetches on first visit)
+- Recency grouping: This Week / This Month / Older
+- Refresh consistency after status change / delete / task detail edits
 
-### Phase 3 — Version bump + CHANGELOG (done 2026-05-17)
-- `pubspec.yaml` version bumped: `1.1.0+3` → `1.2.0+4`
-- `CHANGELOG.md`: v1.1.0 entry written, v1.2.0 entry written (attendance, FCM isolation, Source.server, ESLint, recurring templates, role validation), comparison links corrected for all versions
+### T4 — Filter/Discovery UX (done)
+- `_QuickFilter` chip row: Overdue / Due Soon / High (always visible above search bar)
+- Group-collapse behaviour: urgency groups disappear when a quick filter narrows the view
+- `_clearAllFilters()` single path clears search + sheet filters + quick filters
+- `_applyCompletedFilters`: preserves Firestore `completedAt DESC` ordering for completed tab
+- `_priorityRank` helper; active-filter badge on the filter icon
+- New i18n keys: `no_time`, `custom_time`, `completed_this_week`, `completed_this_month`, `completed_older`, `due_soon`
 
-### Phase 4 — Shorebird asset-patching verification (pending)
-- Manual test: build a translation-only patch and verify it lands on a physical device
-- Document result (pass or fail) in `docs/release-checklist.md` under the Shorebird section
-- This is a mandatory step before committing to the Shorebird release workflow
+### Phase 4 — Dashboard restructuring (done)
+- **Employee Home**: `_TodayAttendanceCard` — check-in status, check-in time and duration, tappable → attendance screen. Loading placeholder holds card height during stream init. Task preview urgency-sorted (overdue float to top), cap raised 3 → 5, `_TaskDueLabel` with red/orange/grey coloring on each card.
+- **Admin Dashboard**: `_AttendanceSummaryCard` replaces single-number card — shows present + late headline, conditional `_AttendanceChip` badges for late and absent counts, tappable → admin attendance screen. `_OverdueAlertCard` appears below filter chips when `overdueOpenTasks > 0`, uses `errorContainer` color, tappable → tasks screen.
+
+## Merge sequence for v1.2.0
+
+All prerequisites are complete:
+- `firestore:indexes` deployed ✅
+- Owner validation on physical device passed ✅
+- `flutter analyze` clean ✅
+- CHANGELOG and release checklist updated ✅
+
+### Step 1 — Merge
+
+Open a PR `feat/attendance-stabilization → main` titled `release: v1.2.0`.
+Body: link to the `[1.2.0]` CHANGELOG section.
+Use a **merge commit** (not squash) to preserve per-feature history.
+
+### Step 2 — Post-merge Firebase deploy
+
+```
+firebase deploy --only functions,firestore:rules,firestore:indexes
+```
+
+Run from repo root after `main` is up to date. This release touches Cloud Functions
+(schedule-aware statuses, FCM token migration, template-error alerting), Firestore rules
+(fcm_tokens, schedules), and indexes (task completed-at indexes).
+
+### Step 3 — Tag and GitHub Release
+
+```
+git checkout main && git pull
+git tag -a v1.2.0 -m "v1.2.0"
+git push origin v1.2.0
+```
+
+Create a GitHub Release on the `v1.2.0` tag. Body = the `[1.2.0]` section of `CHANGELOG.md`.
+
+### Step 4 — Store binary
+
+This release includes `local_auth` (native plugin) — not Shorebird patch-eligible.
+Requires a full store binary:
+
+```
+flutter build appbundle --release   # Android
+flutter build ipa --release         # iOS (macOS required)
+```
+
+Upload to Google Play Console (internal track first) and App Store Connect (TestFlight first).
+
+### Step 5 — Mandatory update gate
+
+After store approval, decide in `config/app_settings` whether to bump
+`minimumAndroidVersion` / `minimumIosVersion` to force existing users onto v1.2.0.
+The attendance system requires this binary — if you want to gate attendance access,
+bump the minimum. If not, leave unchanged (users update at their own pace).
+
+### Step 6 — Version bump for next cycle
+
+After tagging, bump `pubspec.yaml` on `main`:
+`1.2.0+4` → `1.3.0+5` (or whichever next version is chosen).
+
+### Shorebird Phase 4 verification (deferred, not blocking)
+
+Manual device test — modify one translation value only, create a Shorebird patch,
+verify it reaches a device without a store update. Record result in `docs/release-checklist.md`.
+This is informational and does not block the v1.2.0 binary release.

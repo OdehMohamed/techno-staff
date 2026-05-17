@@ -13,13 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Attendance system — server-authoritative check-in/check-out via biometric-guarded callable (`recordAttendance`); multi-session daily records; `attendance/{userId_YYYY-MM-DD}` document shape with `sessions[]`, `totalDurationMinutes`, and `status` (present/absent/late).
 - Admin attendance roster — date-picker view of all employees' daily status; expandable session cards; admin correction sheet (`adminCorrectAttendance` callable) with audit trail preserved in `originalSessions`.
-- Employee attendance history screen — scrollable personal record with expandable daily cards; monthly attendance summary view with per-status counts.
+- Employee attendance history screen — scrollable personal record with expandable daily cards; monthly attendance summary with per-status counts, attendance rate progress bar, and worked/not-worked grouping.
 - Daily absence marker — Cloud Function cron (`sendDailyAbsenceMarker`, 23:00 Asia/Jerusalem) marks employees with no sessions as `absent`; idempotent, skips employees with existing session data.
 - Attendance section in admin Reports screen — per-employee monthly breakdown alongside the existing task report; included in PDF export.
-- Today's attendance summary card on the admin Dashboard screen.
+- Today's attendance card on the employee home screen — live check-in status, time, and session duration; tappable to the attendance screen; loading placeholder holds layout during stream initialization.
+- Attendance summary card on the admin dashboard — present + late headline, conditional chips for late and absent counts; tappable to the admin attendance roster.
+- Overdue alert card on the admin dashboard — surfaces when open overdue tasks exist; uses error-container styling; tappable to the tasks screen.
 - Recurring task templates — admin-only template management (daily / weekly / monthly recurrence); `generateRecurringTaskInstances` cron generates deterministic instances per assignee per day with layered idempotency; multi-assignee template support.
 - `testTaskDeadlineReminders` and `testOverdueTaskEscalations` admin-callable dry-run functions for deadline/escalation pipelines.
 - Recurring template errors now surface to all admins via in-app notification instead of only appearing in Cloud Functions logs.
+- Exact-time deadlines — tasks can now specify an exact due time alongside their date (`hasDueTime` flag); date-only tasks continue to target end-of-day; countdown chip, urgency grouping, task-detail display, and due-label coloring all adapt accordingly.
+- Completed task tab — both admin and employee task views now have a third "Completed" tab with recency grouping (This Week / This Month / Older); fetched lazily on first visit.
+- Task quick-filter chips — persistent Overdue / Due Soon / High Priority chip row above the search bar for one-tap filtering; urgency groups collapse automatically when a quick filter is active; filter icon shows an active-count badge; a single clear action resets search, sheet filters, and quick filters together.
 
 ### Changed
 
@@ -28,11 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All Firestore `.get()` reads across every repository now use `GetOptions(source: Source.server)` to prevent stale cache from surfacing after mutations (tasks, employees, reports, notifications, attendance, update-gate config, role reads at auth time).
 - All Firestore collection path string literals replaced with `FirebasePaths.*` constants throughout the codebase.
 - ESLint enforcement is now real — blanket `/* eslint-disable */` suppressor removed from `functions/index.js`; `require-jsdoc` turned off and `max-len` set to 120 in `.eslintrc.js`; all formatting violations auto-fixed; predeploy lint gate now catches real violations.
+- Employee home task preview is urgency-sorted (overdue float to top, then nearest deadline first), raised from 3 to 5 cards, and each card shows a due-date label with red/orange/grey coloring.
+- Admin reports attendance summary redesigned to match the employee screen layout — attendance rate progress bar at top, worked vs. not-worked grouping, correction row; replaces the previous flat chip list.
+- Attendance rate is now schedule-aware on both employee and admin reporting surfaces: denominator is the employee's scheduled working days for the selected month, not recorded-absence counts.
 
 ### Fixed
 
 - Attendance records correctly use Asia/Jerusalem wall-clock date for all session grouping and daily-marker logic; no raw UTC date math.
 - Admin correction preserves the original sessions array in `originalSessions` on first correction only, so the initial employee-recorded state is never overwritten by subsequent admin edits.
+- Completed task tab preserves Firestore `completedAt` DESC ordering regardless of any active client-side filters.
+- Task list refresh is consistent after status change, delete, or task-detail edits — all affected tabs refresh together.
 
 ### Security
 

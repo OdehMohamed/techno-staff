@@ -1,3 +1,105 @@
+## 2026-05-17 — Claude Sonnet 4.6 — Release prep: CHANGELOG completion + checklist update on feat/attendance-stabilization
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/attendance-stabilization`
+- **Goal**: Final documentation pass before merge — complete CHANGELOG v1.2.0 with stabilization work, update release checklist to be version-agnostic and current, confirm no agreed features were left unimplemented.
+- **Outcome**: No unresolved feature/UX gaps found. CHANGELOG and release checklist updated.
+
+### What was done
+
+- **CHANGELOG.md v1.2.0** — added the stabilization/refinement additions that were missing from the earlier entry: `hasDueTime` exact-time deadlines, completed task tab, quick-filter chips, employee home attendance card, admin dashboard attendance summary and overdue alert cards, admin reports summary redesign, schedule-aware attendance rate. Also added the two Fixed entries for completed-tab ordering and task refresh consistency.
+- **`docs/release-checklist.md`** — updated: (1) pre-merge section is now version-agnostic and adds an attendance-specific smoke test; (2) one-time configuration items marked ✅ for items already completed (Firestore config doc, rules, GitHub Pages, Crashlytics dSYM, Android keystore); (3) release flow section updated with prominent post-merge Firebase deploy step (`firebase deploy --only functions,firestore:rules,firestore:indexes`) and guidance on `minimumAndroidVersion` bump decision; (4) post-release verification section adds attendance end-to-end check and `sendDailyAbsenceMarker` cron verification; (5) store submission section clarifies Flutter-only vs Shorebird build path; (6) deferred items note updated to match current NEXT_STEPS.
+- **Scope confirmation** — verified against BACKLOG, DECISIONS_LOG, and NEXT_STEPS: no agreed features or polish items are unimplemented. Deferred items (late status v2, offline queue UX, sign-out-all-devices) are intentionally post-release.
+
+### Branch is merge-ready
+- All validation complete (owner confirmed).
+- `firestore:indexes` deployed.
+- `flutter analyze` clean.
+- No outstanding Cloud Function deploys required before merge.
+
+---
+
+## 2026-05-17 — Claude Sonnet 4.6 — Admin reports attendance refactor + rate semantic fix on feat/attendance-stabilization
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/attendance-stabilization`
+- **Goal**: (1) Align the admin reports attendance summary card with the employee monthly summary design. (2) Fix the semantic inconsistency where the same employee showed 21% on the employee screen but 100% in the admin report.
+- **Outcome**: Both surfaces now use the same schedule-aware attendance rate definition. Admin reports summary redesigned to match employee summary layout.
+
+### Admin reports attendance summary refactor
+- `reports_screen.dart` `_MonthlyAttendanceSummaryCard` rewritten from 4 params to 8: `daysPresent`, `daysLate`, `daysAbsent`, `daysOff`, `daysOffWork`, `totalHoursWorked`, `corrections`, `attendanceRate`.
+- Structure mirrors `_MonthlySummaryCard` from `employee_monthly_attendance_screen.dart`: attendance rate `LinearProgressIndicator` at top (hidden when null), `_rateColor` helper (primary ≥80%, tertiary ≥60%, error below), `Divider`, worked group (present + late + off-work chips + total hours), not-worked group (absent + off chips), corrections row (shown only when > 0).
+- `daysPresent` now includes `|| r.status == 'manual'` to match employee screen parity.
+- `daysLate`, `daysOff`, `daysOffWork` computed from roster records.
+
+### Attendance rate semantic unification
+- **Root cause**: admin reports used `daysWorked / (daysWorked + daysAbsent)` (proxy); employee screen used `daysWorked / workingDays` (schedule-aware). Same employee, same month, different denominators → different percentages.
+- **Fix**: added `import 'work_schedule_model.dart'` and top-level `_countWorkingDays(WorkScheduleModel, year, month)` function to `reports_screen.dart` (mirrors the same function in `employee_monthly_attendance_screen.dart`).
+- Added `loadEmployeeSchedule(employeeId, employeeName)` call in `BlocListener` alongside `loadMonthlyAttendance`, so `editingSchedule` loads whenever the employee or month changes.
+- Rate bar hidden until `editingSchedule != null` — prevents flash of incorrect intermediate percentage.
+- `WorkScheduleModel.defaultFor()` is used server-side when no schedule doc exists; client-side, the rate bar stays hidden until the schedule is confirmed.
+
+---
+
+## 2026-05-17 — Claude Sonnet 4.6 — Task UX pass (T1–T4) + Dashboard restructuring on feat/attendance-stabilization
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/attendance-stabilization`
+- **Goal**: Complete the four-part task UX improvement pass (T1–T4) and restructure both dashboard screens to surface attendance and overdue data without extra navigation.
+- **Outcome**: All four task improvements shipped; both home screens restructured. No new Cloud Function changes. `flutter analyze` clean on all touched files.
+
+### T1 — Data layer
+- `task_model.dart`: `hasDueTime: bool` wired into `fromMap` / `toMap` / `copyWith` (field + `dueDateEndOfDay` static helper were already present from previous session).
+- `FirebasePaths.completedAt` constant added to `firebase_paths.dart`.
+- `tasks_repository.dart`: three new methods — `getCompletedTasksAssignedTo`, `getCompletedTasksCreatedBy`, `getAllCompletedTasks` — each using `isEqualTo: 'completed'` + `orderBy(completedAt, descending: true)`. No Firestore index ordering conflict because status uses equality not inequality.
+- `firestore.indexes.json`: 6 task indexes total (3 active-task with `createdAt DESC`, 3 completed-task with `completedAt DESC`).
+- `tasks_state.dart`: `completedTasks`, `completedTasksStatus`, `completedTasksErrorMessage` + `clearCompletedTasksError` flag.
+- `tasks_cubit.dart`: `fetchCompletedTasks({userId, isAdmin, silent})` — admin fetches all, employee unions assigned+created and deduplicates by ID via `Set<String>` then sorts by `completedAt DESC`. `updateTaskStatus` and `deleteTask` refresh completed list silently when `completedTasksStatus != initial`.
+
+### T2 — Deadline-time UI
+- `due_date_time_picker.dart` (new shared widget): date + optional time pick with 4 presets (09:00, 12:00, 17:00, 20:00) and a "Custom…" chip that shows the picked time. `firstDate` param gates future-only (add) vs allow-past (edit).
+- `add_task_screen.dart` + `edit_task_screen.dart`: both use `DueDateTimePicker`; `hasDueTime=false` saves via `TaskModel.dueDateEndOfDay()` (UTC equivalent of 23:59:59 Jerusalem).
+- `countdown_chip.dart`: `hasDueTime` param determines deadline (exact dueDate vs local 23:59:59). "Due today" label shown only for date-only tasks on the calendar due date; orange instead of red for that window.
+- `tasks_screen.dart`: `_effectiveDeadline(TaskModel)` normalises midnight-stored old tasks and new end-of-day tasks to local 23:59:59 for urgency grouping. `CountdownChip` call updated.
+- `task_details_screen.dart`: due date text conditionally shows time component when `hasDueTime=true`.
+
+### T3 — Completed tab
+- `tasks_screen.dart`: third tab added to both admin (length 3) and employee (length 3) tab controllers. `_buildCompletedTabContent` / `_buildCompletedTabBody` / `_buildCompletedTasksList` — lazy load on first visit, recency grouping (This Week / This Month / Older based on `completedAt`), search + priority filter reuse, sort preserves Firestore `completedAt DESC` order.
+- After status change / delete / task details edit, completed list is refreshed silently via `fetchCompletedTasks(silent: true)`.
+- New i18n keys: `completed_this_week`, `completed_this_month`, `completed_older`.
+
+### T4 — Filter/Discovery UX
+- `_QuickFilter` enum (`overdue`, `dueSoon`, `highPriority`) stored as `Set<_QuickFilter>` in screen state.
+- `_buildQuickFiltersRow()` — always-visible chip row above search bar; chips toggle independent of the filter sheet.
+- Group-collapse: urgency groups with no matching tasks under the active quick filter are hidden entirely (not dimmed).
+- `_clearAllFilters()` — single reset path for search, sheet filters, and quick filters. All three clear affordances call it.
+- `_applyCompletedFilters` — skips status filter, preserves Firestore ordering for `newestFirst` sort.
+- `_priorityRank` helper; filter icon shows badge dot when any filter is active.
+- New i18n keys: `no_time`, `custom_time`, `due_soon`.
+
+### Phase 4 — Dashboard restructuring
+- **`employee_home_screen.dart`**: `startListeningToday` called on init (guarded by `todayStatus == initial`). `_TodayAttendanceCard` renders between welcome header and stat cards — shows "Not checked in" / "Checked in: HH:mm" / "HH:mm → HH:mm · Xh Ym" depending on record state; loading placeholder (spinner in card shell) prevents layout shift; tappable → attendance screen. `_urgencySorted` method floats overdue tasks to top then sorts by nearest deadline. Task preview cap raised 3 → 5. `_TaskDueLabel` widget on each task card: red + warning icon for overdue, orange + clock icon for due-today, subtle grey otherwise.
+- **`admin_dashboard_screen.dart`**: `_AttendanceSummaryCard` replaces single `_DashboardStatCard` — headline shows present+late combined count, `_AttendanceChip` badges for late and absent (only rendered when non-zero), chevron + tappable → `RouteNames.adminAttendance`. `_OverdueAlertCard` uses `errorContainer`/`onErrorContainer` Material 3 color roles, renders between filter chips and stat row when `overdueOpenTasks > 0`, taps → `RouteNames.tasks`.
+- `RouteNames` import added to `admin_dashboard_screen.dart`.
+- `task_model.dart` import added to `employee_home_screen.dart` (needed for explicit `List<TaskModel>` return type on `_urgencySorted`).
+
+**Quality gates**: `flutter analyze` clean on all modified files. No Cloud Function changes. Firestore indexes pending deployment.
+
+## 2026-05-17 — Claude Sonnet 4.6 — Employee work schedules (schedule-aware attendance) on fix/release-hardening
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `fix/release-hardening`
+- **Goal**: Implement per-employee weekly work schedules so that attendance status (present / late / absent / off_day / off_day_work) is driven by each employee's personal schedule rather than a blanket assumption that all employees work every day at the same hours.
+- **Outcome**: Full feature shipped and deployed — Firestore rules, Cloud Functions, and Flutter client all updated.
+- **Architecture**: `schedules/{userId}` Firestore collection. Each doc holds a `days` map with string keys "1"–"7" (Mon=1 … Sun=7 matching Dart `DateTime.weekday`), each day having `isWorkingDay`, `expectedStartTime` ("HH:mm"), `expectedEndTime` ("HH:mm"), optional `graceMinutes` override. Top-level `defaultGraceMinutes` (default 15). Employees with no schedule doc are treated as working every day with no lateness check (graceful default preserving existing behaviour).
+- **New statuses**: `late` (on-time check-in missed grace window), `off_day` (auto-created by cron on non-working days with no sessions), `off_day_work` (employee checked in on a scheduled day off).
+- **Cloud Functions changes**: (1) `recordAttendance` — reads `schedules/{userId}` before the transaction; `checkInStatusForSchedule` helper resolves present/late/off_day_work based on schedule and Jerusalem wall-clock time; all set/update paths use the computed status. (2) `sendDailyAbsenceMarker` — reads `schedules/{userId}` per employee; writes `status: "off_day"` instead of `"absent"` for non-working days.
+- **New helpers in index.js**: `jerusalemHHMMMinutes(date)` (returns Jerusalem wall-clock minutes since midnight), `checkInStatusForSchedule(scheduleData, now, dayOfWeek)`.
+- **Firestore rules**: added `match /schedules/{userId} { allow read: if isAdmin() || isCurrentUser(userId); allow write: if isAdmin(); }`.
+- **Flutter client**: new `ScheduleDay` and `WorkScheduleModel` models; `ScheduleRepository` (fetchSchedule, fetchAllSchedules, saveSchedule — all `Source.server`); `AttendanceState` extended with schedule fields (`mySchedule`, `editingSchedule`, `scheduleStatus`, `editingScheduleStatus`, `scheduleSaveStatus`, etc.); `AttendanceCubit` extended with `loadMySchedule`, `loadEmployeeSchedule`, `saveSchedule`, `clearScheduleSaveFeedback`; `ScheduleRepository` wired in `main.dart`. Employees screen gets a schedule `IconButton` per tile opening `_ScheduleEditSheet` (DraggableScrollableSheet with 7-day toggle, time pickers, grace period dropdown). Attendance screen loads own schedule on init and shows off-day confirmation dialog before biometric. `AttendanceRecordCard._StatusChip` handles `late`, `off_day`, `off_day_work` with distinct color tokens. Monthly attendance summary adds `daysLate`, `daysOff`, `daysOffWork` chips (shown only when non-zero). Translation parity: 19 new keys added to en.json and ar.json.
+- **FirebasePaths**: added `schedules` constant.
+- **Quality gates**: `flutter analyze` clean. `npm run lint` clean (one `operator-linebreak` auto-fixed). Deployed: `firestore:rules` then `functions` — all 13 functions updated cleanly.
+
 ## 2026-05-17 — Claude Sonnet 4.6 — Release-hardening cycle (Phases 1–3) on fix/release-hardening
 
 - **Agent**: Claude Sonnet 4.6
