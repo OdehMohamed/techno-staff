@@ -12,6 +12,9 @@ class TasksState {
   final TasksStatus tasksCreatedByMeStatus;
   final List<TaskModel> tasksCreatedByMe;
   final String? tasksCreatedByMeErrorMessage;
+  final TasksStatus completedTasksStatus;
+  final List<TaskModel> completedTasks;
+  final String? completedTasksErrorMessage;
 
   const TasksState({
     this.status = TasksStatus.initial,
@@ -23,6 +26,9 @@ class TasksState {
     this.tasksCreatedByMeStatus = TasksStatus.initial,
     this.tasksCreatedByMe = const [],
     this.tasksCreatedByMeErrorMessage,
+    this.completedTasksStatus = TasksStatus.initial,
+    this.completedTasks = const [],
+    this.completedTasksErrorMessage,
   });
 
   TasksState copyWith({
@@ -38,6 +44,10 @@ class TasksState {
     bool clearError = false,
     bool clearTasksAssignedToMeError = false,
     bool clearTasksCreatedByMeError = false,
+    TasksStatus? completedTasksStatus,
+    List<TaskModel>? completedTasks,
+    String? completedTasksErrorMessage,
+    bool clearCompletedTasksError = false,
   }) {
     return TasksState(
       status: status ?? this.status,
@@ -55,6 +65,11 @@ class TasksState {
       tasksCreatedByMeErrorMessage: clearTasksCreatedByMeError
           ? null
           : (tasksCreatedByMeErrorMessage ?? this.tasksCreatedByMeErrorMessage),
+      completedTasksStatus: completedTasksStatus ?? this.completedTasksStatus,
+      completedTasks: completedTasks ?? this.completedTasks,
+      completedTasksErrorMessage: clearCompletedTasksError
+          ? null
+          : (completedTasksErrorMessage ?? this.completedTasksErrorMessage),
     );
   }
 }

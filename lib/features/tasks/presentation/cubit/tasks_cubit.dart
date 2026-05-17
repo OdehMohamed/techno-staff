@@ -119,6 +119,14 @@ class TasksCubit extends Cubit<TasksState> {
       await fetchTasksAssignedTo(currentUserId);
       await fetchTasksCreatedBy(currentUserId);
     }
+
+    if (state.completedTasksStatus != TasksStatus.initial) {
+      await fetchCompletedTasks(
+        userId: currentUserId,
+        isAdmin: isAdmin,
+        silent: true,
+      );
+    }
   }
 
   Future<void> deleteTask({
@@ -134,6 +142,14 @@ class TasksCubit extends Cubit<TasksState> {
     } else {
       await fetchTasksAssignedTo(currentUserId);
       await fetchTasksCreatedBy(currentUserId);
+    }
+
+    if (state.completedTasksStatus != TasksStatus.initial) {
+      await fetchCompletedTasks(
+        userId: currentUserId,
+        isAdmin: isAdmin,
+        silent: true,
+      );
     }
   }
 
@@ -163,6 +179,58 @@ class TasksCubit extends Cubit<TasksState> {
         tasksCreatedByMe: _replaceTaskById(state.tasksCreatedByMe, updated),
       ),
     );
+  }
+
+  Future<void> fetchCompletedTasks({
+    required String userId,
+    required bool isAdmin,
+    bool silent = false,
+  }) async {
+    if (!silent) {
+      emit(
+        state.copyWith(
+          completedTasksStatus: TasksStatus.loading,
+          clearCompletedTasksError: true,
+        ),
+      );
+    }
+
+    try {
+      List<TaskModel> tasks;
+      if (isAdmin) {
+        tasks = await _tasksRepository.getAllCompletedTasks();
+      } else {
+        final assigned = await _tasksRepository.getCompletedTasksAssignedTo(userId);
+        final created = await _tasksRepository.getCompletedTasksCreatedBy(userId);
+        final seen = <String>{};
+        tasks = [...assigned, ...created]
+            .where((t) => seen.add(t.id))
+            .toList()
+          ..sort((a, b) {
+            final aAt = a.completedAt;
+            final bAt = b.completedAt;
+            if (aAt == null && bAt == null) return 0;
+            if (aAt == null) return 1;
+            if (bAt == null) return -1;
+            return bAt.compareTo(aAt);
+          });
+      }
+
+      emit(
+        state.copyWith(
+          completedTasksStatus: TasksStatus.loaded,
+          completedTasks: tasks,
+          clearCompletedTasksError: true,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          completedTasksStatus: TasksStatus.error,
+          completedTasksErrorMessage: 'failed_to_load_tasks',
+        ),
+      );
+    }
   }
 
   List<TaskModel> _replaceTaskById(List<TaskModel> source, TaskModel updated) {

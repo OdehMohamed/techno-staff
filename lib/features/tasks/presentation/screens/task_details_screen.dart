@@ -222,11 +222,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
-                                '${'due_date'.tr()}: ${DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)}',
+                                '${'due_date'.tr()}: ${task.hasDueTime ? DateFormat.yMMMd(context.locale.languageCode).add_Hm().format(task.dueDate) : DateFormat.yMMMd(context.locale.languageCode).format(task.dueDate)}',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               CountdownChip(
                                 dueDate: task.dueDate,
+                                hasDueTime: task.hasDueTime,
                                 isCompleted: task.status == 'completed',
                               ),
                             ],

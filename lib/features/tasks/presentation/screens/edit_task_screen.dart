@@ -8,6 +8,7 @@ import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/tasks_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/due_date_time_picker.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final TaskModel task;
@@ -29,6 +30,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   late String _selectedStatus;
   String? _selectedEmployeeId;
   DateTime? _selectedDueDate;
+  bool _hasDueTime = false;
   bool _isSaving = false;
 
   @override
@@ -44,6 +46,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     _selectedStatus = widget.task.status;
     _selectedEmployeeId = widget.task.assignedTo;
     _selectedDueDate = widget.task.dueDate;
+    _hasDueTime = widget.task.hasDueTime;
     _targetCountController = TextEditingController(
       text: (widget.task.targetCount ?? 1).toString(),
     );
@@ -59,23 +62,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     _targetCountController.dispose();
     _currentCountController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDueDate() async {
-    final now = DateTime.now();
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDueDate ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _selectedDueDate = pickedDate;
-      });
-    }
   }
 
   Future<void> _saveChanges() async {
@@ -119,6 +105,10 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         resolvedCurrentCount = 0;
       }
 
+      final dueDate = _hasDueTime
+          ? _selectedDueDate!
+          : TaskModel.dueDateEndOfDay(_selectedDueDate!);
+
       final updatedTask = TaskModel(
         id: widget.task.id,
         title: _titleController.text.trim(),
@@ -129,7 +119,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         assignedByName: widget.task.assignedByName,
         priority: _selectedPriority,
         status: resolvedStatus,
-        dueDate: _selectedDueDate!,
+        dueDate: dueDate,
+        hasDueTime: _hasDueTime,
         createdAt: widget.task.createdAt,
         updatedAt: DateTime.now(),
         updatedBy: currentUser.id,
@@ -361,15 +352,15 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                         ),
                         const SizedBox(height: AppSizes.md),
                       ],
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          _selectedDueDate == null
-                              ? 'select_due_date'.tr()
-                              : '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(_selectedDueDate!)}',
-                        ),
-                        trailing: const Icon(Icons.calendar_today),
-                        onTap: _pickDueDate,
+                      DueDateTimePicker(
+                        dueDate: _selectedDueDate,
+                        hasDueTime: _hasDueTime,
+                        onChanged: (date, hasTime) {
+                          setState(() {
+                            _selectedDueDate = date;
+                            _hasDueTime = hasTime;
+                          });
+                        },
                       ),
                       const SizedBox(height: AppSizes.lg),
                       SizedBox(

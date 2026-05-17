@@ -10,6 +10,7 @@ class FirebasePaths {
   static const String attendanceLogs = 'attendance_logs';
   static const String taskTemplates = 'task_templates';
   static const String fcmTokens = 'fcm_tokens';
+  static const String schedules = 'schedules';
   static const String config = 'config';
   static const String appSettings = 'app_settings';
 
@@ -21,4 +22,5 @@ class FirebasePaths {
   static const String role = 'role';
   static const String languageCode = 'languageCode';
   static const String dueDate = 'dueDate';
+  static const String completedAt = 'completedAt';
 }

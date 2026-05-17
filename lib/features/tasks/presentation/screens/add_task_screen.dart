@@ -8,6 +8,7 @@ import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/tasks_repository.dart';
+import '../widgets/due_date_time_picker.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -26,6 +27,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   String _selectedPriority = 'medium';
   String _selectedTaskType = 'standard';
   DateTime? _selectedDueDate;
+  bool _hasDueTime = false;
   bool _isSaving = false;
 
   @override
@@ -40,23 +42,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     _descriptionController.dispose();
     _targetCountController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDueDate() async {
-    final now = DateTime.now();
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 2),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _selectedDueDate = pickedDate;
-      });
-    }
   }
 
   Future<void> _saveTask() async {
@@ -85,6 +70,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       final selectedEmployee = employees.firstWhere(
         (user) => user.id == _selectedEmployeeId,
       );
+
+      final dueDate = _hasDueTime
+          ? _selectedDueDate!
+          : TaskModel.dueDateEndOfDay(_selectedDueDate!);
+
       final task = TaskModel(
         id: '',
         title: _titleController.text.trim(),
@@ -95,7 +85,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         assignedByName: currentUser.name,
         priority: _selectedPriority,
         status: 'pending',
-        dueDate: _selectedDueDate!,
+        dueDate: dueDate,
+        hasDueTime: _hasDueTime,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         completedAt: null,
@@ -304,15 +295,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ),
                       ],
                       const SizedBox(height: AppSizes.md),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          _selectedDueDate == null
-                              ? 'select_due_date'.tr()
-                              : '${'due_date'.tr()}: ${DateFormat('yyyy-MM-dd').format(_selectedDueDate!)}',
-                        ),
-                        trailing: const Icon(Icons.calendar_today),
-                        onTap: _pickDueDate,
+                      DueDateTimePicker(
+                        dueDate: _selectedDueDate,
+                        hasDueTime: _hasDueTime,
+                        firstDate: DateTime.now(),
+                        onChanged: (date, hasTime) {
+                          setState(() {
+                            _selectedDueDate = date;
+                            _hasDueTime = hasTime;
+                          });
+                        },
                       ),
                       const SizedBox(height: AppSizes.lg),
                       SizedBox(
