@@ -1,3 +1,16 @@
+## 2026-05-17 — Claude Sonnet 4.6 — Release-hardening cycle (Phases 1–3) on fix/release-hardening
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `fix/release-hardening`
+- **Goal**: Full pre-release hardening pass before the 1.2.0+4 binary store submission, covering: Firestore read discipline, security architecture, Cloud Functions quality, and version/changelog hygiene.
+- **Outcome**: Three phases shipped and committed. Phase 4 (Shorebird asset-patching verification) is a manual device test pending the owner.
+- **Phase 1** — `GetOptions(source: Source.server)` applied to every Firestore `.get()` across all repositories (tasks, dashboard, attendance, employees, reports, notifications, app update config, user role at auth); all Firestore collection path string literals replaced with `FirebasePaths.*` constants (5 new constants added: `taskLogs`, `notifications`, `attendance`, `attendanceLogs`, `fcmTokens`); `PROJECT_CONTEXT.md` fully rewritten to v1.2.0 state (14 Cloud Functions documented, all collections documented, Shorebird eligibility table).
+- **Phase 2** — FCM token storage moved from `users/{uid}.fcmToken` to `fcm_tokens/{uid}.token` collection (`allow read: if false`). `getFcmToken` / `getFcmTokensBatch` helper functions added to Cloud Functions. All 6 FCM-reading paths in `functions/index.js` updated to use admin SDK via the new helpers. `deleteUserAccount` cleans up `fcm_tokens/{uid}`. `createEmployeeUser` now rejects any `role` value outside `admin | employee`. `generateRecurringTaskInstances` surfaces template errors to all admins via in-app notification instead of only Cloud Functions logs. Blanket `/* eslint-disable */` suppressor removed; `require-jsdoc: off` and `max-len: 120` added to `.eslintrc.js`; `eslint --fix` auto-corrected all formatting violations; two `no-inner-declarations` errors (helpers inside `try` block) fixed manually. Deployed in order: `firestore:rules` then `functions` — all 13 functions updated cleanly. Global `firebase-tools` install was corrupted (missing `lib/templates/`); resolved by installing `firebase-tools@13.35.1` locally and patching its `universal-analytics/uuid` ESM/CJS conflict with a Node-native `crypto.randomUUID()` shim.
+- **Phase 3** — `pubspec.yaml` bumped from `1.1.0+3` to `1.2.0+4`. `CHANGELOG.md`: v1.1.0 entry written (counters, countdown, account settings, auth/FCM fixes, theme persistence); v1.2.0 entry written (attendance system, FCM isolation, Source.server audit, ESLint enforcement, role validation, template error alerting); comparison links corrected for all versions.
+- **Commits**: `7713d51` (Phase 1), `59d36c6` (Phase 2), `7ba5411` (Phase 3).
+- **Quality gates**: `flutter analyze` clean (No issues found). `npm run lint` clean (real enforcement via predeploy pipeline). `firebase deploy` succeeded for both `firestore:rules` and `functions`.
+- **Phase 4 pending**: Shorebird translation-asset patching — manual device test required by owner. Result determines whether translation-only patches are eligible for Shorebird or require a full binary.
+
 ## 2026-05-16 — Claude Sonnet 4.6 — PR #38 merge + final release-prep (attendance complete)
 
 - **Agent**: Claude Sonnet 4.6
