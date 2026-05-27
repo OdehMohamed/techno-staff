@@ -1,3 +1,27 @@
+## 2026-05-27 — Claude Sonnet 4.6 — v1.3.0 cycle: 3 bugs + 5 features on feat/v1.3.0-improvements
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.3.0-improvements` → merged to `main` as PR #40
+- **Goal**: Implement 3 bug fixes and 5 features; open and merge PR; update workflow docs.
+- **Outcome**: All 8 items implemented, validated by owner, and merged. One owner-side Firebase deploy step remains.
+
+### What was done
+
+- **Bug 1 — Employees screen FAB overlap**: `ListView.separated` padding `bottom: 80` so the schedule button on lower cards is never blocked by the extended FAB.
+- **Bug 2 — Attendance correction error masking**: `adminCorrect` catch changed from `catch (_)` to `catch (e)`; `_mapAttendanceError` extended with `permission-denied` and `invalid-argument` codes; incorrect "network failure" fallback eliminated.
+- **Bug 3 — Check-in/out button not refreshing immediately**: `_currentUserId` cached in `AttendanceCubit` from `startListeningToday`; `fetchTodayRecord` (server-forced `Source.server`) called after callable returns; button state updates without waiting for Firestore stream propagation.
+- **Feature 4 — Assignee name on admin task cards**: admin "All Tasks" tab shows `task.assignedToName` inline below each card's description.
+- **Feature 5+6 — Recurring task creation in Add Task flow**: "Repeat this task" toggle (admin-only) progressively reveals recurrence type (daily/weekly/monthly), weekday/day-of-month pickers, and "Create first task now" toggle; creates a `TaskTemplateModel` on save; first-instance creation wraps the normal task creation path.
+- **Multi-assignee Option B fix**: when repeat mode is active, single-employee dropdown replaced by a multi-select `FilterChip` picker (`assign_to_recurring` label). Toggle ON carries existing single selection into the multi-set; toggle OFF restores from first chip. First-instance creation loops per selected employee. Admin-only guard (`isAdmin`) wraps the entire recurring section so employees see only the standard form.
+- **Feature 7 — Admin task filter by assigned employee**: `TaskFilters.filterAssigneeId/Name` added; filter bottom sheet renders "Assigned To" chip row for admins; both active and completed task lists apply the filter client-side.
+- **Feature 8 — Admin attendance day reset**: `adminResetAttendance` Cloud Function (callable, admin-only) reads `schedules/{userId}` to classify the reset day, uses a Firestore transaction to overwrite the attendance doc and write an audit entry to `attendance_logs` (action: `admin_reset`, includes `previousStatus` and `previousSessions`). Dart layer: `resetStatus`/`resetError` state fields, `adminResetDay` cubit method, `adminResetDay` repository wrapper. UI: "Reset Day" destructive button in roster expanded section, confirmation dialog, spinner during submit, success/error snackbar.
+- **Workflow**: created `feat/v1.3.0-improvements` branch, all commits on branch, PR #40 opened and merged to `main` via merge commit.
+
+### Owner-required steps remaining
+- `firebase deploy --only functions,firestore:rules` (adds `adminResetAttendance`; no rules or index changes).
+
+---
+
 ## 2026-05-17 — Claude Sonnet 4.6 — Release prep: CHANGELOG completion + checklist update on feat/attendance-stabilization
 
 - **Agent**: Claude Sonnet 4.6

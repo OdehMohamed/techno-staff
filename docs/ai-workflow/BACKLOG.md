@@ -223,6 +223,23 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
   (5) **Reporting alignment**: `_MonthlyAttendanceSummaryCard` redesigned to match employee summary (rate bar, worked/not-worked grouping, correction row); attendance rate made schedule-aware on admin surface (`_countWorkingDays` + `loadEmployeeSchedule`); semantic parity restored with employee screen.
 - **Completed**: 2026-05-17 — PR #39 (`fix/release-hardening → main`). `flutter analyze` clean, `flutter test` green, `npm run lint` clean. Owner validation passed. Post-merge owner steps: `firebase deploy --only functions,firestore:rules,firestore:indexes`; store binary build; tag `v1.2.0`.
 
+#### 16. v1.3.0 improvements — `feat/v1.3.0-improvements`
+
+- **Priority**: Should-fix (bugs + features)
+- **Status**: Done — 2026-05-27
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.3.0
+- **Added**: 2026-05-27
+- **Description**: 3 bug fixes and 5 features implemented in one cycle on `feat/v1.3.0-improvements`, merged to `main` via PR #40.
+  - **Bug 1**: Employees screen FAB overlapped the schedule button on lower cards — fixed with `ListView` bottom padding.
+  - **Bug 2**: Admin attendance correction always showed "network failure" regardless of error — `_mapAttendanceError` now maps `permission-denied` and `invalid-argument` correctly.
+  - **Bug 3**: Employee check-in/out button did not reflect the new state immediately — cubit now force-fetches the updated record from the server after a successful action.
+  - **Feature 4**: Assigned employee name shown on admin "All Tasks" task cards.
+  - **Feature 5+6**: Recurring template creation integrated into the Add Task flow (admin-only guard). Multi-select `FilterChip` picker replaces the single-employee dropdown when repeat mode is active. "Create first task now" toggle generates one task per selected employee.
+  - **Feature 7**: Admin task filter by assigned employee in the filter bottom sheet.
+  - **Feature 8**: Admin attendance day reset — audit-safe, schedule-aware clearing of one employee's attendance for one day via `adminResetAttendance` Cloud Function. Audit entry written to `attendance_logs`.
+- **Completed**: 2026-05-27. `flutter analyze` clean, `npm run lint` clean. Owner validation passed. Post-merge owner step: `firebase deploy --only functions,firestore:rules`.
+
 ---
 
 ## Nice-to-have

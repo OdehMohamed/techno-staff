@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.2.0 features are merged to `main` and deployed. Next step is a binary store release.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.0 features are merged to `main` (PR #40, 2026-05-27). Owner deploy step pending (`firebase deploy --only functions,firestore:rules`). Next step after deploy: binary store release for v1.3.0.
 
 ## 2. Tech Stack
 
@@ -51,7 +51,7 @@ Current status: closed testing (Google Play Closed Testing, TestFlight). v1.2.0 
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 - Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
-- Translation parity enforced: `323 323 []` as of v1.2.0 final.
+- Translation parity enforced: `341 341 []` as of v1.3.0.
 
 ## 3. Architecture
 
@@ -133,6 +133,7 @@ Single file: `functions/index.js` (Node 22, ~1,700 lines).
 | `generateRecurringTaskInstances`   | cron `0 6 * * *` (Asia/Jerusalem)    | Generates daily/weekly/monthly task instances from active templates; layered idempotency (deterministic ID + transaction existence check); multi-assignee support; template errors are isolated per-template and surfaced as in-app notifications to all admins |
 | `recordAttendance`                 | callable (authenticated user)        | Server-authoritative check-in/out; reads `schedules/{userId}` to resolve status (`present`/`late`/`off_day_work`); appends/closes sessions in a Firestore transaction; writes `attendance_logs` entry |
 | `adminCorrectAttendance`           | callable (admin only)                | Replaces sessions array with admin-provided correction; preserves `originalSessions` on first correction (audit trail); sorts sessions, computes durations; writes `correctedByName` |
+| `adminResetAttendance`             | callable (admin only)                | Clears all sessions for one employee on one date; reads `schedules/{userId}` to classify the reset as `absent` or `off_day`; transaction overwrites attendance doc and writes audit entry to `attendance_logs` (action: `admin_reset`, includes `previousStatus`, `previousSessions`) |
 | `sendDailyAbsenceMarker`           | cron `0 23 * * *` (Asia/Jerusalem)   | Reads `schedules/{userId}` per employee; marks employees with no sessions as `absent` (working day) or `off_day` (non-working day); skips employees who already have sessions |
 | `createInAppNotification`          | internal helper                      | Writes to `notifications` collection; used by all FCM-send paths                   |
 
@@ -180,7 +181,7 @@ Asset-patching verification is a mandatory step before the first Shorebird patch
 
 ## 11. Version & Branching
 
-- **App version**: `1.1.0+3` in `pubspec.yaml` — **must be bumped to `1.2.0+4` before next store submission** (Phase 3 of the current release-hardening cycle).
+- **App version**: `1.3.0+5` in `pubspec.yaml`. Next store submission should target this version.
 - **Production branch**: `main`.
 - **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.
