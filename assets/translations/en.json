@@ -331,6 +331,7 @@
   "invalid_correction_data": "Invalid correction data. Please check the session times and try again.",
   "filter_by_assignee": "Assigned To",
   "repeat_task": "Repeat this task",
+  "assign_to_recurring": "Assign to (select one or more)",
   "create_first_instance": "Create first task now",
   "create_first_instance_hint": "Also create one task immediately with the due date below",
   "reset_day": "Reset Day",

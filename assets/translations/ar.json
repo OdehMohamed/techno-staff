@@ -331,6 +331,7 @@
   "invalid_correction_data": "بيانات التصحيح غير صالحة. يرجى التحقق من أوقات الجلسات والمحاولة مجدداً.",
   "filter_by_assignee": "المُكلَّف",
   "repeat_task": "تكرار هذه المهمة",
+  "assign_to_recurring": "تعيين إلى (اختر واحداً أو أكثر)",
   "create_first_instance": "إنشاء أول مهمة الآن",
   "create_first_instance_hint": "إنشاء مهمة واحدة فورًا مع تاريخ الاستحقاق أدناه",
   "reset_day": "إعادة ضبط اليوم",

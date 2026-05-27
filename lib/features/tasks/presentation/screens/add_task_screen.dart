@@ -27,7 +27,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final _targetCountController = TextEditingController();
   final _dayOfMonthController = TextEditingController();
 
+  // Single-assignee (non-recurring path)
   String? _selectedEmployeeId;
+
   String _selectedPriority = 'medium';
   String _selectedTaskType = 'standard';
   DateTime? _selectedDueDate;
@@ -39,6 +41,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   bool _createFirstInstance = false;
   String _selectedRecurrenceType = 'daily';
   final Set<int> _selectedDaysOfWeek = {};
+
+  // Multi-assignee (recurring path only)
+  final Set<String> _selectedEmployeeIds = {};
+  final Map<String, String> _employeeIdToName = {};
 
   @override
   void initState() {
@@ -57,7 +63,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedEmployeeId == null) return;
+
+    if (_isRecurring) {
+      if (_selectedEmployeeIds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('employee_required'.tr())),
+        );
+        return;
+      }
+    } else {
+      if (_selectedEmployeeId == null) return;
+    }
+
     final needsDueDate = !_isRecurring || _createFirstInstance;
     if (needsDueDate && _selectedDueDate == null) return;
 
@@ -85,11 +102,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final employees = context.read<EmployeesCubit>().state.employees;
-      final selectedEmployee =
-          employees.firstWhere((u) => u.id == _selectedEmployeeId);
-
       if (_isRecurring) {
+        final ids = _selectedEmployeeIds.toList();
+        final names = ids.map((id) => _employeeIdToName[id] ?? '').toList();
+
         List<int>? daysOfWeek;
         int? dayOfMonth;
         if (_selectedRecurrenceType == 'weekly') {
@@ -105,8 +121,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           id: '',
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
-          assignedToIds: [_selectedEmployeeId!],
-          assignedToNames: [selectedEmployee.name],
+          assignedToIds: ids,
+          assignedToNames: names,
           assignedBy: currentUser.id,
           assignedByName: currentUser.name,
           priority: _selectedPriority,
@@ -137,29 +153,35 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           final dueDate = _hasDueTime
               ? _selectedDueDate!
               : TaskModel.dueDateEndOfDay(_selectedDueDate!);
-          final task = TaskModel(
-            id: '',
-            title: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
-            assignedTo: _selectedEmployeeId!,
-            assignedToName: selectedEmployee.name,
-            assignedBy: currentUser.id,
-            assignedByName: currentUser.name,
-            priority: _selectedPriority,
-            status: 'pending',
-            dueDate: dueDate,
-            hasDueTime: _hasDueTime,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            completedAt: null,
-            taskType: taskType,
-            targetCount: targetCount,
-            currentCount: 0,
-          );
           final repository = TasksRepository(FirebaseFirestore.instance);
-          await repository.createTask(task);
+          for (final id in ids) {
+            final name = _employeeIdToName[id] ?? '';
+            final task = TaskModel(
+              id: '',
+              title: _titleController.text.trim(),
+              description: _descriptionController.text.trim(),
+              assignedTo: id,
+              assignedToName: name,
+              assignedBy: currentUser.id,
+              assignedByName: currentUser.name,
+              priority: _selectedPriority,
+              status: 'pending',
+              dueDate: dueDate,
+              hasDueTime: _hasDueTime,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+              completedAt: null,
+              taskType: taskType,
+              targetCount: targetCount,
+              currentCount: 0,
+            );
+            await repository.createTask(task);
+          }
         }
       } else {
+        final employees = context.read<EmployeesCubit>().state.employees;
+        final selectedEmployee =
+            employees.firstWhere((u) => u.id == _selectedEmployeeId);
         final dueDate = _hasDueTime
             ? _selectedDueDate!
             : TaskModel.dueDateEndOfDay(_selectedDueDate!);
@@ -223,6 +245,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     state.employees.isEmpty;
                 final hasEmployeesError = state.status == EmployeesStatus.error;
 
+                for (final u in assignableUsers) {
+                  _employeeIdToName[u.id] = u.name;
+                }
+
                 return Form(
                   key: _formKey,
                   child: Column(
@@ -254,61 +280,109 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         },
                       ),
                       const SizedBox(height: AppSizes.md),
-                      if (isEmployeesLoading)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: AppSizes.md),
-                          child: LinearProgressIndicator(),
-                        ),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedAssignableUserId,
-                        decoration: InputDecoration(
-                          labelText: 'assign_to'.tr(),
-                          helperText: hasEmployeesError
-                              ? 'failed_to_load_employees'.tr()
-                              : (assignableUsers.isEmpty
-                                    ? 'no_employees_found'.tr()
-                                    : null),
-                          enabled: assignableUsers.isNotEmpty,
-                          isDense: true,
-                        ),
-                        isExpanded: true,
-                        items: assignableUsers
-                            .map(
-                              (assignee) => DropdownMenuItem(
-                                value: assignee.id,
-                                child: Text(
-                                  assignee.name,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 14),
+                      if (!_isRecurring) ...[
+                        if (isEmployeesLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: AppSizes.md),
+                            child: LinearProgressIndicator(),
+                          ),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedAssignableUserId,
+                          decoration: InputDecoration(
+                            labelText: 'assign_to'.tr(),
+                            helperText: hasEmployeesError
+                                ? 'failed_to_load_employees'.tr()
+                                : (assignableUsers.isEmpty
+                                      ? 'no_employees_found'.tr()
+                                      : null),
+                            enabled: assignableUsers.isNotEmpty,
+                            isDense: true,
+                          ),
+                          isExpanded: true,
+                          items: assignableUsers
+                              .map(
+                                (assignee) => DropdownMenuItem(
+                                  value: assignee.id,
+                                  child: Text(
+                                    assignee.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: assignableUsers.isEmpty
-                            ? null
-                            : (value) {
-                                setState(() {
-                                  _selectedEmployeeId = value;
-                                });
+                              )
+                              .toList(),
+                          onChanged: assignableUsers.isEmpty
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _selectedEmployeeId = value;
+                                  });
+                                },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'employee_required'.tr();
+                            }
+                            return null;
+                          },
+                        ),
+                        if (hasEmployeesError)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                context.read<EmployeesCubit>().fetchEmployees();
                               },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'employee_required'.tr();
-                          }
-                          return null;
-                        },
-                      ),
-                      if (hasEmployeesError)
+                              icon: const Icon(Icons.refresh),
+                              label: Text('failed_to_load_employees'.tr()),
+                            ),
+                          ),
+                      ] else ...[
+                        if (isEmployeesLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: AppSizes.md),
+                            child: LinearProgressIndicator(),
+                          ),
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () {
-                              context.read<EmployeesCubit>().fetchEmployees();
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: Text('failed_to_load_employees'.tr()),
+                          child: Text(
+                            'assign_to_recurring'.tr(),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: assignableUsers
+                              .map(
+                                (u) => FilterChip(
+                                  label: Text(u.name),
+                                  selected: _selectedEmployeeIds.contains(u.id),
+                                  onSelected: (on) => setState(() {
+                                    if (on) {
+                                      _selectedEmployeeIds.add(u.id);
+                                    } else {
+                                      _selectedEmployeeIds.remove(u.id);
+                                    }
+                                  }),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        if (hasEmployeesError)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                context.read<EmployeesCubit>().fetchEmployees();
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: Text('failed_to_load_employees'.tr()),
+                            ),
+                          ),
+                      ],
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(
                         initialValue: _selectedPriority,
@@ -388,7 +462,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         value: _isRecurring,
                         onChanged: (v) => setState(() {
                           _isRecurring = v;
-                          if (!v) {
+                          if (v) {
+                            if (_selectedEmployeeId != null) {
+                              _selectedEmployeeIds.add(_selectedEmployeeId!);
+                            }
+                          } else {
+                            if (_selectedEmployeeIds.isNotEmpty) {
+                              _selectedEmployeeId = _selectedEmployeeIds.first;
+                            }
+                            _selectedEmployeeIds.clear();
                             _createFirstInstance = false;
                             _selectedDaysOfWeek.clear();
                             _dayOfMonthController.clear();
