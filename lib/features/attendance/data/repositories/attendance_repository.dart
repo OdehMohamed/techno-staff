@@ -107,6 +107,19 @@ class AttendanceRepository {
         .toList();
   }
 
+  Future<void> adminResetDay({
+    required String userId,
+    required String date,
+    String? reason,
+  }) async {
+    final callable = _functions.httpsCallable('adminResetAttendance');
+    await callable.call({
+      'userId': userId,
+      'date': date,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
   Future<void> adminCorrect({
     required String userId,
     required String date,

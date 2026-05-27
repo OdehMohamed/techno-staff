@@ -80,6 +80,40 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     );
   }
 
+  Future<void> _confirmAndResetDay(AttendanceModel record) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('reset_day_confirm_title'.tr()),
+        content: Text(
+          'reset_day_confirm_message'.tr(
+            namedArgs: {'name': record.userName, 'date': record.date},
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('cancel'.tr()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('reset_day'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    context.read<AttendanceCubit>().adminResetDay(
+      userId: record.userId,
+      date: record.date,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,6 +133,23 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             context.read<AttendanceCubit>().clearCorrectionFeedback();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.correctionError!.tr())),
+            );
+          }
+
+          if (state.resetStatus == AttendanceActionStatus.success) {
+            context.read<AttendanceCubit>().clearResetFeedback();
+            context.read<AttendanceCubit>().loadRoster(_selectedDate);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('reset_day_success'.tr())),
+            );
+          } else if (state.resetStatus == AttendanceActionStatus.error &&
+              state.resetError != null) {
+            context.read<AttendanceCubit>().clearResetFeedback();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.resetError!.tr()),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
             );
           }
         },
@@ -162,6 +213,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           return _RosterRow(
             record: record,
             onCorrect: () => _openCorrectionSheet(record),
+            onReset: () => _confirmAndResetDay(record),
           );
         },
       ),
@@ -174,8 +226,13 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 class _RosterRow extends StatefulWidget {
   final AttendanceModel record;
   final VoidCallback onCorrect;
+  final VoidCallback onReset;
 
-  const _RosterRow({required this.record, required this.onCorrect});
+  const _RosterRow({
+    required this.record,
+    required this.onCorrect,
+    required this.onReset,
+  });
 
   @override
   State<_RosterRow> createState() => _RosterRowState();
@@ -274,6 +331,7 @@ class _RosterRowState extends State<_RosterRow> {
                 ? _RosterExpandedSection(
                     record: record,
                     onCorrect: widget.onCorrect,
+                    onReset: widget.onReset,
                   )
                 : const SizedBox.shrink(),
           ),
@@ -286,10 +344,12 @@ class _RosterRowState extends State<_RosterRow> {
 class _RosterExpandedSection extends StatelessWidget {
   final AttendanceModel record;
   final VoidCallback onCorrect;
+  final VoidCallback onReset;
 
   const _RosterExpandedSection({
     required this.record,
     required this.onCorrect,
+    required this.onReset,
   });
 
   @override
@@ -366,13 +426,43 @@ class _RosterExpandedSection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppSizes.xs),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton.icon(
-            onPressed: onCorrect,
-            icon: const Icon(Icons.edit_outlined, size: 16),
-            label: Text('correct_attendance'.tr()),
-          ),
+        BlocBuilder<AttendanceCubit, AttendanceState>(
+          builder: (context, state) {
+            final isResetting =
+                state.resetStatus == AttendanceActionStatus.submitting;
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: isResetting ? null : onReset,
+                  icon: isResetting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          Icons.restart_alt_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                  label: Text(
+                    'reset_day'.tr(),
+                    style: TextStyle(
+                      color: isResetting
+                          ? null
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: onCorrect,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: Text('correct_attendance'.tr()),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );

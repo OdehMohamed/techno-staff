@@ -664,6 +664,111 @@ exports.adminCorrectAttendance = onCall(async (request) => {
   return {success: true, docId};
 });
 
+exports.adminResetAttendance = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const adminUid = request.auth.uid;
+  const db = admin.firestore();
+
+  const adminDoc = await db.collection("users").doc(adminUid).get();
+  if (!adminDoc.exists || (adminDoc.data() || {}).role !== "admin") {
+    throw new HttpsError(
+        "permission-denied",
+        "Only admins can reset attendance",
+    );
+  }
+
+  const adminName = (adminDoc.data() || {}).name || "Admin";
+  const userId = request.data && request.data.userId;
+  const date = request.data && request.data.date;
+  const reason =
+    request.data && request.data.reason !== undefined ?
+      String(request.data.reason) :
+      "Day reset by admin";
+
+  if (!userId || !date) {
+    throw new HttpsError(
+        "invalid-argument",
+        "Missing required fields: userId and date",
+    );
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpsError("invalid-argument", "Invalid date format");
+  }
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "Target user not found");
+  }
+  const userName = (userDoc.data() || {}).name || "Unknown";
+
+  // Determine the weekday of the target date (Mon=1 … Sun=7, matching Dart).
+  const parsedDate = new Date(date);
+  const jsDay = parsedDate.getUTCDay(); // 0=Sun … 6=Sat
+  const dayKey = jsDay === 0 ? "7" : String(jsDay);
+
+  let newStatus = "absent";
+  const scheduleDoc = await db.collection("schedules").doc(userId).get();
+  if (scheduleDoc.exists) {
+    const dayEntry = (scheduleDoc.data().days || {})[dayKey];
+    if (dayEntry && dayEntry.isWorkingDay === false) {
+      newStatus = "off_day";
+    }
+  }
+
+  const docId = `${userId}_${date}`;
+  const attendanceRef = db.collection("attendance").doc(docId);
+  const logRef = db.collection("attendance_logs").doc();
+
+  await db.runTransaction(async (txn) => {
+    const attendanceSnap = await txn.get(attendanceRef);
+    const previousStatus = attendanceSnap.exists ?
+      (attendanceSnap.data().status || null) :
+      null;
+    const previousSessions = attendanceSnap.exists ?
+      (attendanceSnap.data().sessions || []) :
+      [];
+
+    const resetValue = {
+      userId,
+      userName,
+      date,
+      status: newStatus,
+      sessions: [],
+      totalDurationMinutes: 0,
+      isCorrected: true,
+      correctedBy: adminUid,
+      correctedByName: adminName,
+      correctedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      notes: reason,
+    };
+
+    if (!attendanceSnap.exists) {
+      resetValue.createdAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+
+    txn.set(attendanceRef, resetValue);
+    txn.set(logRef, {
+      attendanceId: docId,
+      userId,
+      action: "admin_reset",
+      performedBy: adminUid,
+      performedByName: adminName,
+      previousStatus,
+      previousSessions,
+      newStatus,
+      notes: reason,
+      performedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+
+  return {success: true, docId, newStatus};
+});
+
 exports.sendDailyAbsenceMarker = onSchedule(
     {
       schedule: "0 23 * * *",

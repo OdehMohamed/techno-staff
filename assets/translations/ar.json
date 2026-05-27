@@ -332,5 +332,9 @@
   "filter_by_assignee": "المُكلَّف",
   "repeat_task": "تكرار هذه المهمة",
   "create_first_instance": "إنشاء أول مهمة الآن",
-  "create_first_instance_hint": "إنشاء مهمة واحدة فورًا مع تاريخ الاستحقاق أدناه"
+  "create_first_instance_hint": "إنشاء مهمة واحدة فورًا مع تاريخ الاستحقاق أدناه",
+  "reset_day": "إعادة ضبط اليوم",
+  "reset_day_confirm_title": "إعادة ضبط الحضور لهذا اليوم؟",
+  "reset_day_confirm_message": "سيتم مسح جميع جلسات {name} بتاريخ {date} وتصنيف اليوم كغياب أو إجازة بناءً على الجدول الزمني. البيانات الأصلية محفوظة في سجل المراجعة.",
+  "reset_day_success": "تمت إعادة ضبط الحضور بنجاح"
 }

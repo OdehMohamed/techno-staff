@@ -247,6 +247,43 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     );
   }
 
+  Future<void> adminResetDay({
+    required String userId,
+    required String date,
+    String? reason,
+  }) async {
+    emit(
+      state.copyWith(
+        resetStatus: AttendanceActionStatus.submitting,
+        clearResetError: true,
+      ),
+    );
+    try {
+      await _attendanceRepository.adminResetDay(
+        userId: userId,
+        date: date,
+        reason: reason,
+      );
+      emit(state.copyWith(resetStatus: AttendanceActionStatus.success));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          resetStatus: AttendanceActionStatus.error,
+          resetError: _mapAttendanceError(e),
+        ),
+      );
+    }
+  }
+
+  void clearResetFeedback() {
+    emit(
+      state.copyWith(
+        resetStatus: AttendanceActionStatus.idle,
+        clearResetError: true,
+      ),
+    );
+  }
+
   // ── Schedule methods ──────────────────────────────────────────────────────
 
   Future<void> loadMySchedule(String userId) async {
