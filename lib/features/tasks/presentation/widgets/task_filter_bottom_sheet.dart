@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../features/auth/domain/models/app_user.dart';
+
 enum TaskSortOption { newestFirst, dueDateSoonest, priorityHighestFirst }
 
 class TaskFilters {
@@ -8,12 +10,16 @@ class TaskFilters {
   final String statusFilter;
   final String priorityFilter;
   final TaskSortOption sortOption;
+  final String? filterAssigneeId;
+  final String? filterAssigneeName;
 
   const TaskFilters({
     this.searchQuery = '',
     this.statusFilter = 'all',
     this.priorityFilter = 'all',
     this.sortOption = TaskSortOption.newestFirst,
+    this.filterAssigneeId,
+    this.filterAssigneeName,
   });
 
   TaskFilters copyWith({
@@ -21,12 +27,17 @@ class TaskFilters {
     String? statusFilter,
     String? priorityFilter,
     TaskSortOption? sortOption,
+    String? filterAssigneeId,
+    String? filterAssigneeName,
+    bool clearAssigneeFilter = false,
   }) {
     return TaskFilters(
       searchQuery: searchQuery ?? this.searchQuery,
       statusFilter: statusFilter ?? this.statusFilter,
       priorityFilter: priorityFilter ?? this.priorityFilter,
       sortOption: sortOption ?? this.sortOption,
+      filterAssigneeId: clearAssigneeFilter ? null : (filterAssigneeId ?? this.filterAssigneeId),
+      filterAssigneeName: clearAssigneeFilter ? null : (filterAssigneeName ?? this.filterAssigneeName),
     );
   }
 
@@ -34,20 +45,29 @@ class TaskFilters {
     return searchQuery.trim().isNotEmpty ||
         statusFilter != 'all' ||
         priorityFilter != 'all' ||
-        sortOption != TaskSortOption.newestFirst;
+        sortOption != TaskSortOption.newestFirst ||
+        filterAssigneeId != null;
   }
 
   bool get hasActiveNonSearchFilters {
     return statusFilter != 'all' ||
         priorityFilter != 'all' ||
-        sortOption != TaskSortOption.newestFirst;
+        sortOption != TaskSortOption.newestFirst ||
+        filterAssigneeId != null;
   }
 }
 
 class TaskFilterBottomSheet extends StatefulWidget {
   final TaskFilters initialFilters;
+  final List<AppUser> employees;
+  final bool isAdmin;
 
-  const TaskFilterBottomSheet({super.key, required this.initialFilters});
+  const TaskFilterBottomSheet({
+    super.key,
+    required this.initialFilters,
+    this.employees = const [],
+    this.isAdmin = false,
+  });
 
   @override
   State<TaskFilterBottomSheet> createState() => _TaskFilterBottomSheetState();
@@ -57,6 +77,8 @@ class _TaskFilterBottomSheetState extends State<TaskFilterBottomSheet> {
   late String _statusFilter;
   late String _priorityFilter;
   late TaskSortOption _sortOption;
+  String? _filterAssigneeId;
+  String? _filterAssigneeName;
 
   @override
   void initState() {
@@ -64,6 +86,8 @@ class _TaskFilterBottomSheetState extends State<TaskFilterBottomSheet> {
     _statusFilter = widget.initialFilters.statusFilter;
     _priorityFilter = widget.initialFilters.priorityFilter;
     _sortOption = widget.initialFilters.sortOption;
+    _filterAssigneeId = widget.initialFilters.filterAssigneeId;
+    _filterAssigneeName = widget.initialFilters.filterAssigneeName;
   }
 
   @override
@@ -80,6 +104,36 @@ class _TaskFilterBottomSheetState extends State<TaskFilterBottomSheet> {
                 'filters'.tr(),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              if (widget.isAdmin && widget.employees.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'filter_by_assignee'.tr(),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text('all'.tr()),
+                      selected: _filterAssigneeId == null,
+                      onSelected: (_) => setState(() {
+                        _filterAssigneeId = null;
+                        _filterAssigneeName = null;
+                      }),
+                    ),
+                    ...widget.employees.map((e) => ChoiceChip(
+                          label: Text(e.name),
+                          selected: _filterAssigneeId == e.id,
+                          onSelected: (_) => setState(() {
+                            _filterAssigneeId = e.id;
+                            _filterAssigneeName = e.name;
+                          }),
+                        )),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               Text(
                 'filter_by_status'.tr(),
@@ -217,6 +271,9 @@ class _TaskFilterBottomSheetState extends State<TaskFilterBottomSheet> {
                             statusFilter: _statusFilter,
                             priorityFilter: _priorityFilter,
                             sortOption: _sortOption,
+                            filterAssigneeId: _filterAssigneeId,
+                            filterAssigneeName: _filterAssigneeName,
+                            clearAssigneeFilter: _filterAssigneeId == null,
                           ),
                         );
                       },

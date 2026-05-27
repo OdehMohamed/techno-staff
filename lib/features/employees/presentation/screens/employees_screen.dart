@@ -135,6 +135,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                             .fetchEmployees(silent: true),
                         child: ListView.separated(
                           physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 80),
                           itemCount: visibleEmployees.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: AppSizes.md),

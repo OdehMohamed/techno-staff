@@ -14,6 +14,7 @@ class AttendanceState {
   final AttendanceLoadStatus editingScheduleStatus;
   final AttendanceActionStatus actionStatus;
   final AttendanceActionStatus correctionStatus;
+  final AttendanceActionStatus resetStatus;
   final AttendanceActionStatus scheduleSaveStatus;
   final AttendanceModel? todayRecord;
   final List<AttendanceModel> history;
@@ -27,6 +28,7 @@ class AttendanceState {
   final String? rosterError;
   final String? monthlyError;
   final String? correctionError;
+  final String? resetError;
   final String? scheduleError;
   final String? scheduleSaveError;
   final String? selectedDate;
@@ -40,6 +42,7 @@ class AttendanceState {
     this.editingScheduleStatus = AttendanceLoadStatus.initial,
     this.actionStatus = AttendanceActionStatus.idle,
     this.correctionStatus = AttendanceActionStatus.idle,
+    this.resetStatus = AttendanceActionStatus.idle,
     this.scheduleSaveStatus = AttendanceActionStatus.idle,
     this.todayRecord,
     this.history = const [],
@@ -53,6 +56,7 @@ class AttendanceState {
     this.rosterError,
     this.monthlyError,
     this.correctionError,
+    this.resetError,
     this.scheduleError,
     this.scheduleSaveError,
     this.selectedDate,
@@ -67,6 +71,7 @@ class AttendanceState {
     AttendanceLoadStatus? editingScheduleStatus,
     AttendanceActionStatus? actionStatus,
     AttendanceActionStatus? correctionStatus,
+    AttendanceActionStatus? resetStatus,
     AttendanceActionStatus? scheduleSaveStatus,
     AttendanceModel? todayRecord,
     List<AttendanceModel>? history,
@@ -80,6 +85,7 @@ class AttendanceState {
     String? rosterError,
     String? monthlyError,
     String? correctionError,
+    String? resetError,
     String? scheduleError,
     String? scheduleSaveError,
     String? selectedDate,
@@ -90,6 +96,7 @@ class AttendanceState {
     bool clearRosterError = false,
     bool clearMonthlyError = false,
     bool clearCorrectionError = false,
+    bool clearResetError = false,
     bool clearScheduleError = false,
     bool clearScheduleSaveError = false,
     bool clearMySchedule = false,
@@ -104,6 +111,7 @@ class AttendanceState {
       editingScheduleStatus: editingScheduleStatus ?? this.editingScheduleStatus,
       actionStatus: actionStatus ?? this.actionStatus,
       correctionStatus: correctionStatus ?? this.correctionStatus,
+      resetStatus: resetStatus ?? this.resetStatus,
       scheduleSaveStatus: scheduleSaveStatus ?? this.scheduleSaveStatus,
       todayRecord: clearTodayRecord ? null : (todayRecord ?? this.todayRecord),
       history: history ?? this.history,
@@ -117,6 +125,7 @@ class AttendanceState {
       rosterError: clearRosterError ? null : (rosterError ?? this.rosterError),
       monthlyError: clearMonthlyError ? null : (monthlyError ?? this.monthlyError),
       correctionError: clearCorrectionError ? null : (correctionError ?? this.correctionError),
+      resetError: clearResetError ? null : (resetError ?? this.resetError),
       scheduleError: clearScheduleError ? null : (scheduleError ?? this.scheduleError),
       scheduleSaveError: clearScheduleSaveError ? null : (scheduleSaveError ?? this.scheduleSaveError),
       selectedDate: selectedDate ?? this.selectedDate,

@@ -327,5 +327,15 @@
   "completed_this_week": "This Week",
   "completed_this_month": "This Month",
   "completed_older": "Older",
-  "due_soon": "Due soon"
+  "due_soon": "Due soon",
+  "invalid_correction_data": "Invalid correction data. Please check the session times and try again.",
+  "filter_by_assignee": "Assigned To",
+  "repeat_task": "Repeat this task",
+  "assign_to_recurring": "Assign to (select one or more)",
+  "create_first_instance": "Create first task now",
+  "create_first_instance_hint": "Also create one task immediately with the due date below",
+  "reset_day": "Reset Day",
+  "reset_day_confirm_title": "Reset attendance for this day?",
+  "reset_day_confirm_message": "This will clear all sessions for {name} on {date} and mark the day as absent or off-day based on their schedule. The original data is preserved in the audit log.",
+  "reset_day_success": "Attendance reset successfully"
 }
