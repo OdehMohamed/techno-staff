@@ -221,6 +221,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin =
+        context.read<AuthCubit>().state.user?.role == 'admin';
     final screenWidth = MediaQuery.of(context).size.width;
     final contentWidth = screenWidth > 700 ? 550.0 : double.infinity;
 
@@ -454,6 +456,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           },
                         ),
                       ],
+                      if (isAdmin) ...[
                       const SizedBox(height: AppSizes.md),
                       // ── Repeat toggle ────────────────────────────────
                       SwitchListTile(
@@ -574,6 +577,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           }),
                         ),
                       ],
+                      ], // end isAdmin
                       if (!_isRecurring || _createFirstInstance) ...[
                         const SizedBox(height: AppSizes.md),
                         DueDateTimePicker(
