@@ -14,6 +14,17 @@ class AttendanceRepository {
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _functions = functions ?? FirebaseFunctions.instance;
 
+  Future<AttendanceModel?> fetchTodayRecord(String userId) async {
+    final today = _todayJerusalemYmd();
+    final docId = '${userId}_$today';
+    final doc = await _firestore
+        .collection('attendance')
+        .doc(docId)
+        .get(const GetOptions(source: Source.server));
+    if (!doc.exists || doc.data() == null) return null;
+    return AttendanceModel.fromMap(doc.id, doc.data()!);
+  }
+
   Stream<AttendanceModel?> streamTodayRecord(String userId) {
     final today = _todayJerusalemYmd();
     final docId = '${userId}_$today';

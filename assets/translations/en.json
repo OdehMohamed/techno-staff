@@ -327,5 +327,10 @@
   "completed_this_week": "This Week",
   "completed_this_month": "This Month",
   "completed_older": "Older",
-  "due_soon": "Due soon"
+  "due_soon": "Due soon",
+  "invalid_correction_data": "Invalid correction data. Please check the session times and try again.",
+  "filter_by_assignee": "Assigned To",
+  "repeat_task": "Repeat this task",
+  "create_first_instance": "Create first task now",
+  "create_first_instance_hint": "Also create one task immediately with the due date below"
 }

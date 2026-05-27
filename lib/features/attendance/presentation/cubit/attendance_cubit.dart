@@ -13,6 +13,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   final AttendanceRepository _attendanceRepository;
   final ScheduleRepository _scheduleRepository;
   StreamSubscription<AttendanceModel?>? _todaySubscription;
+  String? _currentUserId;
 
   AttendanceCubit({
     required AttendanceRepository attendanceRepository,
@@ -22,6 +23,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
        super(const AttendanceState());
 
   void startListeningToday(String userId) {
+    _currentUserId = userId;
     emit(
       state.copyWith(
         todayStatus: AttendanceLoadStatus.loading,
@@ -81,6 +83,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   }
 
   Future<void> checkIn() async {
+    final userId = _currentUserId;
     emit(
       state.copyWith(
         actionStatus: AttendanceActionStatus.submitting,
@@ -96,6 +99,10 @@ class AttendanceCubit extends Cubit<AttendanceState> {
           clearActionError: true,
         ),
       );
+      if (userId != null) {
+        final record = await _attendanceRepository.fetchTodayRecord(userId);
+        emit(state.copyWith(todayRecord: record));
+      }
     } catch (error) {
       emit(
         state.copyWith(
@@ -107,6 +114,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   }
 
   Future<void> checkOut() async {
+    final userId = _currentUserId;
     emit(
       state.copyWith(
         actionStatus: AttendanceActionStatus.submitting,
@@ -122,6 +130,10 @@ class AttendanceCubit extends Cubit<AttendanceState> {
           clearActionError: true,
         ),
       );
+      if (userId != null) {
+        final record = await _attendanceRepository.fetchTodayRecord(userId);
+        emit(state.copyWith(todayRecord: record));
+      }
     } catch (error) {
       emit(
         state.copyWith(
@@ -216,11 +228,11 @@ class AttendanceCubit extends Cubit<AttendanceState> {
         notes: notes,
       );
       emit(state.copyWith(correctionStatus: AttendanceActionStatus.success));
-    } catch (_) {
+    } catch (e) {
       emit(
         state.copyWith(
           correctionStatus: AttendanceActionStatus.error,
-          correctionError: 'network_error',
+          correctionError: _mapAttendanceError(e),
         ),
       );
     }
@@ -337,9 +349,9 @@ class AttendanceCubit extends Cubit<AttendanceState> {
       if (combined.contains('not-checked-in')) {
         return 'not_checked_in_yet';
       }
-      if (code == 'unauthenticated') {
-        return 'not_authorized';
-      }
+      if (code == 'unauthenticated') return 'not_authorized';
+      if (code == 'permission-denied') return 'not_authorized';
+      if (code == 'invalid-argument') return 'invalid_correction_data';
     }
     return 'network_error';
   }

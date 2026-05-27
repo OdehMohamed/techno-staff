@@ -5,6 +5,7 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/domain/models/app_user.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
@@ -82,11 +83,20 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> _openFilterBottomSheet() async {
+    final isAdmin =
+        context.read<AuthCubit>().state.user?.role == 'admin';
+    final employees = isAdmin
+        ? context.read<EmployeesCubit>().state.employees
+        : <AppUser>[];
     final selectedFilters = await showModalBottomSheet<TaskFilters>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return TaskFilterBottomSheet(initialFilters: _filters);
+        return TaskFilterBottomSheet(
+          initialFilters: _filters,
+          employees: employees,
+          isAdmin: isAdmin,
+        );
       },
     );
 
@@ -134,7 +144,12 @@ class _TasksScreenState extends State<TasksScreen> {
       final matchesQuickPriority =
           !highPriorityOnly || task.priority == 'high';
 
-      return matchesSearch && matchesStatus && matchesPriority && matchesQuickPriority;
+      final matchesAssignee =
+          _filters.filterAssigneeId == null ||
+          task.assignedTo == _filters.filterAssigneeId;
+
+      return matchesSearch && matchesStatus && matchesPriority &&
+          matchesQuickPriority && matchesAssignee;
     }).toList();
 
     switch (_filters.sortOption) {
@@ -178,7 +193,12 @@ class _TasksScreenState extends State<TasksScreen> {
       final matchesQuickPriority =
           !highPriorityOnly || task.priority == 'high';
 
-      return matchesSearch && matchesPriority && matchesQuickPriority;
+      final matchesAssignee =
+          _filters.filterAssigneeId == null ||
+          task.assignedTo == _filters.filterAssigneeId;
+
+      return matchesSearch && matchesPriority && matchesQuickPriority &&
+          matchesAssignee;
     }).toList();
 
     switch (_filters.sortOption) {
@@ -744,6 +764,25 @@ class _TasksScreenState extends State<TasksScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (isAdmin && task.assignedTo != currentUser?.id) ...[
+                const SizedBox(height: AppSizes.xs),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      task.assignedToName,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSizes.md),
               Wrap(
                 spacing: AppSizes.sm,
