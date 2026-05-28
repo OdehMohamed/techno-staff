@@ -38,6 +38,9 @@ class _TasksScreenState extends State<TasksScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadTasks();
+      if (context.read<AuthCubit>().state.user?.role == 'admin') {
+        context.read<EmployeesCubit>().fetchEmployees(silent: true);
+      }
     });
   }
 

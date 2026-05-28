@@ -653,7 +653,7 @@ exports.adminCorrectAttendance = onCall(async (request) => {
       previousValue,
       newValue: {
         sessions: nextValue.sessions,
-        notes: nextValue.notes,
+        ...(nextValue.notes !== undefined ? {notes: nextValue.notes} : {}),
         isCorrected: true,
         correctedBy: adminUid,
       },
