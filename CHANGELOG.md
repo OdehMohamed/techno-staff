@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-28
+
+### Fixed
+
+- Admin attendance correction always failed when notes were left blank. The Cloud Function wrote `notes: undefined` into a nested Firestore map inside the `attendance_logs` audit entry, which Firebase Admin SDK v12 rejects as an invalid value, producing an `internal` error on every note-free correction attempt. Fixed by conditionally omitting `notes` from the audit log's `newValue` map when not provided.
+- Task filter "Assigned To" employee list was empty when the filter sheet was opened without first visiting the Employees screen. The task screen now preloads the employee list silently on initialization so the filter is always ready.
+
+## [1.3.0] - 2026-05-27
+
+### Added
+
+- Admin attendance day reset — admins can clear all sessions for one employee on one day from the roster's expanded row. The reset is schedule-aware (classifies the day as `absent` or `off_day` based on the employee's schedule) and writes a full audit entry to `attendance_logs` preserving the previous status and sessions (`action: admin_reset`).
+- Recurring task creation in the Add Task flow — admins see a "Repeat this task" toggle that reveals recurrence configuration (daily, weekly, monthly) without leaving the task creation screen. When repeat mode is active, the single-employee dropdown is replaced by a multi-select chip picker so templates can be assigned to multiple employees at once. Toggling back restores the previous single selection. A "Create first task now" option generates one task instance per selected employee immediately alongside the template.
+- Assigned employee name shown on admin task cards — admin All Tasks view now displays the assignee's name below each task description.
+- Admin task filter by assigned employee — the filter sheet includes a new "Assigned To" chip row for admins, wired into both active and completed task lists.
+
+### Fixed
+
+- Admin attendance correction showed "Network error" regardless of the actual server error — the catch block was discarding the exception type and hardcoding the error key; now correctly maps `permission-denied` and `invalid-argument` codes to the corresponding localized messages.
+- Check-in and check-out button state now updates immediately after each action instead of waiting for the Firestore stream to propagate — the cubit fetches the updated record directly from the server after the callable returns.
+- Add Employee button on the Employees screen was obscured by the floating action button on lower list cards — fixed with bottom padding on the list.
+
+### Changed
+
+- Recurring task controls (repeat toggle, recurrence configuration, multi-assignee picker, first-instance toggle) are now admin-only; employees continue to see only the standard one-time task creation form.
+
 ## [1.2.0] - 2026-05-17
 
 ### Added
