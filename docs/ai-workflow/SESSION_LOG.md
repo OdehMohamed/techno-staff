@@ -1,3 +1,22 @@
+## 2026-05-28 — Claude Sonnet 4.6 — v1.3.1 hotfix: two production bugs on fix/v1.3.1-production-issues
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `fix/v1.3.1-production-issues` → merged to `main` as PR #41
+- **Goal**: Diagnose and fix two production regressions from v1.3.0; full release flow including tag and GitHub Release.
+- **Outcome**: Both bugs diagnosed, fixed, merged, tagged `v1.3.1`, GitHub Release created. CF deploy + Shorebird patch remain as owner steps.
+
+### What was done
+
+- **Root cause analysis — Bug 1 (attendance correction)**: `adminCorrectAttendance` CF wrote `notes: nextValue.notes` into a nested Firestore map in the `attendance_logs` write. When the admin submits without notes, `nextValue.notes` is `undefined` (never assigned in that branch). Firebase Admin SDK v12 throws a sync `Error` for `undefined` in nested maps; Functions returns `internal`; Flutter maps `internal` → `network_error`. Fixed with a conditional spread `...(nextValue.notes !== undefined ? {notes: nextValue.notes} : {})`.
+- **Root cause analysis — Bug 2 (employee filter)**: `_openFilterBottomSheet` snapshots `EmployeesCubit.state.employees` at open time; `fetchEmployees()` was only triggered by `EmployeesScreen.initState`. Fixed by calling `fetchEmployees(silent: true)` in `TasksScreen.initState` for admin users.
+- **Release**: `pubspec.yaml` bumped to `1.3.1+6`, `CHANGELOG.md` updated (v1.3.1 added; v1.3.0 backfilled), annotated tag `v1.3.1` created and pushed, GitHub Release https://github.com/OdehMohamed/techno-staff/releases/tag/v1.3.1 created.
+
+### Owner-required steps remaining
+- `firebase deploy --only functions` — deploys the CF fix.
+- `shorebird patch android` / `shorebird patch ios` — delivers the Dart fix without a store submission.
+
+---
+
 ## 2026-05-27 — Claude Sonnet 4.6 — v1.3.0 cycle: 3 bugs + 5 features on feat/v1.3.0-improvements
 
 - **Agent**: Claude Sonnet 4.6

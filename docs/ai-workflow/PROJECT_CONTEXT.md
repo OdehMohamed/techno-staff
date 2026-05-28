@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.0 features are merged to `main` (PR #40, 2026-05-27). Owner deploy step pending (`firebase deploy --only functions,firestore:rules`). Next step after deploy: binary store release for v1.3.0.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.1 hotfix merged to `main` (PR #41, 2026-05-28). Owner steps pending: `firebase deploy --only functions` and Shorebird patch. No new store binary required for this release.
 
 ## 2. Tech Stack
 
@@ -181,7 +181,7 @@ Asset-patching verification is a mandatory step before the first Shorebird patch
 
 ## 11. Version & Branching
 
-- **App version**: `1.3.0+5` in `pubspec.yaml`. Next store submission should target this version.
+- **App version**: `1.3.1+6` in `pubspec.yaml`. Delivered via Shorebird patch (no new store binary needed for this version).
 - **Production branch**: `main`.
 - **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.
