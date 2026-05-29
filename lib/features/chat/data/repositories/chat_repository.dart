@@ -94,7 +94,20 @@ class ChatRepository {
   }
 
   /// Returns the existing DM conversation ID for [uid1]/[uid2], creating it
-  /// if it does not exist. Never overwrites an existing conversation.
+  /// if it does not exist.
+  ///
+  /// Implementation note: we attempt the [set()] directly rather than doing
+  /// a pre-read existence check. A pre-read with [Source.server] on a
+  /// non-existent document causes the Firestore SDK to hang indefinitely
+  /// while the security rules evaluation (which accesses [resource.data] on a
+  /// null resource) never produces a clean response.
+  ///
+  /// A [set()] on an existing DM document is treated as a full update by
+  /// Firestore rules; our [allow update] rule restricts participants to
+  /// conversation-level fields only, so it returns [permission-denied].
+  /// We catch that specific code and return the existing ID — it is the only
+  /// reason [permission-denied] can fire here given the [create] rule
+  /// validates [createdBy == auth.uid].
   Future<String> getOrCreateDm(
     String uid1,
     String uid2,
@@ -104,9 +117,7 @@ class ChatRepository {
     final id = dmId(uid1, uid2);
     final ref = _firestore.collection(FirebasePaths.conversations).doc(id);
 
-    final existing =
-        await ref.get(const GetOptions(source: Source.server));
-    if (!existing.exists) {
+    try {
       await ref.set({
         'type': 'dm',
         'participantIds': [uid1, uid2],
@@ -121,6 +132,11 @@ class ChatRepository {
         'unreadCounts': {},
         'writeRestriction': null,
       });
+    } on FirebaseException catch (e) {
+      // 'permission-denied' means the document already exists — our
+      // update rules restrict full overwrites to admins. This is the
+      // expected "DM exists" path; return the ID as-is.
+      if (e.code != 'permission-denied') rethrow;
     }
     return id;
   }

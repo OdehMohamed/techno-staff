@@ -51,10 +51,13 @@ class _NewConversationSheetState extends State<NewConversationSheet> {
             targetName,
           );
       if (!mounted) return;
-      // Return the conversation ID to the caller for navigation.
       Navigator.of(context).pop(convId);
-    } catch (_) {
-      if (mounted) setState(() => _loadingUid = null);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingUid = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('send_failed'.tr())),
+      );
     }
   }
 
