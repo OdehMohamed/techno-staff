@@ -337,5 +337,17 @@
   "reset_day": "Reset Day",
   "reset_day_confirm_title": "Reset attendance for this day?",
   "reset_day_confirm_message": "This will clear all sessions for {name} on {date} and mark the day as absent or off-day based on their schedule. The original data is preserved in the audit log.",
-  "reset_day_success": "Attendance reset successfully"
+  "reset_day_success": "Attendance reset successfully",
+  "messages": "Messages",
+  "no_conversations_yet": "No conversations yet",
+  "start_a_conversation_hint": "Tap + to start a message",
+  "search_conversations": "Search conversations",
+  "you": "You",
+  "message_deleted": "Message deleted",
+  "yesterday": "Yesterday",
+  "new_conversation": "New Conversation",
+  "direct_message": "Direct Message",
+  "start_one_on_one_chat": "Start a one-on-one chat",
+  "select_contact": "Select Contact",
+  "no_users_available": "No users available"
 }

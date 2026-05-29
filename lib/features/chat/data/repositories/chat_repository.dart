@@ -11,6 +11,17 @@ class ChatRepository {
 
   // ─── Conversation streams ────────────────────────────────────────────────
 
+  /// Real-time stream of a single conversation document.
+  Stream<ConversationModel?> streamConversation(String conversationId) {
+    return _firestore
+        .collection(FirebasePaths.conversations)
+        .doc(conversationId)
+        .snapshots()
+        .map((doc) => doc.exists
+            ? ConversationModel.fromMap(doc.id, doc.data()!)
+            : null);
+  }
+
   /// Real-time stream of all conversations for [uid], sorted newest-first.
   Stream<List<ConversationModel>> streamConversations(String uid) {
     return _firestore

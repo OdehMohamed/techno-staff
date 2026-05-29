@@ -38,6 +38,15 @@ class ChatListCubit extends Cubit<ChatListState> {
     );
   }
 
+  /// Creates a DM conversation (or returns an existing one) without emitting
+  /// state. The caller is responsible for navigating to the conversation.
+  Future<String> getOrCreateDm(
+    String uid1,
+    String uid2,
+    String name1,
+    String name2,
+  ) => _repository.getOrCreateDm(uid1, uid2, name1, name2);
+
   void stopListening() {
     _subscription?.cancel();
     _subscription = null;

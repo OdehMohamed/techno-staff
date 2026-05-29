@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/routes/route_names.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/chat/presentation/cubit/chat_list_cubit.dart';
+import '../../features/chat/presentation/cubit/chat_list_state.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -86,6 +88,51 @@ class AppDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacementNamed(context, RouteNames.tasks);
+              },
+            ),
+            BlocBuilder<ChatListCubit, ChatListState>(
+              builder: (context, chatState) {
+                final unread = chatState.totalUnread;
+                return ListTile(
+                  leading: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.chat_bubble_outline),
+                      if (unread > 0)
+                        PositionedDirectional(
+                          top: -4,
+                          end: -6,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Center(
+                              child: Text(
+                                unread > 99 ? '99+' : '$unread',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  title: Text('messages'.tr()),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, RouteNames.chatList);
+                  },
+                );
               },
             ),
             if (user?.role == 'admin')

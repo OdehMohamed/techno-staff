@@ -11,6 +11,7 @@ class ConversationCubit extends Cubit<ConversationState> {
   StreamSubscription? _subscription;
 
   // Non-state metadata used across method calls.
+  StreamSubscription? _conversationSubscription;
   String? _activeConversationId;
   String? _currentUserId;
   String? _currentUserName;
@@ -19,7 +20,7 @@ class ConversationCubit extends Cubit<ConversationState> {
       : _repository = chatRepository,
         super(const ConversationState());
 
-  /// Loads (or reloads) a conversation. Cancels any previous stream, resets
+  /// Loads (or reloads) a conversation. Cancels any previous streams, resets
   /// state, and immediately marks the conversation as read for [currentUserId].
   void loadConversation(
     String conversationId,
@@ -27,6 +28,7 @@ class ConversationCubit extends Cubit<ConversationState> {
     String currentUserName,
   ) {
     _subscription?.cancel();
+    _conversationSubscription?.cancel();
     _activeConversationId = conversationId;
     _currentUserId = currentUserId;
     _currentUserName = currentUserName;
@@ -35,6 +37,15 @@ class ConversationCubit extends Cubit<ConversationState> {
 
     // Mark read immediately; best-effort (error is swallowed).
     _repository.markAsRead(conversationId, currentUserId).catchError((_) {});
+
+    // Stream the conversation document for AppBar title, participants, etc.
+    _conversationSubscription =
+        _repository.streamConversation(conversationId).listen(
+      (conv) {
+        if (conv != null) emit(state.copyWith(conversation: conv));
+      },
+      onError: (_) {},
+    );
 
     _subscription = _repository.streamMessages(conversationId).listen(
       (streamed) => _onMessagesReceived(streamed, conversationId, currentUserId),
@@ -138,6 +149,7 @@ class ConversationCubit extends Cubit<ConversationState> {
   @override
   Future<void> close() {
     _subscription?.cancel();
+    _conversationSubscription?.cancel();
     return super.close();
   }
 }

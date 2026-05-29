@@ -337,5 +337,17 @@
   "reset_day": "إعادة ضبط اليوم",
   "reset_day_confirm_title": "إعادة ضبط الحضور لهذا اليوم؟",
   "reset_day_confirm_message": "سيتم مسح جميع جلسات {name} بتاريخ {date} وتصنيف اليوم كغياب أو إجازة بناءً على الجدول الزمني. البيانات الأصلية محفوظة في سجل المراجعة.",
-  "reset_day_success": "تمت إعادة ضبط الحضور بنجاح"
+  "reset_day_success": "تمت إعادة ضبط الحضور بنجاح",
+  "messages": "الرسائل",
+  "no_conversations_yet": "لا توجد محادثات بعد",
+  "start_a_conversation_hint": "اضغط + لبدء رسالة",
+  "search_conversations": "البحث في المحادثات",
+  "you": "أنت",
+  "message_deleted": "تم حذف الرسالة",
+  "yesterday": "أمس",
+  "new_conversation": "محادثة جديدة",
+  "direct_message": "رسالة مباشرة",
+  "start_one_on_one_chat": "ابدأ محادثة فردية",
+  "select_contact": "اختر جهة اتصال",
+  "no_users_available": "لا يوجد مستخدمون"
 }

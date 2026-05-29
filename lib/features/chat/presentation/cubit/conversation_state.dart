@@ -1,7 +1,9 @@
+import '../../data/models/conversation_model.dart';
 import '../../data/models/message_model.dart';
 
 class ConversationState {
   final String? conversationId;
+  final ConversationModel? conversation; // live conversation document
   final List<MessageModel> messages;
   final bool isLoading;
   final bool isLoadingOlder;
@@ -11,6 +13,7 @@ class ConversationState {
 
   const ConversationState({
     this.conversationId,
+    this.conversation,
     this.messages = const [],
     this.isLoading = false,
     this.isLoadingOlder = false,
@@ -21,6 +24,7 @@ class ConversationState {
 
   ConversationState copyWith({
     String? conversationId,
+    ConversationModel? conversation,
     List<MessageModel>? messages,
     bool? isLoading,
     bool? isLoadingOlder,
@@ -31,6 +35,7 @@ class ConversationState {
   }) {
     return ConversationState(
       conversationId: conversationId ?? this.conversationId,
+      conversation: conversation ?? this.conversation,
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
       isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
