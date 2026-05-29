@@ -60,11 +60,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
             onPressed: () {
-              final state = context.read<DashboardCubit>().state;
-
+              final dashState = context.read<DashboardCubit>().state;
+              final roster =
+                  context.read<AttendanceCubit>().state.roster;
+              final locale = context.locale.languageCode;
               ReportService.exportDashboardReport(
-                stats: state.stats,
-                extraStats: state.extraStats,
+                stats: dashState.stats,
+                extraStats: dashState.extraStats,
+                roster: roster,
+                filter: dashState.filter,
+                locale: locale,
               );
             },
           ),
