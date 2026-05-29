@@ -176,7 +176,8 @@ class ChatRepository {
   // ─── Task thread ─────────────────────────────────────────────────────────
 
   /// Opens an existing task thread or creates a new one.
-  /// [taskTitle] is shown in the conversation AppBar.
+  /// Uses a deterministic document ID `task_${taskId}` to prevent duplicate
+  /// threads when two users tap "Open discussion" simultaneously.
   Future<String> getOrCreateTaskThread({
     required String taskId,
     required String taskTitle,
@@ -185,21 +186,18 @@ class ChatRepository {
     required String assigneeUid,
     required String assigneeName,
   }) async {
-    final existing = await _firestore
-        .collection(FirebasePaths.conversations)
-        .where('taskId', isEqualTo: taskId)
-        .limit(1)
-        .get(const GetOptions(source: Source.server));
-
-    if (existing.docs.isNotEmpty) return existing.docs.first.id;
-
+    final id = 'task_$taskId';
     final convRef =
-        _firestore.collection(FirebasePaths.conversations).doc();
-    final msgRef =
-        convRef.collection(FirebasePaths.messages).doc();
+        _firestore.collection(FirebasePaths.conversations).doc(id);
+
+    final existing =
+        await convRef.get(const GetOptions(source: Source.server));
+    if (existing.exists) return id;
+
+    final msgRef = convRef.collection(FirebasePaths.messages).doc();
     final systemText = 'Discussion opened for "$taskTitle"';
     final batch = _firestore.batch();
-    final participants = {creatorUid, assigneeUid}.toList();
+    final participants = [creatorUid, assigneeUid];
     final participantNames = {
       creatorUid: creatorName,
       assigneeUid: assigneeName,
