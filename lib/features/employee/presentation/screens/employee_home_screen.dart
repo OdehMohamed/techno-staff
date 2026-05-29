@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -40,6 +41,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
         context.read<NotificationsCubit>().listenToNotifications(user.id);
+        context.read<ChatListCubit>().startListening(user.id);
       }
     });
 

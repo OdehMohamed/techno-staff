@@ -21,6 +21,9 @@ import 'package:techno_staff/features/notifications/presentation/cubit/notificat
 import 'package:techno_staff/features/reports/data/repositories/reports_repository.dart';
 import 'package:techno_staff/features/reports/data/services/pdf_report_service.dart';
 import 'package:techno_staff/features/reports/presentation/cubit/reports_cubit.dart';
+import 'package:techno_staff/features/chat/data/repositories/chat_repository.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/conversation_cubit.dart';
 import 'package:techno_staff/features/tasks/presentation/cubit/task_details_cubit.dart';
 import 'package:techno_staff/features/tasks/presentation/cubit/task_logs_cubit.dart';
 import 'app/app.dart';
@@ -116,6 +119,7 @@ Future<void> main() async {
   final pdfReportService = PdfReportService();
   final attendanceRepository = AttendanceRepository();
   final scheduleRepository = ScheduleRepository();
+  final chatRepository = ChatRepository(FirebaseFirestore.instance);
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -170,6 +174,14 @@ Future<void> main() async {
           BlocProvider(
             create: (_) =>
                 TemplatesCubit(templatesRepository: templatesRepository),
+          ),
+          BlocProvider(
+            create: (_) =>
+                ChatListCubit(chatRepository: chatRepository),
+          ),
+          BlocProvider(
+            create: (_) =>
+                ConversationCubit(chatRepository: chatRepository),
           ),
         ],
         child: const TechnoStaffApp(),
