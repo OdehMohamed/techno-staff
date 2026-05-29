@@ -7,6 +7,16 @@ import 'package:printing/printing.dart';
 import '../../../attendance/data/models/attendance_model.dart';
 import '../../presentation/cubit/dashboard_state.dart';
 
+// ── Content-direction helpers ─────────────────────────────────────────────────
+// Used to render dynamic content (names, titles) in the correct direction
+// regardless of the overall report language.
+
+bool _containsArabic(String text) =>
+    text.runes.any((r) => r >= 0x0600 && r <= 0x06FF);
+
+pw.TextDirection _dynamicDir(String text) =>
+    _containsArabic(text) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 const _kNavy = PdfColor.fromInt(0xFF1A3A5C);
@@ -25,7 +35,8 @@ class _L {
   final bool ar;
   const _L(String locale) : ar = locale == 'ar';
 
-  String get appName => ar ? 'تكنو ستاف' : 'Techno Staff';
+  // Brand name is fixed — never translated
+  String get appName => 'Techno Staff';
   String get reportTitle => ar ? 'لقطة العمليات اليومية' : 'Operations Snapshot';
   String get generatedAt => ar ? 'صدر في' : 'Generated';
   String get period => ar ? 'الفترة' : 'Period';
@@ -504,9 +515,12 @@ class ReportService {
               style: pw.TextStyle(
                   font: regularFont, fontSize: 8, color: _kMuted)),
           pw.SizedBox(height: 3),
-          pw.Text(name,
-              style: pw.TextStyle(
-                  font: boldFont, fontSize: 12, color: _kNavy)),
+          pw.Directionality(
+            textDirection: _dynamicDir(name),
+            child: pw.Text(name,
+                style: pw.TextStyle(
+                    font: boldFont, fontSize: 12, color: _kNavy)),
+          ),
           pw.SizedBox(height: 1),
           pw.Text(detail,
               style: pw.TextStyle(

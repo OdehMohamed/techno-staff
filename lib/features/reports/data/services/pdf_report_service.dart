@@ -29,7 +29,8 @@ class _L {
   final bool ar;
   const _L(String locale) : ar = locale == 'ar';
 
-  String get appName => ar ? 'تكنو ستاف' : 'Techno Staff';
+  // Brand name is fixed — never translated
+  String get appName => 'Techno Staff';
   String get reportTitle => ar ? 'التقرير الشهري للموظف' : 'Employee Monthly Report';
   String get employee => ar ? 'الموظف' : 'Employee';
   String get email => ar ? 'البريد الإلكتروني' : 'Email';
@@ -127,6 +128,16 @@ class _L {
     }
   }
 }
+
+// ── Content-direction helpers ─────────────────────────────────────────────────
+// Detect Arabic script to render dynamic content (names, task titles, notes)
+// in the correct direction regardless of the overall report language.
+
+bool _containsArabic(String text) =>
+    text.runes.any((r) => r >= 0x0600 && r <= 0x06FF);
+
+pw.TextDirection _dynamicDir(String text) =>
+    _containsArabic(text) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
 
 // ── Duration helpers ──────────────────────────────────────────────────────────
 
@@ -451,7 +462,6 @@ class PdfReportService {
             boldFont: boldFont,
             regularFont: regularFont,
             locale: locale,
-            textAlign: textAlign,
           ),
           pw.SizedBox(height: 12),
 
@@ -466,7 +476,6 @@ class PdfReportService {
             boldFont: boldFont,
             regularFont: regularFont,
             locale: locale,
-            textAlign: textAlign,
           ),
           pw.SizedBox(height: 12),
 
@@ -533,7 +542,7 @@ class PdfReportService {
     required bool isAr,
   }) {
     final logoWidget = pw.Image(logo, width: 48, height: 48);
-    final textBlock = pw.Column(
+    final brandBlock = pw.Column(
       crossAxisAlignment:
           isAr ? pw.CrossAxisAlignment.end : pw.CrossAxisAlignment.start,
       children: [
@@ -541,36 +550,74 @@ class PdfReportService {
             style: pw.TextStyle(font: boldFont, fontSize: 20, color: _kNavy)),
         pw.SizedBox(height: 2),
         pw.Text(l.reportTitle,
-            style:
-                pw.TextStyle(font: regularFont, fontSize: 11, color: _kMuted)),
-        pw.SizedBox(height: 6),
-        _headerInfoRow(l.employee, employeeName, regularFont, boldFont),
-        pw.SizedBox(height: 2),
-        _headerInfoRow(l.email, employeeEmail, regularFont, boldFont),
-        pw.SizedBox(height: 2),
-        _headerInfoRow(l.period, monthLabel, regularFont, boldFont),
-        pw.SizedBox(height: 2),
-        _headerInfoRow(l.generatedAt, generatedLabel, regularFont, boldFont),
+            style: pw.TextStyle(font: regularFont, fontSize: 11, color: _kMuted)),
       ],
     );
 
-    return pw.Row(
+    final brandRow = pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: isAr ? [textBlock, logoWidget] : [logoWidget, textBlock],
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: isAr ? [brandBlock, logoWidget] : [logoWidget, brandBlock],
+    );
+
+    // 2×2 info grid — each cell: label on top, value below with auto-direction
+    final infoGrid = pw.Table(
+      border: pw.TableBorder.all(color: _kDivider, width: 0.4),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1),
+        1: pw.FlexColumnWidth(1),
+      },
+      children: [
+        pw.TableRow(children: [
+          _infoCell(l.employee, employeeName, regularFont, boldFont),
+          _infoCell(l.period, monthLabel, regularFont, boldFont),
+        ]),
+        pw.TableRow(children: [
+          // Email is always LTR (ASCII)
+          _infoCell(l.email, employeeEmail, regularFont, boldFont,
+              alwaysLtr: true),
+          _infoCell(l.generatedAt, generatedLabel, regularFont, boldFont),
+        ]),
+      ],
+    );
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        brandRow,
+        pw.SizedBox(height: 8),
+        infoGrid,
+      ],
     );
   }
 
-  pw.Widget _headerInfoRow(
-      String label, String value, pw.Font regular, pw.Font bold) {
-    return pw.Row(
-      mainAxisSize: pw.MainAxisSize.min,
-      children: [
-        pw.Text('$label: ',
-            style: pw.TextStyle(font: regular, fontSize: 8.5, color: _kMuted)),
-        pw.Text(value,
-            style: pw.TextStyle(font: bold, fontSize: 8.5, color: _kText)),
-      ],
+  // Stacked label + value cell. Value direction is auto-detected unless
+  // alwaysLtr is true (used for email addresses).
+  pw.Widget _infoCell(
+    String label,
+    String value,
+    pw.Font regular,
+    pw.Font bold, {
+    bool alwaysLtr = false,
+  }) {
+    final contentDir =
+        alwaysLtr ? pw.TextDirection.ltr : _dynamicDir(value);
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(label,
+              style: pw.TextStyle(font: regular, fontSize: 8, color: _kMuted)),
+          pw.SizedBox(height: 3),
+          pw.Directionality(
+            textDirection: contentDir,
+            child: pw.Text(value,
+                style:
+                    pw.TextStyle(font: bold, fontSize: 9.5, color: _kText)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -856,7 +903,6 @@ class PdfReportService {
     required pw.Font boldFont,
     required pw.Font regularFont,
     required String locale,
-    required pw.TextAlign textAlign,
   }) {
     if (longestDelayed == null) {
       return _emptyBox(l.noHighlights, regularFont);
@@ -874,9 +920,12 @@ class PdfReportService {
               style:
                   pw.TextStyle(font: boldFont, fontSize: 8.5, color: _kMuted)),
           pw.SizedBox(height: 3),
-          pw.Text(longestDelayed.title,
-              style: pw.TextStyle(font: boldFont, fontSize: 9.5, color: _kText),
-              textAlign: textAlign),
+          pw.Directionality(
+            textDirection: _dynamicDir(longestDelayed.title),
+            child: pw.Text(longestDelayed.title,
+                style: pw.TextStyle(
+                    font: boldFont, fontSize: 9.5, color: _kText)),
+          ),
           pw.SizedBox(height: 2),
           pw.Text(l.daysLateLabel(maxDelayDays),
               style: pw.TextStyle(font: regularFont, fontSize: 8.5, color: _kOrange)),
@@ -895,7 +944,6 @@ class PdfReportService {
     required pw.Font boldFont,
     required pw.Font regularFont,
     required String locale,
-    required pw.TextAlign textAlign,
   }) {
     final hasAnything = overdueList.isNotEmpty ||
         highPriorityList.isNotEmpty ||
@@ -916,17 +964,17 @@ class PdfReportService {
         children: [
           if (overdueList.isNotEmpty) ...[
             _attentionGroup(l.overdueOpen, overdueList, boldFont, regularFont,
-                _kRed, locale, textAlign, l),
+                _kRed, locale, l),
             pw.SizedBox(height: 8),
           ],
           if (highPriorityList.isNotEmpty) ...[
             _attentionGroup(l.highPriorityOpen, highPriorityList, boldFont,
-                regularFont, _kOrange, locale, textAlign, l),
+                regularFont, _kOrange, locale, l),
             pw.SizedBox(height: 8),
           ],
           if (lateCompletedList.isNotEmpty)
             _attentionGroup(l.completedLateLabel, lateCompletedList, boldFont,
-                regularFont, _kOrange, locale, textAlign, l),
+                regularFont, _kOrange, locale, l),
         ],
       ),
     );
@@ -939,7 +987,6 @@ class PdfReportService {
     pw.Font regularFont,
     PdfColor accent,
     String locale,
-    pw.TextAlign textAlign,
     _L l,
   ) {
     return pw.Column(
@@ -951,23 +998,51 @@ class PdfReportService {
         pw.SizedBox(height: 3),
         ...items.take(5).map((t) {
           final dueStr = DateFormat('d MMM yyyy', locale).format(t.dueDate);
+          final titleDir = _dynamicDir(t.title);
+          // Wrap the entire item in the title's direction so the bullet
+          // sits on the correct side when content is Arabic.
           return pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 3),
-            child: pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('• ',
-                    style: pw.TextStyle(
-                        font: boldFont, fontSize: 8, color: accent)),
-                pw.Expanded(
-                  child: pw.Text(
-                    '${t.title}  —  ${l.due} $dueStr',
-                    style: pw.TextStyle(
-                        font: regularFont, fontSize: 8.5, color: _kText),
-                    textAlign: textAlign,
+            padding: const pw.EdgeInsets.only(bottom: 5),
+            child: pw.Directionality(
+              textDirection: titleDir,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('• ',
+                          style: pw.TextStyle(
+                              font: boldFont, fontSize: 8, color: accent)),
+                      pw.Expanded(
+                        child: pw.Text(
+                          t.title,
+                          style: pw.TextStyle(
+                              font: boldFont,
+                              fontSize: 8.5,
+                              color: _kText),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  // Due-date metadata is always in report-locale direction
+                  pw.Directionality(
+                    textDirection:
+                        _containsArabic(l.due) ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.only(
+                          left: 10, right: 10, top: 1),
+                      child: pw.Text(
+                        '${l.due}: $dueStr',
+                        style: pw.TextStyle(
+                            font: regularFont,
+                            fontSize: 8,
+                            color: _kMuted),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }),
