@@ -349,5 +349,10 @@
   "direct_message": "Direct Message",
   "start_one_on_one_chat": "Start a one-on-one chat",
   "select_contact": "Select Contact",
-  "no_users_available": "No users available"
+  "no_users_available": "No users available",
+  "delete_message": "Delete Message",
+  "message_hint": "Type a message...",
+  "send_failed": "Failed to send",
+  "members_count": "{count} members",
+  "no_messages_yet": "No messages yet. Say hello!"
 }

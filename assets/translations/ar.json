@@ -349,5 +349,10 @@
   "direct_message": "رسالة مباشرة",
   "start_one_on_one_chat": "ابدأ محادثة فردية",
   "select_contact": "اختر جهة اتصال",
-  "no_users_available": "لا يوجد مستخدمون"
+  "no_users_available": "لا يوجد مستخدمون",
+  "delete_message": "حذف الرسالة",
+  "message_hint": "اكتب رسالة...",
+  "send_failed": "فشل الإرسال",
+  "members_count": "{count} أعضاء",
+  "no_messages_yet": "لا توجد رسائل بعد. قل مرحبًا!"
 }
