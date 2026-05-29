@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../../../shared/widgets/user_avatar_widget.dart';
 import '../cubit/chat_list_cubit.dart';
 
-/// Bottom sheet for starting a new conversation. Currently supports DMs only;
-/// the "Create group" path will be wired in Milestone 4.
 class NewConversationSheet extends StatefulWidget {
   const NewConversationSheet({super.key});
 
@@ -95,6 +94,45 @@ class _NewConversationSheetState extends State<NewConversationSheet> {
           ),
 
           const Divider(height: 1),
+
+          // Create group option
+          ListTile(
+            leading: CircleAvatar(
+              radius: 20,
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              child: Icon(
+                Icons.group_add_outlined,
+                size: 20,
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+            ),
+            title: Text('create_group'.tr()),
+            subtitle: Text(
+              'create_group_hint'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushNamed(RouteNames.newGroup);
+            },
+          ),
+
+          const Divider(height: 1),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.md, AppSizes.sm, AppSizes.md, 4),
+            child: Text(
+              'direct_message'.tr(),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
 
           // Direct message entry point
           BlocBuilder<EmployeesCubit, EmployeesState>(

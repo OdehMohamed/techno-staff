@@ -70,23 +70,49 @@ Future<void> main() async {
     prefs = await SharedPreferences.getInstance();
   }
 
+  // Created before the FCM listeners so the onMessage handler can check
+  // activeConversationId without going through BuildContext.
+  final chatRepository = ChatRepository(FirebaseFirestore.instance);
+  final conversationCubit = ConversationCubit(chatRepository: chatRepository);
+
   await NotificationService.initialize(
     onNotificationTap: (payload) {
-      AppNavigator.navigatorKey.currentState?.pushNamed(
-        RouteNames.taskDetails,
-        arguments: payload,
-      );
+      // Payload format: 'conv:<conversationId>' for chat, raw taskId for tasks.
+      if (payload.startsWith('conv:')) {
+        final conversationId = payload.substring(5);
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.conversation,
+          arguments: conversationId,
+        );
+      } else {
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.taskDetails,
+          arguments: payload,
+        );
+      }
     },
   );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    final conversationId = message.data['conversationId'];
+    // Suppress the local notification when the target conversation is open.
+    if (conversationId != null &&
+        conversationCubit.activeConversationId == conversationId) {
+      return;
+    }
     NotificationService.showForegroundNotification(message);
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
 
-    if (taskId != null) {
+    if (conversationId != null) {
+      AppNavigator.navigatorKey.currentState?.pushNamed(
+        RouteNames.conversation,
+        arguments: conversationId,
+      );
+    } else if (taskId != null) {
       AppNavigator.navigatorKey.currentState?.pushNamed(
         RouteNames.taskDetails,
         arguments: taskId,
@@ -97,16 +123,22 @@ Future<void> main() async {
   final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
   if (initialMessage != null) {
+    final conversationId = initialMessage.data['conversationId'];
     final taskId = initialMessage.data['taskId'];
 
-    if (taskId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (conversationId != null) {
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.conversation,
+          arguments: conversationId,
+        );
+      } else if (taskId != null) {
         AppNavigator.navigatorKey.currentState?.pushNamed(
           RouteNames.taskDetails,
           arguments: taskId,
         );
-      });
-    }
+      }
+    });
   }
 
   final authRepository = AuthRepository();
@@ -119,7 +151,7 @@ Future<void> main() async {
   final pdfReportService = PdfReportService();
   final attendanceRepository = AttendanceRepository();
   final scheduleRepository = ScheduleRepository();
-  final chatRepository = ChatRepository(FirebaseFirestore.instance);
+
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -165,11 +197,10 @@ Future<void> main() async {
             create: (_) => NotificationsCubit(NotificationsRepository()),
           ),
           BlocProvider(
-            create: (_) =>
-                AttendanceCubit(
-                  attendanceRepository: attendanceRepository,
-                  scheduleRepository: scheduleRepository,
-                ),
+            create: (_) => AttendanceCubit(
+              attendanceRepository: attendanceRepository,
+              scheduleRepository: scheduleRepository,
+            ),
           ),
           BlocProvider(
             create: (_) =>
@@ -179,10 +210,9 @@ Future<void> main() async {
             create: (_) =>
                 ChatListCubit(chatRepository: chatRepository),
           ),
-          BlocProvider(
-            create: (_) =>
-                ConversationCubit(chatRepository: chatRepository),
-          ),
+          // Pre-created instance — shared with the FCM onMessage suppression
+          // logic above so no BuildContext is needed in the listener.
+          BlocProvider.value(value: conversationCubit),
         ],
         child: const TechnoStaffApp(),
       ),

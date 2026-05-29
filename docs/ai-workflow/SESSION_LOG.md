@@ -1,3 +1,32 @@
+## 2026-05-30 — Claude Sonnet 4.6 — Chat Milestone 5: Cloud Functions, FCM routing, group creation on feat/chat-messaging
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-messaging`
+- **Goal**: Complete the final milestone of the chat MVP: `onNewChatMessage` Cloud Function, FCM notification routing, foreground suppression, and group conversation creation UI.
+- **Outcome**: All Milestone 5 items implemented and quality gates green. Pending owner validation before PR merge.
+
+### What was done
+
+- **`onNewChatMessage` Cloud Function** — `onCreate` trigger on `conversations/{cId}/messages/{mId}`. Skips system messages. Atomically updates `lastMessage` + `lastMessageAt` + increments `unreadCounts` via `FieldValue.increment`. Fetches FCM tokens and user language codes in parallel. Sends localized push on `chat_messages` Android channel (DM: title=senderName, body=preview; Group/task: title=groupName, body=`sender: preview`). Writes in-app notification per recipient via `createInAppNotification` with `conversationId`. Added `chat_group_message_body` i18n string (EN + AR). Uses `Promise.allSettled` so one recipient failure doesn't block others.
+- **`NotificationService`** — Added `_chatChannel` (`chat_messages`, high importance). Both channels registered in `initialize()`. `showForegroundNotification` selects channel from `message.data['conversationId']` and encodes payload as `conv:<id>` for chat or raw `taskId` for tasks.
+- **`main.dart` FCM routing** — `ConversationCubit` instance pre-created before FCM listeners (before `runApp`) and passed via `BlocProvider.value`, so the `onMessage` suppression check (`conversationCubit.activeConversationId == conversationId`) needs no BuildContext. `onNotificationTap` parses `conv:` prefix → `RouteNames.conversation`; raw string → `RouteNames.taskDetails`. `onMessageOpenedApp` + `getInitialMessage` check `conversationId` then `taskId`.
+- **`ConversationCubit`** — Added `String? get activeConversationId` public getter.
+- **Group creation** — `ChatListCubit.createGroup()` delegates to repository. `NewConversationSheet` gains "Create Group" tile at top with `group_add_outlined` icon navigating to `RouteNames.newGroup`. `NewGroupScreen` (new file): group name `TextFormField` (max 50, required validator), multi-select `CheckboxListTile` employee list (excluding self), "Create" `TextButton` in AppBar, `members_count` indicator bar, error snackbar, `pushReplacementNamed` to new conversation on success.
+- **`app_router.dart`** — `RouteNames.newGroup` → `NewGroupScreen` wired.
+- **Translations** — 9 new keys × 2 locales: `create_group`, `create_group_hint`, `group_name_label`, `group_name_hint`, `group_name_required`, `add_members`, `no_members_selected`, `create_group_error`, `create`. Parity: 358/358.
+
+### Quality gates
+- `flutter analyze` — clean
+- `cd functions && npm run lint` — clean (fixed operator-linebreak for ternary in `onNewChatMessage`)
+- `flutter test test/features/` — 6/6 passed
+- Translation parity — 358/358
+
+### Owner-required steps
+- Validate group creation, FCM push (DM + group), foreground suppression, notification tap routing, in-app notification (see `CURRENT_TASK.md` checklist)
+- `firebase deploy --only functions` — deploys `onNewChatMessage`
+
+---
+
 ## 2026-05-28 — Claude Sonnet 4.6 — v1.3.1 hotfix: two production bugs on fix/v1.3.1-production-issues
 
 - **Agent**: Claude Sonnet 4.6

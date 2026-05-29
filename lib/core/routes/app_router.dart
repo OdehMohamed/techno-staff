@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/conversation_screen.dart';
+import 'package:techno_staff/features/chat/presentation/screens/new_group_screen.dart';
 import 'package:techno_staff/features/attendance/presentation/screens/employee_monthly_attendance_screen.dart';
 import 'package:techno_staff/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:techno_staff/features/notifications/presentation/screens/notifications_screen.dart';
@@ -192,6 +193,12 @@ class AppRouter {
         final conversationId = arg is String ? arg : '';
         return MaterialPageRoute(
           builder: (_) => ConversationScreen(conversationId: conversationId),
+          settings: settings,
+        );
+
+      case RouteNames.newGroup:
+        return MaterialPageRoute(
+          builder: (_) => const NewGroupScreen(),
           settings: settings,
         );
 

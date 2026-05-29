@@ -16,6 +16,11 @@ class ConversationCubit extends Cubit<ConversationState> {
   String? _currentUserId;
   String? _currentUserName;
 
+  /// The ID of the conversation currently loaded, or null when no conversation
+  /// is open. Used by the FCM foreground handler in main.dart to suppress
+  /// push notifications for the active conversation.
+  String? get activeConversationId => _activeConversationId;
+
   ConversationCubit({required ChatRepository chatRepository})
       : _repository = chatRepository,
         super(const ConversationState());

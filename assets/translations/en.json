@@ -354,5 +354,14 @@
   "message_hint": "Type a message...",
   "send_failed": "Failed to send",
   "members_count": "{count} members",
-  "no_messages_yet": "No messages yet. Say hello!"
+  "no_messages_yet": "No messages yet. Say hello!",
+  "create_group": "Create Group",
+  "create_group_hint": "Start a group chat",
+  "group_name_label": "Group Name",
+  "group_name_hint": "Enter group name",
+  "group_name_required": "Group name cannot be empty",
+  "add_members": "Add Members",
+  "no_members_selected": "Select at least one member",
+  "create_group_error": "Failed to create group",
+  "create": "Create"
 }

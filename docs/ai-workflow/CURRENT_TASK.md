@@ -1,46 +1,66 @@
 # Current Task
 
-> No active task. v1.3.1 hotfix merged to main (2026-05-28). Owner action required (see below).
+> Active: feat/chat-messaging — Milestone 5 complete. Pending owner validation before PR merge.
 
-## Owner-required steps for v1.3.1
+## Chat / Messaging — Milestone 5: Cloud Functions, FCM routing, Group creation
 
-### 1. Firebase deploy (run from repo root after pulling main)
+### What was implemented
+
+**Cloud Function `onNewChatMessage`** (`functions/index.js`):
+- Firestore `onCreate` trigger on `conversations/{conversationId}/messages/{messageId}`
+- Skips system messages (`type == 'system'`) — no push for join/created events
+- Atomically updates `lastMessage`, `lastMessageAt`, and increments `unreadCounts.{uid}` for all non-sender participants
+- Fetches FCM tokens and user language codes in parallel via `getFcmTokensBatch`
+- Sends localized FCM push on `chat_messages` Android channel per recipient:
+  - DM: title = sender name, body = message preview (max 80 chars)
+  - Group/task thread: title = group name, body = `senderName: preview`
+- Writes in-app notification per recipient via `createInAppNotification` with `conversationId`
+- Added `chat_group_message_body` to the `i18n` object (EN + AR)
+
+**NotificationService** (`lib/core/services/notification_service.dart`):
+- Added `_chatChannel` (`chat_messages`, high importance)
+- Registers both `_taskChannel` and `_chatChannel` in `initialize()`
+- `showForegroundNotification` selects the correct channel from `message.data`, encodes payload as `conv:<id>` for chat or raw `taskId` for tasks
+
+**main.dart FCM routing**:
+- `onNotificationTap`: parses `conv:` prefix → navigates to `RouteNames.conversation`; otherwise `RouteNames.taskDetails`
+- `onMessage` listener: suppresses local notification when `conversationCubit.activeConversationId` matches the incoming `conversationId`
+- `onMessageOpenedApp` + `getInitialMessage`: both check `conversationId` first, then `taskId`
+- `ConversationCubit` pre-created before listeners so suppression works without BuildContext
+
+**ConversationCubit** (`lib/features/chat/presentation/cubit/conversation_cubit.dart`):
+- Added `String? get activeConversationId` public getter
+
+**Group conversation creation**:
+- `ChatListCubit.createGroup(...)` — delegates to `ChatRepository.createGroup`
+- `NewConversationSheet` — "Create Group" tile at top of sheet navigates to `RouteNames.newGroup`; "Direct Message" section header remains below
+- `NewGroupScreen` (new) — group name field (max 50 chars, required), multi-select employee checkbox list (excluding self), "Create" button in AppBar, `members_count` indicator bar, error snackbar
+- `app_router.dart` — `RouteNames.newGroup` → `NewGroupScreen` case wired
+
+**Translation keys** (9 new × 2 locales → 349 → 358 / 358 parity):
+- `create_group`, `create_group_hint`, `group_name_label`, `group_name_hint`
+- `group_name_required`, `add_members`, `no_members_selected`, `create_group_error`, `create`
+
+### Quality gates
+- `flutter analyze` — clean (No issues found)
+- `cd functions && npm run lint` — clean
+- `flutter test test/features/` — 6/6 passed
+- Translation parity — 358 EN / 358 AR
+
+### Owner validation checklist
+
+1. **Group creation**: FAB → "Create Group" → enter name → select members → Create → lands in new group conversation with system message
+2. **FCM push (DM)**: Send a message in a DM from Device A → Device B receives push notification on `chat_messages` channel; tapping opens that conversation
+3. **FCM push (group)**: Same test in a group conversation — notification title is the group name, body includes sender name
+4. **Foreground suppression**: With Device A actively viewing Conversation X, send a message in X from Device B → Device A does NOT show a local notification
+5. **Foreground notification (different conversation)**: With Device A in Conversation X, send to Conversation Y — Device A DOES see the local notification; tapping navigates correctly
+6. **Notification tap from terminated state**: Kill app → receive FCM → tap notification → app opens directly to the conversation
+7. **In-app notification**: After receiving a chat message, the notifications bell shows a new entry with the sender/conversation info
+
+### Post-merge owner steps (when ready to merge PR)
 
 ```bash
 firebase deploy --only functions
 ```
 
-This deploys the fix for `adminCorrectAttendance` — attendance corrections submitted without notes no longer fail. No Firestore rules or index changes.
-
-### 2. Shorebird patch (delivers the Dart-side employee filter fix)
-
-```bash
-shorebird patch android
-shorebird patch ios
-```
-
-Both fixes are pure Dart / CF — no native plugin changes. Shorebird patch is the correct delivery path for the Dart side.
-
-### 3. Post-deploy verification
-
-- Admin attendance screen → open correction sheet for any employee → submit **without** entering notes → correction should succeed (roster updates, success snackbar shows)
-- Admin task screen → tap filter icon → "Assigned To" section shows employee names without needing to visit the Employees screen first
-
----
-
-## v1.3.1 hotfix — what was fixed
-
-### Bug 1 — Attendance correction always failed without notes (CF)
-
-`adminCorrectAttendance` wrote `notes: nextValue.notes` into a nested Firestore map inside the `attendance_logs` audit entry. When the admin submits without notes, `nextValue.notes` is `undefined`. Firebase Admin SDK v12 throws a sync `Error` for `undefined` in nested maps; Functions wraps it as `internal`; Flutter maps `internal` to `network_error`. Fixed by conditionally spreading `notes` only when defined.
-
-### Bug 2 — Employee filter chip list empty before visiting Employees screen (Dart)
-
-`_openFilterBottomSheet` snapshots `EmployeesCubit.state.employees` at open time. `fetchEmployees()` was only triggered by `EmployeesScreen.initState`. `TasksScreen` now calls `fetchEmployees(silent: true)` in its own `initState` for admin users so the list is pre-populated.
-
-### Files changed (PR #41)
-
-- `functions/index.js` — conditional spread in `adminCorrectAttendance` audit log write
-- `lib/features/tasks/presentation/screens/tasks_screen.dart` — eager `fetchEmployees` in `initState`
-- `pubspec.yaml` — version bumped to `1.3.1+6`
-- `CHANGELOG.md` — added v1.3.1 and backfilled missing v1.3.0 entry
+This deploys `onNewChatMessage`. No Firestore rules or index changes beyond what was deployed in Milestone 1.

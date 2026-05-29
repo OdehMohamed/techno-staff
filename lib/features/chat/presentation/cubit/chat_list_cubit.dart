@@ -47,6 +47,22 @@ class ChatListCubit extends Cubit<ChatListState> {
     String name2,
   ) => _repository.getOrCreateDm(uid1, uid2, name1, name2);
 
+  /// Creates a new group conversation with a system message.
+  /// Returns the new conversation ID without emitting state.
+  Future<String> createGroup({
+    required String name,
+    required String creatorUid,
+    required String creatorName,
+    required List<String> memberUids,
+    required Map<String, String> memberNames,
+  }) => _repository.createGroup(
+    name: name,
+    creatorUid: creatorUid,
+    creatorName: creatorName,
+    memberUids: memberUids,
+    memberNames: memberNames,
+  );
+
   void stopListening() {
     _subscription?.cancel();
     _subscription = null;
