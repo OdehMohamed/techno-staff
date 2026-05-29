@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-05-01
+> Last updated: 2026-05-29
 > We start with an empty backlog on purpose. Items are added as we discover them through real work — no speculative lists.
 
 ---
@@ -239,6 +239,23 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
   - **Feature 7**: Admin task filter by assigned employee in the filter bottom sheet.
   - **Feature 8**: Admin attendance day reset — audit-safe, schedule-aware clearing of one employee's attendance for one day via `adminResetAttendance` Cloud Function. Audit entry written to `attendance_logs`.
 - **Completed**: 2026-05-27. `flutter analyze` clean, `npm run lint` clean. Owner validation passed. Post-merge owner step: `firebase deploy --only functions,firestore:rules`.
+
+---
+
+### v1.4.0 — Chat / Messaging
+
+> Architecture and product design complete (2026-05-29). See [docs/features/chat_architecture.md](../features/chat_architecture.md) for the full spec. Implementation not started.
+
+#### 17. Chat / Messaging MVP — `feat/chat-messaging`
+
+- **Priority**: Should-fix (feature)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 1.4.0
+- **Added**: 2026-05-29
+- **Description**: Internal work-communication module. Phase 1 (MVP) delivers: 1:1 direct messages between any two active users (admin ↔ employee, employee ↔ employee), group conversations (any user can create; admin manages members), text messages, real-time streaming, soft-delete own messages, conversation list with last-message preview, unread count per conversation + global drawer badge, FCM push on a dedicated `chat_messages` Android channel, `onNewChatMessage` Cloud Function (unread increment + FCM + optional in-app notification), Firestore `conversations` collection + `messages` subcollection, security rules, one compound index, three new routes, and all EN/AR translation keys (~25 keys). Data model is forward-compatible: nullable `attachment`, `reactions`, `replyTo`, `mentions`, `editedAt` fields on message docs allow Phase 3 additions without a schema migration. Announcements conversation type (`writeRestriction: 'admin_only'`) supported by rules but deferred to Phase 3. Full spec in `docs/features/chat_architecture.md`.
+- **Acceptance criteria**: (1) Any two users can exchange real-time text messages via DM and group conversations. (2) Unread badge in drawer reflects total unread count across all conversations. (3) FCM push notification delivered on new message; tapping navigates to the correct conversation. (4) Soft-delete replaces message text with `[Message deleted]` for all participants. (5) `flutter analyze` clean, `flutter test` green, `npm run lint` clean, translation parity maintained.
+- **Notes**: Phase 2 (task thread entry point from task details, Employees screen quick-action, group member management) follows after initial usage feedback. Architecture document is the authoritative spec — do not start implementation without reading it.
 
 ---
 
