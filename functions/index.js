@@ -1852,7 +1852,7 @@ exports.revokeUserSessions = onCall(async (request) => {
   }
 });
 
-async function createInAppNotification({userId, type, taskId, data}) {
+async function createInAppNotification({userId, type, taskId, conversationId, data}) {
   if (!userId) return;
 
   await admin
@@ -1862,6 +1862,7 @@ async function createInAppNotification({userId, type, taskId, data}) {
         userId,
         type,
         taskId: taskId || null,
+        conversationId: conversationId || null,
         data: data || {},
         isRead: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

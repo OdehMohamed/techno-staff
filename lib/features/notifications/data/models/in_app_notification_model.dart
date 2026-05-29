@@ -5,6 +5,7 @@ class InAppNotificationModel {
   final String userId;
   final String type;
   final String? taskId;
+  final String? conversationId;
   final bool isRead;
   final DateTime? createdAt;
   final Map<String, dynamic>? data;
@@ -14,6 +15,7 @@ class InAppNotificationModel {
     required this.userId,
     required this.type,
     required this.taskId,
+    this.conversationId,
     required this.isRead,
     required this.createdAt,
     required this.data,
@@ -25,6 +27,7 @@ class InAppNotificationModel {
       userId: map['userId'] ?? '',
       type: map['type'] ?? '',
       taskId: map['taskId'],
+      conversationId: map['conversationId'] as String?,
       isRead: map['isRead'] ?? false,
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
