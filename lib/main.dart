@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,6 +75,20 @@ Future<void> main() async {
   // activeConversationId without going through BuildContext.
   final chatRepository = ChatRepository(FirebaseFirestore.instance);
   final conversationCubit = ConversationCubit(chatRepository: chatRepository);
+
+  // Tell Firebase not to present FCM notifications natively on iOS.
+  // AppDelegate.willPresent forwards the real completionHandler to super so
+  // firebase_messaging reads this setting and calls completionHandler([]) —
+  // no native banner. Dart's onMessage handler then shows a local notification
+  // via flutter_local_notifications, which allows active-conversation
+  // suppression to work on iOS.
+  if (Platform.isIOS) {
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: false,
+      badge: false,
+      sound: false,
+    );
+  }
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {

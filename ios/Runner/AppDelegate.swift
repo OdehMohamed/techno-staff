@@ -12,33 +12,27 @@ import UserNotifications
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  /// Controls foreground notification presentation for both FCM and local
-  /// notifications.
+  /// Controls foreground notification presentation for FCM and local notifications.
   ///
-  /// For remote (FCM) push notifications we call super with a no-op handler so
-  /// that FlutterAppDelegate forwards the event to all registered plugins
-  /// (firebase_messaging fires onMessage in Dart; flutter_local_notifications
-  /// is also notified). We then call the real completion handler with empty
-  /// options to suppress the native banner — Dart's onMessage handler decides
-  /// whether to display a local notification, which gives us active-conversation
-  /// suppression on iOS.
+  /// Remote (FCM/push) notifications: the real completionHandler is forwarded to
+  /// super so FlutterAppDelegate dispatches it to all plugin delegates.
+  /// firebase_messaging's plugin calls the handler with the options configured by
+  /// setForegroundNotificationPresentationOptions (set to all-off in Dart), so
+  /// completionHandler([]) is called and no native banner is shown. onMessage
+  /// fires in Dart, which applies the active-conversation check and calls
+  /// flutter_local_notifications when the notification should be displayed.
   ///
-  /// For local notifications created by flutter_local_notifications we skip
-  /// the plugin forwarding (no plugin needs to intercept them here) and call
-  /// the completion handler directly to show the banner and play sound.
+  /// Local notifications (scheduled by flutter_local_notifications): the handler
+  /// is called directly with banner+sound so they always display correctly.
   override func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
     if notification.request.trigger is UNPushNotificationTrigger {
-      // Remote notification: dispatch to plugins via super (fires onMessage),
-      // then suppress native display so Dart owns the decision.
       super.userNotificationCenter(
-        center, willPresent: notification, withCompletionHandler: { _ in })
-      completionHandler([])
+        center, willPresent: notification, withCompletionHandler: completionHandler)
     } else {
-      // Local notification from flutter_local_notifications: show it.
       completionHandler([.banner, .list, .sound])
     }
   }
