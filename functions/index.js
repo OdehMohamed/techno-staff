@@ -1932,9 +1932,6 @@ exports.onNewChatMessage = onDocumentCreated(
               priority: "high",
               notification: {channelId: "chat_messages"},
             },
-            apns: {
-              payload: {aps: {sound: "default"}},
-            },
           });
         }
 

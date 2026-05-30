@@ -44,10 +44,20 @@ class ConversationCubit extends Cubit<ConversationState> {
     _repository.markAsRead(conversationId, currentUserId).catchError((_) {});
 
     // Stream the conversation document for AppBar title, participants, etc.
+    // Also resets unreadCounts whenever the CF increments it while the user
+    // is inside the conversation — this closes the race where markAsRead()
+    // (called from _onMessagesReceived) runs before the CF's increment,
+    // leaving the badge at 1 after the user exits.
     _conversationSubscription =
         _repository.streamConversation(conversationId).listen(
       (conv) {
-        if (conv != null) emit(state.copyWith(conversation: conv));
+        if (conv == null) return;
+        emit(state.copyWith(conversation: conv));
+        if (conv.unreadCountFor(currentUserId) > 0) {
+          _repository
+              .markAsRead(conversationId, currentUserId)
+              .catchError((_) {});
+        }
       },
       onError: (_) {},
     );

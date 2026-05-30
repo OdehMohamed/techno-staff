@@ -84,7 +84,15 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
         ),
-        iOS: const DarwinNotificationDetails(),
+        // Explicitly set presentation flags rather than relying on initialization
+        // defaults — ensures foreground banner display on all iOS versions.
+        // presentAlert covers iOS 10-14; presentBanner covers iOS 14+.
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
+        ),
       ),
       payload: payload,
     );
