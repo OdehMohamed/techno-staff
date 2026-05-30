@@ -1,4 +1,4 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -86,7 +86,12 @@ class MessageBubble extends StatelessWidget {
           top: 2,
           bottom: 2,
         ),
+        // textDirection: LTR pins the avatar to the physical left regardless
+        // of locale. Row.textDirection only affects child ordering — it does
+        // NOT override Directionality for descendants, so Arabic text inside
+        // the bubble still renders correctly.
         child: Row(
+          textDirection: TextDirection.ltr,
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [

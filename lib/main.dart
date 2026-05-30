@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -75,6 +76,22 @@ Future<void> main() async {
   final chatRepository = ChatRepository(FirebaseFirestore.instance);
   final conversationCubit = ConversationCubit(chatRepository: chatRepository);
 
+  // On iOS, firebase_messaging and flutter_local_notifications both compete
+  // for UNUserNotificationCenterDelegate. When Firebase's delegate wins the
+  // willPresent callback, it calls the completion handler with empty options
+  // and local notifications are silently swallowed. Letting FCM handle
+  // foreground display natively (via setForegroundNotificationPresentationOptions)
+  // avoids the conflict. On Android, flutter_local_notifications still handles
+  // foreground display (see onMessage listener below).
+  if (Platform.isIOS) {
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+      alert: true,
+      sound: true,
+      badge: false, // we manage badge/unread counts ourselves
+    );
+  }
+
   await NotificationService.initialize(
     onNotificationTap: (payload) {
       // Payload format: 'conv:<conversationId>' for chat, raw taskId for tasks.
@@ -95,12 +112,18 @@ Future<void> main() async {
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final conversationId = message.data['conversationId'];
-    // Suppress the local notification when the target conversation is open.
+    // Suppress when the user already has the conversation open.
     if (conversationId != null &&
         conversationCubit.activeConversationId == conversationId) {
       return;
     }
-    NotificationService.showForegroundNotification(message);
+    // On iOS, setForegroundNotificationPresentationOptions (configured above)
+    // causes Firebase to display the notification natively — calling
+    // flutter_local_notifications here would produce a duplicate banner.
+    // Tap routing on iOS goes through onMessageOpenedApp (already wired).
+    if (!Platform.isIOS) {
+      NotificationService.showForegroundNotification(message);
+    }
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {

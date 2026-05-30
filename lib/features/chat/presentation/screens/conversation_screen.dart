@@ -205,16 +205,19 @@ class _ConversationScreenState extends State<ConversationScreen> {
         final message = messages[index];
         final isOwn = message.senderId == uid;
 
-        // Show sender name + avatar for others' messages in groups/threads.
-        // Also decide whether to show avatar: only when the next message
-        // (index + 1, which is older) is from a different sender or doesn't exist.
+        // Sender name is shown in group/thread conversations only.
+        // Avatar is shown for all incoming non-system messages:
+        //   - DMs: always (no same-sender grouping — there's only one other person)
+        //   - Groups/threads: only when the next (older) message is from a
+        //     different sender, so avatars group consecutive messages visually.
         final showSenderName = isGroup && !isOwn && !message.isSystem;
         final nextMessage =
             index + 1 < messages.length ? messages[index + 1] : null;
-        final showAvatar = isGroup &&
-            !isOwn &&
+        final showAvatar = !isOwn &&
             !message.isSystem &&
-            (nextMessage == null || nextMessage.senderId != message.senderId);
+            (!isGroup ||
+                nextMessage == null ||
+                nextMessage.senderId != message.senderId);
 
         return MessageBubble(
           message: message,
