@@ -47,6 +47,15 @@
 - `flutter test test/features/` — 6/6 passed
 - Translation parity — 358 EN / 358 AR
 
+### Bugs fixed (post-Milestone-5 validation)
+
+| # | Root cause | Fix |
+|---|---|---|
+| Group creation fails | `createGroup` used a Firestore batch to create conversation + system message together. The message's security rule calls `inConversation()` → `get(conversation_doc)`, but the conversation isn't in committed state during batch evaluation → permission-denied | Two sequential writes: conversation first, system message second |
+| Foreground notifications suppressed even when not in conversation | `ConversationCubit` is global; after navigating away from a conversation its message stream stayed active and `_activeConversationId` stayed set. `_onMessagesReceived` kept calling `markAsRead()` and the FCM suppression fired indefinitely | Added `clearActiveConversation()` to `ConversationCubit`; `ConversationScreen.dispose()` stores cubit ref and calls it |
+| Unread count stuck at 1 | Same root cause: stale stream called `markAsRead()` (→ 0) on every incoming message, then CF incremented to 1, net result always 1 | Same fix as above |
+| Group navigation didn't open `NewGroupScreen` | `NewConversationSheet` called `pop()` then `pushNamed(newGroup)` on its own context — unreliable after pop | Sheet now returns `RouteNames.newGroup` as a sentinel; `ChatListScreen` handles the push after the sheet is fully dismissed |
+
 ### Owner validation checklist
 
 1. **Group creation**: FAB → "Create Group" → enter name → select members → Create → lands in new group conversation with system message

@@ -151,6 +151,22 @@ class ConversationCubit extends Cubit<ConversationState> {
 
   void clearSendError() => emit(state.copyWith(clearSendError: true));
 
+  /// Called when the ConversationScreen is disposed to cancel streams and
+  /// reset active conversation tracking. Without this, the global cubit
+  /// keeps the message stream alive after the user navigates away, causing
+  /// markAsRead() to fire on new messages (which resets the unread badge to
+  /// zero) and the FCM suppression to stay active for the wrong conversation.
+  void clearActiveConversation() {
+    _subscription?.cancel();
+    _subscription = null;
+    _conversationSubscription?.cancel();
+    _conversationSubscription = null;
+    _activeConversationId = null;
+    _currentUserId = null;
+    _currentUserName = null;
+    if (!isClosed) emit(const ConversationState());
+  }
+
   @override
   Future<void> close() {
     _subscription?.cancel();

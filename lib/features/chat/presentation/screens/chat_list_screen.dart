@@ -47,7 +47,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
   // ─── New conversation sheet ───────────────────────────────────────────────
 
   Future<void> _openNewConversationSheet() async {
-    final convId = await showModalBottomSheet<String>(
+    // The sheet returns either:
+    //   RouteNames.newGroup — user tapped "Create Group" (sentinel)
+    //   a conversation ID String — DM was created/found
+    //   null — sheet dismissed without action
+    final result = await showModalBottomSheet<dynamic>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -55,8 +59,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       builder: (_) => const NewConversationSheet(),
     );
-    if (convId != null && mounted) {
-      Navigator.pushNamed(context, RouteNames.conversation, arguments: convId);
+    if (!mounted) return;
+
+    if (result == RouteNames.newGroup) {
+      Navigator.pushNamed(context, RouteNames.newGroup);
+    } else if (result is String) {
+      Navigator.pushNamed(context, RouteNames.conversation, arguments: result);
     }
   }
 

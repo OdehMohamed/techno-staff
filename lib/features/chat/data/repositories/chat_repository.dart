@@ -145,6 +145,13 @@ class ChatRepository {
 
   /// Creates a group conversation and inserts the "created" system message.
   /// Returns the new conversation ID.
+  ///
+  /// Two sequential writes are used instead of a batch: the Firestore security
+  /// rule for message creation calls `inConversation()` which reads the
+  /// conversation document via `get()`. In a batched write the conversation
+  /// doc is not yet in the committed state when the message rule is evaluated,
+  /// so the rule would deny the write. Writing the conversation first and then
+  /// the message avoids this ordering problem.
   Future<String> createGroup({
     required String name,
     required String creatorUid,
@@ -154,14 +161,13 @@ class ChatRepository {
   }) async {
     final convRef =
         _firestore.collection(FirebasePaths.conversations).doc();
-    final msgRef =
-        convRef.collection(FirebasePaths.messages).doc();
     final allUids = [creatorUid, ...memberUids];
     final allNames = {creatorUid: creatorName, ...memberNames};
     final systemText = '$creatorName created this group';
-    final batch = _firestore.batch();
 
-    batch.set(convRef, {
+    // Write 1: create the conversation document so the message security rule
+    // can verify participantIds via get(conversation_doc).
+    await convRef.set({
       'type': 'group',
       'participantIds': allUids,
       'participantNames': allNames,
@@ -181,7 +187,8 @@ class ChatRepository {
       'writeRestriction': null,
     });
 
-    batch.set(msgRef, {
+    // Write 2: create the system message now that the conversation exists.
+    await convRef.collection(FirebasePaths.messages).add({
       'senderId': creatorUid,
       'senderName': creatorName,
       'text': systemText,
@@ -196,7 +203,6 @@ class ChatRepository {
       'editedAt': null,
     });
 
-    await batch.commit();
     return convRef.id;
   }
 

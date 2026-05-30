@@ -22,6 +22,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _showScrollToBottom = false;
   String? _currentUserId;
   int _prevMessageCount = 0;
+  // Stored so dispose() can call clearActiveConversation() without a context.
+  ConversationCubit? _conversationCubit;
 
   @override
   void initState() {
@@ -32,17 +34,22 @@ class _ConversationScreenState extends State<ConversationScreen> {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
         _currentUserId = user.id;
-        context.read<ConversationCubit>().loadConversation(
-              widget.conversationId,
-              user.id,
-              user.name,
-            );
+        _conversationCubit = context.read<ConversationCubit>();
+        _conversationCubit!.loadConversation(
+          widget.conversationId,
+          user.id,
+          user.name,
+        );
       }
     });
   }
 
   @override
   void dispose() {
+    // Cancel streams and reset active conversation so the global cubit stops
+    // calling markAsRead() on incoming messages (which would reset the unread
+    // badge) and so FCM suppression stops applying to this conversation.
+    _conversationCubit?.clearActiveConversation();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();

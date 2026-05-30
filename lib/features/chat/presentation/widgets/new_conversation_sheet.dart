@@ -95,7 +95,8 @@ class _NewConversationSheetState extends State<NewConversationSheet> {
 
           const Divider(height: 1),
 
-          // Create group option
+          // Create group option — returns a sentinel so the caller
+          // (ChatListScreen) handles the push after the sheet is gone.
           ListTile(
             leading: CircleAvatar(
               radius: 20,
@@ -114,10 +115,7 @@ class _NewConversationSheetState extends State<NewConversationSheet> {
               ),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushNamed(RouteNames.newGroup);
-            },
+            onTap: () => Navigator.of(context).pop(RouteNames.newGroup),
           ),
 
           const Divider(height: 1),
