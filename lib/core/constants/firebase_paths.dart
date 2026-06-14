@@ -13,6 +13,8 @@ class FirebasePaths {
   static const String schedules = 'schedules';
   static const String config = 'config';
   static const String appSettings = 'app_settings';
+  static const String conversations = 'conversations';
+  static const String messages = 'messages';
 
   // Fields (اختياري بس مهم لقدام)
   static const String createdAt = 'createdAt';

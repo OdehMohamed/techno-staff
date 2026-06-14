@@ -8,6 +8,8 @@ import 'package:techno_staff/features/dashboard/data/services/report_service.dar
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_bar_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_line_chart.dart';
 import 'package:techno_staff/features/dashboard/presentation/widgets/dashboard_pie_chart.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
+import 'package:techno_staff/features/chat/presentation/widgets/chat_badge_button.dart';
 import 'package:techno_staff/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:techno_staff/features/notifications/presentation/widgets/notifications_bell_button.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -44,6 +46,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final user = context.read<AuthCubit>().state.user;
       if (user != null) {
         context.read<NotificationsCubit>().listenToNotifications(user.id);
+        context.read<ChatListCubit>().startListening(user.id);
       }
     });
   }
@@ -68,6 +71,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               );
             },
           ),
+          const ChatBadgeButton(),
           const NotificationsBellButton(),
         ],
         title: Text('dashboard'.tr()),

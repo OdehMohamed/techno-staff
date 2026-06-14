@@ -25,4 +25,7 @@ class RouteNames {
       '/employee-monthly-attendance';
   static const String adminAttendance = '/admin-attendance';
   static const String updateRequired = '/update-required';
+  static const String chatList = '/chat';
+  static const String conversation = '/conversation';
+  static const String newGroup = '/new-group';
 }

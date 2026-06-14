@@ -1,3 +1,113 @@
+## 2026-06-14 — Claude Sonnet 4.6 — iOS foreground notification suppression: fixed + validated on device
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-messaging`
+- **Goal**: Resolve the last open chat issue — iOS foreground per-conversation suppression that "never fired" (every banner shown).
+- **Outcome**: Fixed and **validated on device**. Same-conversation message → `decision=SUPPRESSED`, no banner. Other-conversation message → `decision=SHOWN`, banner appears. iOS foreground behavior now matches the spec.
+
+### Root cause (final, confirmed by native logs)
+
+Our `AppDelegate.willPresent` override was **never being invoked** — `firebase_messaging`/`flutter_local_notifications` claim the `UNUserNotificationCenter` delegate during plugin registration, so the override was dead code. Every earlier logic-only fix had no effect for this reason. The investigation was derailed by two diagnostic traps: (1) the Dart `onMessage` diagnostic read its own **stale in-memory `SharedPreferences` cache**, which never sees values Swift writes after startup, making the native path look broken; (2) Swift `NSLog` does not appear in `flutter run` (only Xcode/Console.app), so the native logs that would have shown the truth were invisible.
+
+### What was done
+
+- **`AppDelegate.swift`** — Added `UNUserNotificationCenter.current().delegate = self` in `didFinishLaunching` (the load-bearing fix). `willPresent` reads `conversationId` from the push `userInfo` and the active conversation from `UserDefaults` (`flutter.active_conversation_id`, with the unprefixed key as a fallback); calls `completionHandler([])` to suppress when they match, else `super` so firebase_messaging presents the banner.
+- **`main.dart`** — Restored `setForegroundNotificationPresentationOptions(alert: true)` for iOS (Firebase presents natively; the Dart local-notification path can't be used on iOS because Firebase's foreground option swallows local notifications). iOS `onMessage` is a no-op; Android path unchanged.
+- **`conversation_cubit.dart`** — iOS writes/removes `active_conversation_id` via `shared_preferences` on conversation enter/exit.
+
+### Quality gates
+- `flutter analyze` — clean
+- Device validation — same-conversation suppressed, cross-conversation shown (owner-confirmed)
+
+### Key learnings (see DECISIONS_LOG 2026-06-14)
+- Verify native iOS notification behavior from **Xcode/Console.app**, never from `flutter run` alone.
+- Cross-language diagnostics via `SharedPreferences` are unreliable without `reload()` — Dart caches in memory.
+- Android and iOS use intentionally different foreground-suppression mechanisms.
+
+---
+
+## 2026-05-30 — Claude Sonnet 4.6 — iOS foreground notifications: native APNs approach on feat/chat-messaging
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-messaging`
+- **Goal**: Fix iOS foreground chat notifications not showing after the data-payload fallback proved insufficient.
+- **Outcome**: Root cause confirmed via deep source-code analysis of `firebase_messaging` v16.2.0 and `flutter_local_notifications` v20.1.0. Fix implemented. Pending owner validation.
+
+### Root cause (confirmed)
+
+`firebase_messaging`'s `FLTFirebaseMessagingPlugin` registers itself as a `FlutterAppDelegate` application delegate. `FlutterAppDelegate.willPresent:withCompletionHandler:` passes the **same** `completionHandler` block to every registered plugin delegate. `firebase_messaging`'s own `willPresent` implementation always calls `completionHandler([])` for any notification that lacks a `gcm.message_id` key — which covers ALL local notifications created by `flutter_local_notifications`. This second `completionHandler([])` call overrides the `completionHandler([.banner, .sound])` our `AppDelegate` already made, silently preventing the banner from appearing.
+
+The previous architecture (`setForegroundNotificationPresentationOptions(alert: false) → onMessage → flutter_local_notifications.show() → willPresent`) was fundamentally incompatible with this firebase_messaging v16 plugin behavior.
+
+### What was done
+
+- **`AppDelegate.swift`** — Rewrote `willPresent`. Push notifications are now handled **directly** (no `super` call) to bypass the firebase_messaging plugin delegate chain. Active-conversation suppression reads `UserDefaults.standard.string(forKey: "flutter.active_conversation_id")` and calls `completionHandler([])` to suppress or `completionHandler([.banner, .sound])` to show. Local notifications still call `completionHandler([.banner, .list, .sound])` for iOS 14+ or `[.alert, .sound]` for iOS 13.
+- **`conversation_cubit.dart`** — On iOS, `loadConversation` fire-and-forgets `SharedPreferences.setString('active_conversation_id', conversationId)` and `clearActiveConversation` fire-and-forgets `SharedPreferences.remove('active_conversation_id')`. `shared_preferences_foundation` stores these in `UserDefaults.standard` with the literal `flutter.` prefix.
+- **`main.dart`** — Removed `setForegroundNotificationPresentationOptions` block (no longer needed). Added `if (Platform.isIOS) return;` guard in `onMessage` listener before `showForegroundNotification` — prevents duplicate banners in case firebase_messaging fires `onMessage` via the `GULAppDelegateSwizzler` `didReceiveRemoteNotification` path.
+
+### Quality gates
+- `flutter analyze` — clean (3 files)
+
+### Owner-required steps
+- Run `flutter run` on iOS device
+- Validate: foreground app, outside target conversation → native APNs banner appears
+- Validate: foreground app, inside target conversation → banner suppressed
+- Validate: background/terminated → banner still works (unchanged path)
+- Validate: Android notifications unaffected
+
+---
+
+## 2026-05-30 — Claude Sonnet 4.6 — iOS foreground chat notification fix on feat/chat-messaging
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-messaging`
+- **Goal**: Fix iOS foreground chat notifications not showing when the user is in the app but not in the target conversation.
+- **Outcome**: Root cause confirmed and fixed. Pending owner validation on device.
+
+### What was done
+
+- **Root cause**: With `setForegroundNotificationPresentationOptions(alert: false, badge: false, sound: false)`, firebase_messaging on iOS delivers `onMessage` with `message.notification == null`. `showForegroundNotification` had an early-return guard `if (notification == null) return`, so `flutter_local_notifications.show()` was never called.
+- **`functions/index.js`** — Added `notificationTitle` and `notificationBody` to the FCM `data` payload in `onNewChatMessage`, so the title/body are available even when firebase_messaging strips the `notification` field.
+- **`notification_service.dart`** — Replaced `if (notification == null) return` with null-safe fallback: `title = notification?.title ?? message.data['notificationTitle']`; `body = notification?.body ?? message.data['notificationBody']`. Guard now checks `if (title == null && body == null)`. Notification ID changed from `notification.hashCode` (required non-null) to `message.hashCode`.
+
+### Quality gates
+- `flutter analyze lib/core/services/notification_service.dart` — clean
+
+### Owner-required steps
+- `firebase deploy --only functions` (deploys the updated `onNewChatMessage` with data-payload fields)
+- Validate on iOS device: foreground app, not in target conversation → notification banner appears; active conversation → still suppressed
+
+---
+
+## 2026-05-30 — Claude Sonnet 4.6 — Chat Milestone 5: Cloud Functions, FCM routing, group creation on feat/chat-messaging
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-messaging`
+- **Goal**: Complete the final milestone of the chat MVP: `onNewChatMessage` Cloud Function, FCM notification routing, foreground suppression, and group conversation creation UI.
+- **Outcome**: All Milestone 5 items implemented and quality gates green. Pending owner validation before PR merge.
+
+### What was done
+
+- **`onNewChatMessage` Cloud Function** — `onCreate` trigger on `conversations/{cId}/messages/{mId}`. Skips system messages. Atomically updates `lastMessage` + `lastMessageAt` + increments `unreadCounts` via `FieldValue.increment`. Fetches FCM tokens and user language codes in parallel. Sends localized push on `chat_messages` Android channel (DM: title=senderName, body=preview; Group/task: title=groupName, body=`sender: preview`). Writes in-app notification per recipient via `createInAppNotification` with `conversationId`. Added `chat_group_message_body` i18n string (EN + AR). Uses `Promise.allSettled` so one recipient failure doesn't block others.
+- **`NotificationService`** — Added `_chatChannel` (`chat_messages`, high importance). Both channels registered in `initialize()`. `showForegroundNotification` selects channel from `message.data['conversationId']` and encodes payload as `conv:<id>` for chat or raw `taskId` for tasks.
+- **`main.dart` FCM routing** — `ConversationCubit` instance pre-created before FCM listeners (before `runApp`) and passed via `BlocProvider.value`, so the `onMessage` suppression check (`conversationCubit.activeConversationId == conversationId`) needs no BuildContext. `onNotificationTap` parses `conv:` prefix → `RouteNames.conversation`; raw string → `RouteNames.taskDetails`. `onMessageOpenedApp` + `getInitialMessage` check `conversationId` then `taskId`.
+- **`ConversationCubit`** — Added `String? get activeConversationId` public getter.
+- **Group creation** — `ChatListCubit.createGroup()` delegates to repository. `NewConversationSheet` gains "Create Group" tile at top with `group_add_outlined` icon navigating to `RouteNames.newGroup`. `NewGroupScreen` (new file): group name `TextFormField` (max 50, required validator), multi-select `CheckboxListTile` employee list (excluding self), "Create" `TextButton` in AppBar, `members_count` indicator bar, error snackbar, `pushReplacementNamed` to new conversation on success.
+- **`app_router.dart`** — `RouteNames.newGroup` → `NewGroupScreen` wired.
+- **Translations** — 9 new keys × 2 locales: `create_group`, `create_group_hint`, `group_name_label`, `group_name_hint`, `group_name_required`, `add_members`, `no_members_selected`, `create_group_error`, `create`. Parity: 358/358.
+
+### Quality gates
+- `flutter analyze` — clean
+- `cd functions && npm run lint` — clean (fixed operator-linebreak for ternary in `onNewChatMessage`)
+- `flutter test test/features/` — 6/6 passed
+- Translation parity — 358/358
+
+### Owner-required steps
+- Validate group creation, FCM push (DM + group), foreground suppression, notification tap routing, in-app notification (see `CURRENT_TASK.md` checklist)
+- `firebase deploy --only functions` — deploys `onNewChatMessage`
+
+---
+
 ## 2026-05-28 — Claude Sonnet 4.6 — v1.3.1 hotfix: two production bugs on fix/v1.3.1-production-issues
 
 - **Agent**: Claude Sonnet 4.6

@@ -1,6 +1,6 @@
 # Next Steps
 
-> Last updated: 2026-05-14
+> Last updated: 2026-05-29
 > This file captures forward-looking ideas — things we might want to do next but have not yet committed to. When we commit to an item, promote it into `BACKLOG.md` with a priority.
 
 Sections are intentionally left empty. Add ideas as they come up in discussions or during implementation; do not speculate. One-liners are fine; expand only when we are close to acting on an idea.
@@ -24,7 +24,18 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Recommended Next Steps
 
-_See `BACKLOG.md` v1.2 section for the locked ordered roadmap._
+_See `BACKLOG.md` v1.2 section for the locked ordered roadmap. Next major feature: Chat / Messaging (BACKLOG item #17, architecture doc at `docs/features/chat_architecture.md`)._
+
+## Chat / Messaging
+
+### Chat feature — architecture complete, implementation queued
+
+- **Category**: Architecture / Feature
+- **Why now**: Architecture and product design finalized 2026-05-29. BACKLOG item #17 added (target v1.4.0).
+- **Sketch**: See [docs/features/chat_architecture.md](../features/chat_architecture.md) for the full spec. Phase 1 (MVP) = DMs + groups + text messages + real-time + unread tracking + FCM. Phase 2 = task thread entry, Employees quick-action, group member management. Phase 3 = announcements, attachments, reactions, replies.
+- **Open questions**: (a) Which release cycle to start implementation (immediately after v1.3.1 owner steps, or after first triage pass from v1.3.x usage)? (b) Confirm `feat/chat-messaging` branch from current `main`.
+
+---
 
 ## Engineering
 

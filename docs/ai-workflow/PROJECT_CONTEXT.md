@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-05-17
+> Last updated: 2026-05-29
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.1 hotfix merged to `main` (PR #41, 2026-05-28). Owner steps pending: `firebase deploy --only functions` and Shorebird patch. No new store binary required for this release.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.1 hotfix merged to `main` (PR #41, 2026-05-28). Owner steps pending: `firebase deploy --only functions` and Shorebird patch. No new store binary required for this release. Next major feature: **Chat / Messaging** (architecture complete 2026-05-29; implementation not yet started — see `docs/features/chat_architecture.md` and BACKLOG item #17).
 
 ## 2. Tech Stack
 

@@ -7,10 +7,19 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+  static const AndroidNotificationChannel _taskChannel =
+      AndroidNotificationChannel(
     'task_notifications',
     'Task Notifications',
     description: 'Notifications for assigned tasks',
+    importance: Importance.high,
+  );
+
+  static const AndroidNotificationChannel _chatChannel =
+      AndroidNotificationChannel(
+    'chat_messages',
+    'Chat Messages',
+    description: 'Notifications for new chat messages',
     importance: Importance.high,
   );
 
@@ -38,35 +47,54 @@ class NotificationService {
       },
     );
 
-    await _localNotifications
+    final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_channel);
+        >();
+    await androidPlugin?.createNotificationChannel(_taskChannel);
+    await androidPlugin?.createNotificationChannel(_chatChannel);
   }
 
+  /// Shows a local notification for a foreground FCM message (Android only).
+  ///
+  /// On iOS, foreground presentation is handled natively by AppDelegate; this
+  /// method is not called on that platform (see the `onMessage` listener in
+  /// main.dart).
+  ///
+  /// Chat notifications use the [_chatChannel] and encode the conversationId
+  /// as `conv:<id>` in the payload. Task notifications use [_taskChannel] and
+  /// encode the raw taskId. The [onNotificationTap] callback in main.dart
+  /// inspects the prefix to route correctly.
   static Future<void> showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
+    // Fall back to the data fields the Cloud Function also writes, in case
+    // firebase_messaging delivers onMessage with notification == null.
+    final title = notification?.title ?? message.data['notificationTitle'];
+    final body = notification?.body ?? message.data['notificationBody'];
 
-    if (notification == null) return;
+    if (title == null && body == null) return;
 
+    final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
 
+    final isChat = conversationId != null;
+    final channel = isChat ? _chatChannel : _taskChannel;
+    final payload = isChat ? 'conv:$conversationId' : taskId;
+
     await _localNotifications.show(
-      id: notification.hashCode,
-      title: notification.title,
-      body: notification.body,
+      id: message.hashCode,
+      title: title,
+      body: body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
           importance: Importance.high,
           priority: Priority.high,
         ),
-        iOS: const DarwinNotificationDetails(),
       ),
-      payload: taskId,
+      payload: payload,
     );
   }
 }
