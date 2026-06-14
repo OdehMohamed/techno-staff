@@ -471,7 +471,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   state.status == ReportsStatus.exportingPdf
                                   ? null
                                   : () {
-                                      context.read<ReportsCubit>().exportPdf();
+                                      final attState = context
+                                          .read<AttendanceCubit>()
+                                          .state;
+                                      context.read<ReportsCubit>().exportPdf(
+                                        monthlyRecords:
+                                            attState.monthlyRecords,
+                                        schedule: attState.editingSchedule,
+                                        locale:
+                                            context.locale.languageCode,
+                                      );
                                     },
                               icon: const Icon(Icons.picture_as_pdf_outlined),
                               label: Text(

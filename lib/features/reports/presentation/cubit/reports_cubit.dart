@@ -3,6 +3,8 @@ import 'package:printing/printing.dart';
 import '../../data/repositories/reports_repository.dart';
 import '../../data/services/pdf_report_service.dart';
 import 'reports_state.dart';
+import '../../../attendance/data/models/attendance_model.dart';
+import '../../../attendance/data/models/work_schedule_model.dart';
 import '../../../auth/domain/models/app_user.dart';
 
 class ReportsCubit extends Cubit<ReportsState> {
@@ -77,7 +79,11 @@ class ReportsCubit extends Cubit<ReportsState> {
     }
   }
 
-  Future<void> exportPdf() async {
+  Future<void> exportPdf({
+    required List<AttendanceModel> monthlyRecords,
+    required WorkScheduleModel? schedule,
+    required String locale,
+  }) async {
     final employee = state.selectedEmployee;
     final month = state.selectedMonth;
     final tasks = state.tasks;
@@ -99,6 +105,9 @@ class ReportsCubit extends Cubit<ReportsState> {
         employee: employee,
         month: month,
         tasks: tasks,
+        monthlyRecords: monthlyRecords,
+        schedule: schedule,
+        locale: locale,
       );
 
       await Printing.sharePdf(
@@ -108,7 +117,6 @@ class ReportsCubit extends Cubit<ReportsState> {
       );
 
       emit(state.copyWith(status: ReportsStatus.pdfExported, clearError: true));
-
       emit(state.copyWith(status: ReportsStatus.loaded, clearError: true));
     } catch (_) {
       emit(
