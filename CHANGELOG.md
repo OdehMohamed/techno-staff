@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-14
+
+### Added
+
+- **Chat & Messaging** — full real-time messaging module for admins and employees:
+  - Direct messages (DM) between any two users with get-or-create deterministic conversation ID
+  - Group conversations with named groups and multi-member selection
+  - Chat list screen with real-time unread badge counts on the AppBar
+  - Conversation screen with streaming messages, pagination (50/page), message soft-delete (sender only), and read receipts via `unreadCounts`
+  - FCM push notifications per recipient on new message — localized title/body (EN/AR), routed to `chat_messages` Android channel
+  - In-app notification entry created alongside every FCM push
+  - Foreground notification suppression: Android suppresses in Dart via `activeConversationId`; iOS suppresses natively in `AppDelegate.willPresent` by reading `UserDefaults` written by `ConversationCubit`
+  - Tap-to-navigate from push notification and in-app notification to the correct conversation
+  - Full EN/AR localization (28 new translation keys)
+- **Attendance stabilization** — UX and architecture refinement pass on the attendance system:
+  - Session-level corrections (admin edits individual sessions with add/remove/edit, not a day-level overwrite)
+  - `originalSessions` audit trail preserved server-side on first correction
+  - Expandable `AttendanceRecordCard`: summary always visible; per-session detail expands on tap
+  - `correctedByName` field for human-readable provenance
+  - Employee monthly attendance screen with per-session history
+  - `fetchHistory` forces `Source.server` to prevent stale cache after check-in/out
+
+### Improved
+
+- **PDF reports** — complete redesign of admin PDF export:
+  - Dashboard PDF snapshot includes attendance roster, schedule-aware presence rate, active filter label, bilingual output (EN/AR via locale parameter)
+  - New employee monthly attendance PDF with session-level detail, correction provenance, and monthly summary
+  - Brand name and info-block styling updated throughout
+- **Conversation UX** — keyboard dismisses when tapping outside the chat input bar
+
+### Fixed
+
+- iOS foreground notification suppression never fired — `firebase_messaging`/`flutter_local_notifications` claimed the `UNUserNotificationCenter` delegate during plugin registration, making `AppDelegate.willPresent` dead code. Fixed by explicitly setting `UNUserNotificationCenter.current().delegate = self` in `didFinishLaunching`.
+- Attendance blocking check-in failure introduced by the stabilization pass
+- Attendance correction sheet double-pop
+- Pull-to-refresh missing from admin attendance roster
+
 ## [1.3.1] - 2026-05-28
 
 ### Fixed

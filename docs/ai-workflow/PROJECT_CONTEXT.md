@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-05-29
+> Last updated: 2026-06-14
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.3.1 hotfix merged to `main` (PR #41, 2026-05-28). Owner steps pending: `firebase deploy --only functions` and Shorebird patch. No new store binary required for this release. Next major feature: **Chat / Messaging** (architecture complete 2026-05-29; implementation not yet started — see `docs/features/chat_architecture.md` and BACKLOG item #17).
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.4.0+7 merged to `main` (2026-06-14). Owner steps pending: full store release binary build + Firebase deploy (functions + rules + indexes). Previous Shorebird patches remain active for v1.3.1 users until v1.4.0 store release. v1.4.0 introduces Chat & Messaging (new native iOS code — not Shorebird-patchable), attendance stabilization, and professional PDF reports. Next roadmap TBD pending tester feedback on v1.4.0.
 
 ## 2. Tech Stack
 
