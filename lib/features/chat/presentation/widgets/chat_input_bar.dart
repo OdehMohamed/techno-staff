@@ -9,11 +9,7 @@ class ChatInputBar extends StatefulWidget {
   final void Function(String text) onSend;
   final bool isSending;
 
-  const ChatInputBar({
-    super.key,
-    required this.onSend,
-    this.isSending = false,
-  });
+  const ChatInputBar({super.key, required this.onSend, this.isSending = false});
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -79,6 +75,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   maxLines: null, // expands up to maxHeight
                   keyboardType: TextInputType.multiline,
                   textCapitalization: TextCapitalization.sentences,
+                  // when click outside, it will lose focus and hide keyboard, but the text will still be there
+                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
                   style: theme.textTheme.bodyMedium,
                   decoration: InputDecoration(
                     hintText: 'message_hint'.tr(),
@@ -87,7 +85,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         ? const Color(0xFF1E293B)
                         : const Color(0xFFF1F3F4),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
@@ -99,7 +99,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: const BorderSide(
-                          color: AppColors.accent, width: 1.5),
+                        color: AppColors.accent,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                   onSubmitted: (_) => _send(),
@@ -153,7 +155,11 @@ class _SendButton extends StatelessWidget {
             )
           : IconButton(
               padding: EdgeInsets.zero,
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: enabled ? onTap : null,
             ),
     );

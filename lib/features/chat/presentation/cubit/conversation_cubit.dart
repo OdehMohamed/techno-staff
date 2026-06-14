@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/message_model.dart';
 import '../../data/repositories/chat_repository.dart';
@@ -37,6 +39,13 @@ class ConversationCubit extends Cubit<ConversationState> {
     _activeConversationId = conversationId;
     _currentUserId = currentUserId;
     _currentUserName = currentUserName;
+    // iOS: persist the open conversation so AppDelegate.willPresent can suppress
+    // FCM banners for exactly this conversation while it is on screen.
+    if (Platform.isIOS) {
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setString('active_conversation_id', conversationId),
+      );
+    }
 
     emit(ConversationState(conversationId: conversationId, isLoading: true));
 
@@ -174,6 +183,13 @@ class ConversationCubit extends Cubit<ConversationState> {
     _activeConversationId = null;
     _currentUserId = null;
     _currentUserName = null;
+    // iOS: clear the persisted conversation so AppDelegate stops suppressing
+    // banners for the conversation the user just left.
+    if (Platform.isIOS) {
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.remove('active_conversation_id'),
+      );
+    }
     if (!isClosed) emit(const ConversationState());
   }
 

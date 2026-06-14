@@ -71,24 +71,24 @@ Future<void> main() async {
     prefs = await SharedPreferences.getInstance();
   }
 
+  // On iOS, let firebase_messaging present FCM banners natively in the
+  // foreground. A Dart-side local notification cannot be used for this because
+  // firebase_messaging's foreground presentation option is applied to every
+  // notification it sees and silently suppresses our local one. Per-conversation
+  // suppression is therefore handled natively in AppDelegate.willPresent, which
+  // reads the active conversation id ConversationCubit writes to UserDefaults.
+  if (Platform.isIOS) {
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: false,
+      sound: true,
+    );
+  }
+
   // Created before the FCM listeners so the onMessage handler can check
   // activeConversationId without going through BuildContext.
   final chatRepository = ChatRepository(FirebaseFirestore.instance);
   final conversationCubit = ConversationCubit(chatRepository: chatRepository);
-
-  // Tell Firebase not to present FCM notifications natively on iOS.
-  // AppDelegate.willPresent forwards the real completionHandler to super so
-  // firebase_messaging reads this setting and calls completionHandler([]) —
-  // no native banner. Dart's onMessage handler then shows a local notification
-  // via flutter_local_notifications, which allows active-conversation
-  // suppression to work on iOS.
-  if (Platform.isIOS) {
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: false,
-      badge: false,
-      sound: false,
-    );
-  }
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {
@@ -109,14 +109,17 @@ Future<void> main() async {
   );
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    // iOS: foreground display and per-conversation suppression are both handled
+    // natively in AppDelegate.willPresent (firebase_messaging presents the banner
+    // before Dart can intervene), so there is nothing to do here.
+    if (Platform.isIOS) return;
+
     final conversationId = message.data['conversationId'];
-    // Suppress when the user already has the conversation open.
+    // Android: suppress when the user already has this conversation open.
     if (conversationId != null &&
         conversationCubit.activeConversationId == conversationId) {
       return;
     }
-    // AppDelegate.swift's willPresent override suppresses native FCM banners
-    // and lets Dart control display via flutter_local_notifications.
     NotificationService.showForegroundNotification(message);
   });
 

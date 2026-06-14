@@ -55,7 +55,11 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(_chatChannel);
   }
 
-  /// Shows a local notification for a foreground FCM message.
+  /// Shows a local notification for a foreground FCM message (Android only).
+  ///
+  /// On iOS, foreground presentation is handled natively by AppDelegate; this
+  /// method is not called on that platform (see the `onMessage` listener in
+  /// main.dart).
   ///
   /// Chat notifications use the [_chatChannel] and encode the conversationId
   /// as `conv:<id>` in the payload. Task notifications use [_taskChannel] and
@@ -63,7 +67,12 @@ class NotificationService {
   /// inspects the prefix to route correctly.
   static Future<void> showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) return;
+    // Fall back to the data fields the Cloud Function also writes, in case
+    // firebase_messaging delivers onMessage with notification == null.
+    final title = notification?.title ?? message.data['notificationTitle'];
+    final body = notification?.body ?? message.data['notificationBody'];
+
+    if (title == null && body == null) return;
 
     final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
@@ -73,9 +82,9 @@ class NotificationService {
     final payload = isChat ? 'conv:$conversationId' : taskId;
 
     await _localNotifications.show(
-      id: notification.hashCode,
-      title: notification.title,
-      body: notification.body,
+      id: message.hashCode,
+      title: title,
+      body: body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           channel.id,
@@ -83,15 +92,6 @@ class NotificationService {
           channelDescription: channel.description,
           importance: Importance.high,
           priority: Priority.high,
-        ),
-        // Explicitly set presentation flags rather than relying on initialization
-        // defaults — ensures foreground banner display on all iOS versions.
-        // presentAlert covers iOS 10-14; presentBanner covers iOS 14+.
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBanner: true,
-          presentList: true,
-          presentSound: true,
         ),
       ),
       payload: payload,

@@ -1927,6 +1927,8 @@ exports.onNewChatMessage = onDocumentCreated(
               conversationId,
               type: "chat_message",
               click_action: "FLUTTER_NOTIFICATION_CLICK",
+              notificationTitle,
+              notificationBody: body,
             },
             android: {
               priority: "high",
