@@ -222,14 +222,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           SelectableLinkify(
                             text: task.description,
                             style: Theme.of(context).textTheme.bodyLarge,
-                            linkStyle: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            // No linkStyle override — flutter_linkify's default
+                            // (blueAccent + underline) is already correct.
+                            // Overriding color with colorScheme.primary was
+                            // making links visually indistinguishable from text.
                             linkifiers: const [
                               UrlLinkifier(),
                               EmailLinkifier(),
                               PhoneNumberLinkifier(),
                             ],
+                            contextMenuBuilder: (context, editableTextState) =>
+                                AdaptiveTextSelectionToolbar.editableText(
+                              editableTextState: editableTextState,
+                            ),
                             onOpen: (link) async {
                               final uri = Uri.parse(link.url);
                               if (await canLaunchUrl(uri)) {
