@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.5.0+8 merged to `main` (2026-06-17) — FlutterFire infrastructure baseline; store binary uploads pending (owner). Chat Phase 2 in progress on `feat/chat-phase-2`: employee DM quick-action, task-linked conversations, admin broadcast channels implemented (2026-06-17). Next: owner smoke test → version bump to 1.6.0+9 → Shorebird releases → store submission.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.6.0+9 merged to `main` and tagged (2026-06-17) — GitHub release created at https://github.com/OdehMohamed/techno-staff/releases/tag/v1.6.0. Next: `cd functions && npm run deploy` → `shorebird release ios` → `shorebird release android` → store binary uploads (IPA via Transporter, AAB via Play Console).
 
 ## 2. Tech Stack
 
