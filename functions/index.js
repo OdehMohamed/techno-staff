@@ -1936,17 +1936,9 @@ exports.onNewChatMessage = onDocumentCreated(
             },
           });
         }
-
-        await createInAppNotification({
-          userId: uid,
-          type: "chat_message",
-          conversationId,
-          data: {
-            senderName,
-            conversationName: isGroupLike ? (conv.name || "") : senderName,
-            preview,
-          },
-        });
+        // Chat messages are not written to the notifications collection.
+        // Unread state is tracked via unreadCounts on the conversation document
+        // (badge in the chat tab); FCM push is the user-facing alert surface.
       });
 
       await Promise.allSettled(perRecipient);

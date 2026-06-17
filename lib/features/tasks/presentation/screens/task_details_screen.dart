@@ -1,6 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:linkify/linkify.dart' show PhoneNumberLinkifier;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -216,9 +219,26 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           const SizedBox(height: AppSizes.sm),
-                          Text(
-                            task.description,
+                          SelectableLinkify(
+                            text: task.description,
                             style: Theme.of(context).textTheme.bodyLarge,
+                            linkStyle: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            linkifiers: const [
+                              UrlLinkifier(),
+                              EmailLinkifier(),
+                              PhoneNumberLinkifier(),
+                            ],
+                            onOpen: (link) async {
+                              final uri = Uri.parse(link.url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            },
                           ),
                           const SizedBox(height: AppSizes.lg),
                           Wrap(
