@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.5.0+8 on branch `chore/flutterfire-upgrade` (2026-06-17) — FlutterFire upgraded to firebase-ios-sdk 12.14.0; `shorebird release ios` and `shorebird release android` both succeeded; store binary uploads pending. Next roadmap: Chat Phase 2 (Employees quick-action → task-linked conversations → group member management). See `NEXT_STEPS.md`.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.5.0+8 merged to `main` (2026-06-17) — FlutterFire infrastructure baseline; store binary uploads pending (owner). Chat Phase 2 in progress on `feat/chat-phase-2`: employee DM quick-action, task-linked conversations, admin broadcast channels implemented (2026-06-17). Next: owner smoke test → version bump to 1.6.0+9 → Shorebird releases → store submission.
 
 ## 2. Tech Stack
 
@@ -51,7 +51,7 @@ Current status: closed testing (Google Play Closed Testing, TestFlight). v1.5.0+
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 - Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
-- Translation parity enforced: `369 369 []` as of v1.4.0 (v1.4.0 added 28 new chat keys).
+- Translation parity enforced: `365 365 []` as of Chat Phase 2 on `feat/chat-phase-2` (8 new keys: send_message, task_discussion, task_discussion_error, broadcast_channel, broadcast_channel_hint, admin_only_can_post, select_all).
 
 ## 3. Architecture
 
@@ -96,7 +96,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `attendance`    | all      | Employee biometric check-in/out; schedule-aware status resolution (present/late/off_day_work); multi-session daily records; session-level admin correction with audit trail (`originalSessions`); expandable attendance cards; employee personal history + monthly summary with schedule-aware rate bar; admin roster with date picker; schedule management (`schedules/{userId}`) |
 | `reports`       | admin    | Task reporting by employee/month + attendance section, PDF export                                                                                                                               |
 | `notifications` | all      | In-app notification feed (server-written, client toggles `isRead`), real-time stream + unread count badge                                                                                       |
-| `chat`          | all      | DM and group conversations; real-time streaming; pagination (50/page); soft-delete (sender-only); unread counts per conversation; `ChatBadgeButton` in AppBar; FCM push per recipient via `onNewChatMessage` CF; per-conversation foreground suppression (iOS: `AppDelegate.willPresent` + `UserDefaults`; Android: Dart `onMessage` + `activeConversationId`). Phase 2 (task thread, Employees quick-action, group member management) pending tester feedback. |
+| `chat`          | all      | DM and group conversations; real-time streaming; pagination (50/page); soft-delete (sender-only); unread counts per conversation; `ChatBadgeButton` in AppBar; FCM push per recipient via `onNewChatMessage` CF; per-conversation foreground suppression (iOS: `AppDelegate.willPresent` + `UserDefaults`; Android: Dart `onMessage` + `activeConversationId`). Phase 2 (2026-06-17): employee DM quick-action from EmployeesScreen; task-linked thread from TaskDetailsScreen (creator + assignee only; createdBy bug fixed); admin broadcast channels (`writeRestriction: 'admin_only'` — toggle in NewGroupScreen, read-only notice in ConversationScreen, megaphone icon in ConversationTile). Phase 3 (deferred): group member management (add/remove; requires rules change). |
 | `settings`      | all      | Theme (persisted), language, sign out, About (version + privacy policy + licenses), delete account, edit profile (name), change password with session revocation                               |
 
 ## 5. Firestore Data Model
@@ -185,7 +185,7 @@ See `docs/release-checklist.md` for the complete patch-eligibility checklist.
 
 ## 11. Version & Branching
 
-- **App version**: `1.5.0+8` in `pubspec.yaml`. FlutterFire upgrade (firebase-ios-sdk 12.14.0); both `shorebird release ios` and `shorebird release android` succeeded. Store binary uploads pending (owner action: upload IPA via Transporter + AAB via Play Console).
+- **App version**: `1.5.0+8` in `pubspec.yaml` (next store release will be bumped to `1.6.0+9` before Shorebird release on `feat/chat-phase-2`). FlutterFire upgrade (firebase-ios-sdk 12.14.0) on `main`; Chat Phase 2 feature work in progress on `feat/chat-phase-2`.
 - **Production branch**: `main`.
 - **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.

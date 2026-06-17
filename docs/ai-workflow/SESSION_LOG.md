@@ -1,3 +1,46 @@
+## 2026-06-17 — Claude Sonnet 4.6 — Chat Phase 2: employee DM, task threads, broadcast channels
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-phase-2`
+- **Goal**: Implement three Chat Phase 2 features agreed in v1.6.0 scope.
+- **Outcome**: ✅ All three features implemented, quality gates green, commit `4561262`.
+
+### Features shipped
+
+**1. Employee DM quick-action** (`employees_screen.dart`)
+- Chat bubble icon on each employee card in EmployeesScreen
+- Tapping calls `ChatListCubit.getOrCreateDm()` and navigates to the conversation
+- Loading spinner replaces icon while Firestore call is in flight; `_openingDmFor` guard prevents double-taps
+- No state emitted from cubit — pure fire-and-navigate pattern consistent with existing DM flow
+
+**2. Task-linked conversations** (`task_details_screen.dart`, `chat_repository.dart`, `chat_list_cubit.dart`)
+- Chat bubble in TaskDetailsScreen AppBar
+- Visible only when `currentUser.id == task.assignedBy || currentUser.id == task.assignedTo` — the two natural participants
+- Added `getOrCreateTaskThread()` to `ChatListCubit` (previously only on the repository)
+- Fixed long-standing `createdBy` bug: `getOrCreateTaskThread()` now takes `initiatorUid` (the currently-signed-in user) and uses it for `createdBy` and the system message sender; previously always used `task.assignedBy`, causing Firestore permission-denied when the assignee opened the thread first
+
+**3. Admin broadcast channels** (`new_group_screen.dart`, `conversation_screen.dart`, `conversation_tile.dart`, `chat_repository.dart`, `chat_list_cubit.dart`)
+- `createGroup()` now accepts optional `writeRestriction` parameter; passes it through to Firestore; no other create-flow changes
+- `NewGroupScreen`: admin-only `SwitchListTile` for broadcast mode; AppBar title adapts; "Select All" `TextButton` to add all active employees; system message text switches to "created this channel"
+- `ConversationScreen`: `_ReadOnlyNotice` banner (megaphone icon + text) replaces `ChatInputBar` for non-admin participants when `writeRestriction == 'admin_only'`; admin sees no difference
+- `ConversationTile`: megaphone `CircleAvatar` (secondaryContainer colour) replaces initial-letter avatar for broadcast conversations
+- No changes to `firestore.rules` — `conversationAllowsWrite()` already enforces `writeRestriction: 'admin_only'`
+- No changes to `functions/index.js` — `onNewChatMessage` already handles all group types
+
+### Quality gates
+
+- `flutter analyze lib/` — no issues
+- `flutter test` — 6/6 green
+- Translation parity — `365 365 []` (8 new keys × 2 locales)
+
+### Files touched
+
+`chat_repository.dart`, `chat_list_cubit.dart`, `employees_screen.dart`, `task_details_screen.dart`, `new_group_screen.dart`, `conversation_screen.dart`, `conversation_tile.dart`, `en.json`, `ar.json`
+
+- **Follow-ups**: Owner smoke test → version bump 1.6.0+9 → Shorebird releases → store submission → merge to main.
+
+---
+
 ## 2026-06-17 — Claude Sonnet 4.6 — FlutterFire upgrade: firebase-ios-sdk 12.14.0 + v1.5.0+8 Shorebird release (iOS + Android)
 
 - **Agent**: Claude Sonnet 4.6
