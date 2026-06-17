@@ -227,41 +227,60 @@ class ChatRepository {
     final id = 'task_$taskId';
     final convRef =
         _firestore.collection(FirebasePaths.conversations).doc(id);
-
-    final existing =
-        await convRef.get(const GetOptions(source: Source.server));
-    if (existing.exists) return id;
-
-    final msgRef = convRef.collection(FirebasePaths.messages).doc();
     final systemText = 'Discussion opened for "$taskTitle"';
-    final batch = _firestore.batch();
     final participants = [creatorUid, assigneeUid];
     final participantNames = {
       creatorUid: creatorName,
       assigneeUid: assigneeName,
     };
 
-    batch.set(convRef, {
-      'type': 'task',
-      'participantIds': participants,
-      'participantNames': participantNames,
-      'name': taskTitle,
-      'taskId': taskId,
-      'createdBy': initiatorUid,
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastMessage': {
-        'text': systemText,
-        'senderId': initiatorUid,
-        'senderName': initiatorName,
-        'sentAt': FieldValue.serverTimestamp(),
-      },
-      'lastMessageAt': FieldValue.serverTimestamp(),
-      'memberLastRead': {},
-      'unreadCounts': {},
-      'writeRestriction': null,
-    });
+    // Write 1: create the conversation document.
+    //
+    // We use set() without a pre-read existence check for two reasons:
+    //
+    // (a) The read rule `allow read: if isParticipant()` evaluates
+    //     `resource.data.participantIds`, which throws in CEL when `resource`
+    //     is null (non-existent document) → permission-denied on the get(),
+    //     making an existence pre-check impossible without a rules change.
+    //
+    // (b) If the document already exists, Firestore evaluates the UPDATE rule
+    //     for a set(). Non-admin participants cannot overwrite all fields
+    //     (only `onlyAllowedConvFields()` changes are allowed), so
+    //     permission-denied fires → we return the existing id. This mirrors
+    //     the getOrCreateDm() pattern.
+    try {
+      await convRef.set({
+        'type': 'task',
+        'participantIds': participants,
+        'participantNames': participantNames,
+        'name': taskTitle,
+        'taskId': taskId,
+        'createdBy': initiatorUid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastMessage': {
+          'text': systemText,
+          'senderId': initiatorUid,
+          'senderName': initiatorName,
+          'sentAt': FieldValue.serverTimestamp(),
+        },
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'memberLastRead': {},
+        'unreadCounts': {},
+        'writeRestriction': null,
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return id;
+      rethrow;
+    }
 
-    batch.set(msgRef, {
+    // Write 2: add the system message now that the conversation is committed.
+    //
+    // Sequential (not batched with Write 1) because the message create rule
+    // calls get(conversation) to verify the user is a participant. In a
+    // batched write the conversation is not yet in the committed state when
+    // the message rule is evaluated → permission-denied on the message write.
+    // This is the same reason createGroup() uses sequential writes.
+    await convRef.collection(FirebasePaths.messages).doc().set({
       'senderId': initiatorUid,
       'senderName': initiatorName,
       'text': systemText,
@@ -276,8 +295,7 @@ class ChatRepository {
       'editedAt': null,
     });
 
-    await batch.commit();
-    return convRef.id;
+    return id;
   }
 
   // ─── Messaging ───────────────────────────────────────────────────────────
