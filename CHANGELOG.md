@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-17 — internal infrastructure baseline (not submitted to stores)
+
+### Changed
+
+- **FlutterFire upgrade** — bumped all Firebase Dart packages to their latest minor/patch releases within existing major-version constraints, aligning the entire stack to firebase-ios-sdk 12.14.0:
+  - `firebase_core` 4.7.0 → 4.10.0
+  - `cloud_firestore` 6.3.0 → 6.5.0
+  - `firebase_auth` 6.4.0 → 6.5.2
+  - `firebase_crashlytics` 5.2.0 → 5.2.3
+  - `firebase_messaging` 16.2.0 → 16.3.0
+  - `cloud_functions` 6.2.0 → 6.3.2
+
+### Fixed
+
+- **Shorebird iOS release** — `shorebird release ios` was failing since v1.4.0 due to a selector mismatch in `cloud_firestore 6.3.0`'s `FLTPipelineParser.m`: the `FIRCollectionSourceStageBridge` initializer signature changed between firebase-ios-sdk 12.12.0 and 12.14.0 (added `forceIndex:` parameter). Shorebird's SPM resolved to 12.14.0; CocoaPods pinned to 12.12.0, so local builds passed while Shorebird builds failed. Fixed by `cloud_firestore 6.5.0`. Both `shorebird release ios` and `shorebird release android` succeeded for 1.5.0+8.
+
+> **Note:** 1.5.0+8 is an internal infrastructure baseline. The Shorebird releases were created to establish a valid patch target, but this version was never submitted to App Store Connect or Google Play. It will be bundled into the next store submission (1.6.0+9) alongside Chat Phase 2.
+
 ## [1.4.0] - 2026-06-14
 
 ### Added
