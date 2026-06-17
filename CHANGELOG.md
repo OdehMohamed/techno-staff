@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-17
+
+### Added
+
+- **Employee DM quick-action** — admin Employees screen now shows a chat icon on each employee card; tapping opens (or creates) a direct message conversation without navigating to the chat list first.
+- **Task-linked conversations** — task creator and assignee each see a chat bubble in the TaskDetails AppBar; tapping opens a dedicated thread for that task. A deterministic conversation ID (`task_{taskId}`) ensures creator and assignee always share one thread regardless of who initiates.
+- **Admin broadcast channels** — admins can create a Broadcast Channel variant when composing in Messages → New Group; only admins can post; non-admin participants see a read-only notice in place of the message input bar; broadcast conversations show a megaphone icon in the chat list; a "Select All" member shortcut is available.
+
+### Improved
+
+- **Rich task description** — descriptions are now selectable and copyable; URLs, email addresses, and phone numbers are auto-detected and rendered as blue underlined links; tapping a phone number opens the native dialer; tapping a URL opens the browser; tapping an email opens the mail client.
+
+### Fixed
+
+- **Task thread creation** — fixed Firestore `PERMISSION_DENIED` when opening a task discussion for the first time. Root causes: (a) a pre-read existence check (`get()`) fails with a null-resource rule error when the document doesn't exist; (b) a batched conversation + message write fails because the message security rule's `get(conversation)` cannot see an uncommitted write in the same batch. Fixed using the sequential write pattern already established for groups and DMs.
+- **Chat notifications polluting notification center** — chat messages were creating unrenderable empty entries in the in-app Notifications screen. Chat unread state is correctly surfaced via per-conversation `unreadCounts` badges and FCM push; writing to the `notifications` collection for chat messages was redundant and produced blank entries (no `chat_message` handler existed in the screen). Removed.
+
+## [1.5.0] - 2026-06-17 — internal infrastructure baseline (not submitted to stores)
+
+### Changed
+
+- **FlutterFire upgrade** — bumped all Firebase Dart packages to their latest minor/patch releases within existing major-version constraints, aligning the entire stack to firebase-ios-sdk 12.14.0:
+  - `firebase_core` 4.7.0 → 4.10.0
+  - `cloud_firestore` 6.3.0 → 6.5.0
+  - `firebase_auth` 6.4.0 → 6.5.2
+  - `firebase_crashlytics` 5.2.0 → 5.2.3
+  - `firebase_messaging` 16.2.0 → 16.3.0
+  - `cloud_functions` 6.2.0 → 6.3.2
+
+### Fixed
+
+- **Shorebird iOS release** — `shorebird release ios` was failing since v1.4.0 due to a selector mismatch in `cloud_firestore 6.3.0`'s `FLTPipelineParser.m`: the `FIRCollectionSourceStageBridge` initializer signature changed between firebase-ios-sdk 12.12.0 and 12.14.0 (added `forceIndex:` parameter). Shorebird's SPM resolved to 12.14.0; CocoaPods pinned to 12.12.0, so local builds passed while Shorebird builds failed. Fixed by `cloud_firestore 6.5.0`. Both `shorebird release ios` and `shorebird release android` succeeded for 1.5.0+8.
+
+> **Note:** 1.5.0+8 is an internal infrastructure baseline. The Shorebird releases were created to establish a valid patch target, but this version was never submitted to App Store Connect or Google Play. It will be bundled into the next store submission (1.6.0+9) alongside Chat Phase 2.
+
 ## [1.4.0] - 2026-06-14
 
 ### Added
@@ -167,7 +202,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed all `debugPrint` calls from `lib/`, eliminating release-log leakage of FCM tokens, user IDs, and task metadata (PR #11).
 - Tightened Firestore rules to require `assignedBy` immutability on task updates (PR #6).
 
-[Unreleased]: https://github.com/OdehMohamed/techno-staff/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/OdehMohamed/techno-staff/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.3.1...v1.4.0
+[1.3.1]: https://github.com/OdehMohamed/techno-staff/compare/v1.3.0...v1.3.1
+[1.3.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/OdehMohamed/techno-staff/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/OdehMohamed/techno-staff/compare/v1.0.0...v1.0.1

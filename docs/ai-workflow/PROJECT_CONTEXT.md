@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-06-14
+> Last updated: 2026-06-17
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.4.0+7 merged to `main` (2026-06-14). Owner steps pending: full store release binary build + Firebase deploy (functions + rules + indexes). Previous Shorebird patches remain active for v1.3.1 users until v1.4.0 store release. v1.4.0 introduces Chat & Messaging (new native iOS code — not Shorebird-patchable), attendance stabilization, and professional PDF reports. Next roadmap TBD pending tester feedback on v1.4.0.
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.5.0+8 merged to `main` (2026-06-17) — FlutterFire infrastructure baseline; store binary uploads pending (owner). Chat Phase 2 in progress on `feat/chat-phase-2`: employee DM quick-action, task-linked conversations, admin broadcast channels implemented (2026-06-17). Next: owner smoke test → version bump to 1.6.0+9 → Shorebird releases → store submission.
 
 ## 2. Tech Stack
 
@@ -39,11 +39,11 @@ Current status: closed testing (Google Play Closed Testing, TestFlight). v1.4.0+
 
 | Concern             | Choice                                       |
 | ------------------- | -------------------------------------------- |
-| Auth                | `firebase_auth` `^6.4.0`                     |
-| Firestore           | `cloud_firestore` `^6.3.0`                   |
-| Cloud Functions     | `cloud_functions` `^6.2.0` (Node 22 runtime) |
-| Crash reporting     | `firebase_crashlytics` `^5.0.4`              |
-| Push messaging      | `firebase_messaging` `^16.2.0`               |
+| Auth                | `firebase_auth` `^6.4.0` (resolved 6.5.2)    |
+| Firestore           | `cloud_firestore` `^6.3.0` (resolved 6.5.0)  |
+| Cloud Functions     | `cloud_functions` `^6.2.0` (resolved 6.3.2, Node 22 runtime) |
+| Crash reporting     | `firebase_crashlytics` `^5.0.4` (resolved 5.2.3) |
+| Push messaging      | `firebase_messaging` `^16.2.0` (resolved 16.3.0) |
 | Firebase project id | `techno-staff`                               |
 
 ### Quality
@@ -51,7 +51,7 @@ Current status: closed testing (Google Play Closed Testing, TestFlight). v1.4.0+
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 - Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
-- Translation parity enforced: `341 341 []` as of v1.3.0.
+- Translation parity enforced: `365 365 []` as of Chat Phase 2 on `feat/chat-phase-2` (8 new keys: send_message, task_discussion, task_discussion_error, broadcast_channel, broadcast_channel_hint, admin_only_can_post, select_all).
 
 ## 3. Architecture
 
@@ -96,6 +96,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `attendance`    | all      | Employee biometric check-in/out; schedule-aware status resolution (present/late/off_day_work); multi-session daily records; session-level admin correction with audit trail (`originalSessions`); expandable attendance cards; employee personal history + monthly summary with schedule-aware rate bar; admin roster with date picker; schedule management (`schedules/{userId}`) |
 | `reports`       | admin    | Task reporting by employee/month + attendance section, PDF export                                                                                                                               |
 | `notifications` | all      | In-app notification feed (server-written, client toggles `isRead`), real-time stream + unread count badge                                                                                       |
+| `chat`          | all      | DM and group conversations; real-time streaming; pagination (50/page); soft-delete (sender-only); unread counts per conversation; `ChatBadgeButton` in AppBar; FCM push per recipient via `onNewChatMessage` CF; per-conversation foreground suppression (iOS: `AppDelegate.willPresent` + `UserDefaults`; Android: Dart `onMessage` + `activeConversationId`). Phase 2 (2026-06-17): employee DM quick-action from EmployeesScreen; task-linked thread from TaskDetailsScreen (creator + assignee only; createdBy bug fixed); admin broadcast channels (`writeRestriction: 'admin_only'` — toggle in NewGroupScreen, read-only notice in ConversationScreen, megaphone icon in ConversationTile). Phase 3 (deferred): group member management (add/remove; requires rules change). |
 | `settings`      | all      | Theme (persisted), language, sign out, About (version + privacy policy + licenses), delete account, edit profile (name), change password with session revocation                               |
 
 ## 5. Firestore Data Model
@@ -112,12 +113,14 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `schedules/{userId}`             | admin: full; employee: own (read only)                                                                                                                           | Per-employee weekly work schedule; shape: `{ days: { "1"–"7": { isWorkingDay, expectedStartTime, expectedEndTime, graceMinutes? } }, defaultGraceMinutes }`. Used by `recordAttendance` to resolve `present`/`late`/`off_day_work` and by `sendDailyAbsenceMarker` to write `off_day` instead of `absent` for non-working days. Missing doc → treated as working every day (graceful default). |
 | `fcm_tokens/{userId}`            | **none — server-only** (`allow read: if false`)                                                                                                                  | FCM push tokens isolated from `users` collection. Shape: `{ token: string }`. Clients can no longer read other users' tokens. Cloud Functions use admin SDK (`getFcmToken` / `getFcmTokensBatch` helpers). Cleaned up on account deletion. |
 | `config/{configId}`              | admin only; **public read (unauthenticated)**                                                                                                                    | Only `config/app_settings` exists: `{ minimumAndroidVersion, minimumIosVersion, androidStoreUrl, iosStoreUrl }`. Public read is intentional — version check runs before auth gate. Never add sensitive data here. |
+| `conversations/{cId}`            | participant read; any authenticated user can create; participants can update `lastMessage`/`lastMessageAt`/`unreadCounts`; **no direct delete** | DM shape: `{ type: 'dm', participantIds[], participantNames{}, createdAt, lastMessage?, lastMessageAt?, unreadCounts{} }`. Group adds `name`, `groupImage?`. Deterministic DM ID = sorted UIDs joined with `_`. |
+| `conversations/{cId}/messages/{mId}` | participant: create + soft-delete own (set `isDeleted: true`); **no hard delete** | Shape: `{ senderId, senderName, text, createdAt, isDeleted, deletedAt? }`. Forward-compat nullable fields: `attachment`, `reactions`, `replyTo`, `mentions`, `editedAt`. Unread counts managed by `onNewChatMessage` CF via `FieldValue.increment`. |
 
 Field-name constants live in `lib/core/constants/firebase_paths.dart`. String literals for Firestore collection paths are not allowed in feature code — use `FirebasePaths.*` constants.
 
 ## 6. Cloud Functions
 
-Single file: `functions/index.js` (Node 22, ~1,700 lines).
+Single file: `functions/index.js` (Node 22, ~1,978 lines, 15 exports). Consider splitting by domain when the next CF addition lands.
 
 | Function                           | Trigger                              | Purpose                                                                             |
 | ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -135,6 +138,7 @@ Single file: `functions/index.js` (Node 22, ~1,700 lines).
 | `adminCorrectAttendance`           | callable (admin only)                | Replaces sessions array with admin-provided correction; preserves `originalSessions` on first correction (audit trail); sorts sessions, computes durations; writes `correctedByName` |
 | `adminResetAttendance`             | callable (admin only)                | Clears all sessions for one employee on one date; reads `schedules/{userId}` to classify the reset as `absent` or `off_day`; transaction overwrites attendance doc and writes audit entry to `attendance_logs` (action: `admin_reset`, includes `previousStatus`, `previousSessions`) |
 | `sendDailyAbsenceMarker`           | cron `0 23 * * *` (Asia/Jerusalem)   | Reads `schedules/{userId}` per employee; marks employees with no sessions as `absent` (working day) or `off_day` (non-working day); skips employees who already have sessions |
+| `onNewChatMessage`                 | Firestore `onCreate` `conversations/{cId}/messages/{mId}` | Skips system messages; updates `lastMessage` + `lastMessageAt` + increments `unreadCounts` atomically; sends localized FCM push per recipient on `chat_messages` channel; writes in-app notification per recipient; uses `Promise.allSettled` so per-recipient failures don't block others |
 | `createInAppNotification`          | internal helper                      | Writes to `notifications` collection; used by all FCM-send paths                   |
 
 All FCM push senders localize `notification.title`/`notification.body` per recipient using `users/{uid}.languageCode` (`en`/`ar`, fallback `en`).
@@ -175,13 +179,13 @@ Reach for these before rolling anything bespoke.
 | Attendance UI (screens, cards, correction sheet) | ❌ `local_auth` native plugin in feature tree |
 | FCM setup (background isolate) | ❌ Native |
 | `flutter_local_notifications` channel config | ❌ Native |
-| Translation JSON assets (`assets/translations/`) | ❓ **Untested** — verify on first Shorebird release build |
+| Translation JSON assets (`assets/translations/`) | ❌ **NOT supported** — confirmed 2026-06-16 on v1.4.0+7 Android. Shorebird excludes asset changes. Any translation change requires a full store binary. |
 
-Asset-patching verification is a mandatory step before the first Shorebird patch release. See `docs/release-checklist.md`.
+See `docs/release-checklist.md` for the complete patch-eligibility checklist.
 
 ## 11. Version & Branching
 
-- **App version**: `1.3.1+6` in `pubspec.yaml`. Delivered via Shorebird patch (no new store binary needed for this version).
+- **App version**: `1.5.0+8` in `pubspec.yaml` (next store release will be bumped to `1.6.0+9` before Shorebird release on `feat/chat-phase-2`). FlutterFire upgrade (firebase-ios-sdk 12.14.0) on `main`; Chat Phase 2 feature work in progress on `feat/chat-phase-2`.
 - **Production branch**: `main`.
 - **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.

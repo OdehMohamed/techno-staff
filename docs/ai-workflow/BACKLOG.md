@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-05-29
+> Last updated: 2026-06-16
 > We start with an empty backlog on purpose. Items are added as we discover them through real work — no speculative lists.
 
 ---
@@ -242,20 +242,21 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
 ---
 
-### v1.4.0 — Chat / Messaging
+### v1.6.0 — Chat Phase 2
 
-> Architecture and product design complete (2026-05-29). See [docs/features/chat_architecture.md](../features/chat_architecture.md) for the full spec. Implementation not started.
-
-#### 17. Chat / Messaging MVP — `feat/chat-messaging`
+#### 18. Chat Phase 2 — `feat/chat-phase-2`
 
 - **Priority**: Should-fix (feature)
-- **Status**: Open
-- **Owner**: unassigned
-- **Target release**: 1.4.0
-- **Added**: 2026-05-29
-- **Description**: Internal work-communication module. Phase 1 (MVP) delivers: 1:1 direct messages between any two active users (admin ↔ employee, employee ↔ employee), group conversations (any user can create; admin manages members), text messages, real-time streaming, soft-delete own messages, conversation list with last-message preview, unread count per conversation + global drawer badge, FCM push on a dedicated `chat_messages` Android channel, `onNewChatMessage` Cloud Function (unread increment + FCM + optional in-app notification), Firestore `conversations` collection + `messages` subcollection, security rules, one compound index, three new routes, and all EN/AR translation keys (~25 keys). Data model is forward-compatible: nullable `attachment`, `reactions`, `replyTo`, `mentions`, `editedAt` fields on message docs allow Phase 3 additions without a schema migration. Announcements conversation type (`writeRestriction: 'admin_only'`) supported by rules but deferred to Phase 3. Full spec in `docs/features/chat_architecture.md`.
-- **Acceptance criteria**: (1) Any two users can exchange real-time text messages via DM and group conversations. (2) Unread badge in drawer reflects total unread count across all conversations. (3) FCM push notification delivered on new message; tapping navigates to the correct conversation. (4) Soft-delete replaces message text with `[Message deleted]` for all participants. (5) `flutter analyze` clean, `flutter test` green, `npm run lint` clean, translation parity maintained.
-- **Notes**: Phase 2 (task thread entry point from task details, Employees screen quick-action, group member management) follows after initial usage feedback. Architecture document is the authoritative spec — do not start implementation without reading it.
+- **Status**: In progress — implementation complete, awaiting owner smoke test
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.6.0+9
+- **Added**: 2026-06-17
+- **Description**: Three Chat Phase 2 features:
+  1. **Employee DM quick-action** — chat icon on each employee card in EmployeesScreen; opens or creates a DM without leaving the screen.
+  2. **Task-linked conversations** — chat bubble in TaskDetailsScreen AppBar (creator + assignee only); `getOrCreateTaskThread` `createdBy` bug fixed so the assignee can open the thread without a Firestore permission error.
+  3. **Admin broadcast channels** — "Broadcast Channel" toggle in NewGroupScreen (admin-only); sets `writeRestriction: 'admin_only'`; "Select All" shortcut; ConversationScreen shows read-only notice for non-admin participants; ConversationTile shows megaphone icon for broadcast conversations.
+  8 new EN/AR translation keys (365/365 parity). No rules/functions/pubspec changes.
+- **Acceptance criteria**: Owner smoke test checklist in CURRENT_TASK.md passes. Quality gates: `flutter analyze lib/` clean, `flutter test` green, translation parity 365/365.
 
 ---
 
@@ -264,6 +265,17 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 _None yet._
 
 ## Done
+
+### v1.4.0 — Chat / Messaging
+
+#### 17. Chat / Messaging MVP — `feat/chat-messaging`
+
+- **Priority**: Should-fix (feature)
+- **Status**: Done — 2026-06-14
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.4.0
+- **Added**: 2026-05-29
+- **Completed**: 2026-06-14 — merged to `main` as part of v1.4.0+7. Full DM + group messaging, real-time streaming, pagination (50/page), soft-delete (sender-only), unread counts, `ChatBadgeButton` on AppBar, `onNewChatMessage` Cloud Function (unread increment + FCM + in-app notification per recipient), localized EN/AR chat notifications, per-conversation foreground suppression (iOS: `AppDelegate.willPresent` + `UserDefaults`; Android: Dart `onMessage` + `activeConversationId`), 28 translation keys (parity 369/369). iOS native `AppDelegate` fix (`UNUserNotificationCenter.current().delegate = self` after `GeneratedPluginRegistrant.register`) also shipped in this branch, fixing a long-standing suppression bug where the delegate was owned by plugins. Full spec: `docs/features/chat_architecture.md`. Phase 2 (task thread, Employees quick-action, group member management) follows after usage feedback.
 
 ### Pre-build polish (v1.0.1 stores)
 

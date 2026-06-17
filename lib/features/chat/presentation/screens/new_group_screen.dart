@@ -22,6 +22,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   final _nameController = TextEditingController();
   final Set<String> _selectedUids = {};
   bool _isCreating = false;
+  bool _isBroadcast = false;
 
   @override
   void initState() {
@@ -37,6 +38,14 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _selectAll(List<dynamic> others) {
+    setState(() {
+      for (final emp in others) {
+        _selectedUids.add(emp.id as String);
+      }
+    });
   }
 
   Future<void> _create() async {
@@ -67,16 +76,19 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
       memberNames[uid] = emp.name;
     }
 
+    final chatCubit = context.read<ChatListCubit>();
+    final isBroadcast = _isBroadcast;
+
     try {
-      final convId = await context.read<ChatListCubit>().createGroup(
-            name: _nameController.text.trim(),
-            creatorUid: authUser.id,
-            creatorName: authUser.name,
-            memberUids: _selectedUids.toList(),
-            memberNames: memberNames,
-          );
+      final convId = await chatCubit.createGroup(
+        name: _nameController.text.trim(),
+        creatorUid: authUser.id,
+        creatorName: authUser.name,
+        memberUids: _selectedUids.toList(),
+        memberNames: memberNames,
+        writeRestriction: isBroadcast ? 'admin_only' : null,
+      );
       if (!mounted) return;
-      // Replace this screen with the new conversation.
       Navigator.of(context).pushReplacementNamed(
         RouteNames.conversation,
         arguments: convId,
@@ -94,10 +106,14 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final currentUserId = context.read<AuthCubit>().state.user?.id ?? '';
+    final isAdmin =
+        context.read<AuthCubit>().state.user?.role == 'admin';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('create_group'.tr()),
+        title: Text(
+          _isBroadcast ? 'broadcast_channel'.tr() : 'create_group'.tr(),
+        ),
         actions: [
           _isCreating
               ? const Padding(
@@ -121,7 +137,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Group name field
+            // Group/channel name field
             Padding(
               padding: const EdgeInsets.all(AppSizes.md),
               child: TextFormField(
@@ -143,15 +159,50 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
               ),
             ),
 
+            // Broadcast toggle (admin-only)
+            if (isAdmin)
+              SwitchListTile(
+                value: _isBroadcast,
+                onChanged: (v) => setState(() => _isBroadcast = v),
+                title: Text('broadcast_channel'.tr()),
+                subtitle: Text('broadcast_channel_hint'.tr()),
+                secondary: Icon(
+                  _isBroadcast
+                      ? Icons.campaign
+                      : Icons.campaign_outlined,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.md,
+                ),
+              ),
+
+            // Members header + select-all
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSizes.md, 0, AppSizes.md, AppSizes.xs),
-              child: Text(
-                'add_members'.tr(),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+                  AppSizes.md, AppSizes.xs, AppSizes.md, AppSizes.xs),
+              child: BlocBuilder<EmployeesCubit, EmployeesState>(
+                builder: (context, empState) {
+                  final others = empState.employees
+                      .where((e) => e.id != currentUserId && e.isActive)
+                      .toList();
+                  return Row(
+                    children: [
+                      Text(
+                        'add_members'.tr(),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (others.isNotEmpty)
+                        TextButton(
+                          onPressed: () => _selectAll(others),
+                          child: Text('select_all'.tr()),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
 

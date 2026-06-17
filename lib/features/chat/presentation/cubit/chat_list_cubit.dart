@@ -55,12 +55,38 @@ class ChatListCubit extends Cubit<ChatListState> {
     required String creatorName,
     required List<String> memberUids,
     required Map<String, String> memberNames,
+    String? writeRestriction,
   }) => _repository.createGroup(
     name: name,
     creatorUid: creatorUid,
     creatorName: creatorName,
     memberUids: memberUids,
     memberNames: memberNames,
+    writeRestriction: writeRestriction,
+  );
+
+  /// Opens an existing task-linked conversation or creates a new one.
+  /// [initiatorUid]/[initiatorName] must be the currently signed-in user —
+  /// used as [createdBy] so the Firestore create rule is satisfied regardless
+  /// of whether the initiator is the task creator or the assignee.
+  Future<String> getOrCreateTaskThread({
+    required String taskId,
+    required String taskTitle,
+    required String initiatorUid,
+    required String initiatorName,
+    required String creatorUid,
+    required String creatorName,
+    required String assigneeUid,
+    required String assigneeName,
+  }) => _repository.getOrCreateTaskThread(
+    taskId: taskId,
+    taskTitle: taskTitle,
+    initiatorUid: initiatorUid,
+    initiatorName: initiatorName,
+    creatorUid: creatorUid,
+    creatorName: creatorName,
+    assigneeUid: assigneeUid,
+    assigneeName: assigneeName,
   );
 
   void stopListening() {

@@ -155,11 +155,14 @@ the following are true. If any is false, do a full store binary release instead.
 - [ ] No changes to `functions/index.js` (deploy separately via
       `firebase deploy --only functions`).
 - [ ] No new platform permissions or notification channel configuration.
+- [ ] **No changes to `assets/translations/*.json`** — asset/translation patching
+      is NOT supported by Shorebird (confirmed 2026-06-16 on v1.4.0+7 Android
+      baseline; CLI prints `[WARN] Your app contains asset changes, which will not
+      be included in the patch` and excludes the file). Any PR that adds or changes
+      translation keys is a full binary release, never a patch.
 - [ ] The `shorebird patch` CLI reports no native changes detected — confirm
       before proceeding.
-- [ ] Change is limited to `.dart` source files, and optionally asset files
-      (verify asset/translation patching works on your first Shorebird build —
-      see `NEXT_STEPS.md`).
+- [ ] Change is limited to `.dart` source files only.
 
 Patch commands (run from repo root):
 ```
@@ -191,6 +194,18 @@ to `pubspec.yaml` and rebuilding with the Shorebird engine).
       minimum version (force-update semantics via mandatory update gate) or
       leave the minimum unchanged (users receive the new binary on natural update).
 
+### When upgrading Firebase iOS SDK version
+
+When bumping Firebase Dart packages to a new firebase-ios-sdk target (e.g., 12.12.0 → 12.14.0), CocoaPods must re-resolve. Do this before `shorebird release ios` or `flutter build ios`:
+
+```bash
+rm ios/Podfile.lock          # clear the pinned snapshot
+pod repo update              # fetch the new Firebase podspec into the local CocoaPods cache
+flutter build ios --no-codesign   # confirm CocoaPods resolves cleanly before Shorebird
+```
+
+The `pod repo update` step is only needed once per machine per firebase-ios-sdk version — subsequent builds reuse the cached podspec. Confirmed required for the 12.12.0 → 12.14.0 upgrade (2026-06-17, v1.5.0+8).
+
 ### First-time Shorebird setup (one-time)
 
 - [ ] Install Shorebird CLI: `curl --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/shorebirdtech/install/main/install.sh -sSf | bash`
@@ -203,5 +218,6 @@ to `pubspec.yaml` and rebuilding with the Shorebird engine).
 - [ ] Verify Crashlytics patch tagging: add `ShorebirdUpdater().readCurrentPatch()`
       call in `main()` after Firebase init, set
       `FirebaseCrashlytics.instance.setCustomKey('shorebird_patch_number', ...)`.
-- [ ] Verify asset/translation patching (see `NEXT_STEPS.md` "Shorebird asset
-      patching" item) and record the result here.
+- ✅ Asset/translation patching verified: **NOT supported** (2026-06-16, v1.4.0+7
+      Android). Shorebird explicitly excludes `assets/translations/*.json` from
+      patches. Translation changes always require a full binary release.

@@ -1,7 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:linkify/linkify.dart' show PhoneNumberLinkifier;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -27,6 +31,8 @@ class TaskDetailsScreen extends StatefulWidget {
 }
 
 class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
+  bool _openingThread = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +40,36 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TaskLogsCubit>().fetchTaskLogs(widget.task.id);
     });
+  }
+
+  Future<void> _openTaskThread(TaskModel task) async {
+    if (_openingThread) return;
+    final auth = context.read<AuthCubit>().state.user;
+    if (auth == null) return;
+    final chatCubit = context.read<ChatListCubit>();
+    setState(() => _openingThread = true);
+    try {
+      final convId = await chatCubit.getOrCreateTaskThread(
+        taskId: task.id,
+        taskTitle: task.title,
+        initiatorUid: auth.id,
+        initiatorName: auth.name,
+        creatorUid: task.assignedBy,
+        creatorName: task.assignedByName,
+        assigneeUid: task.assignedTo,
+        assigneeName: task.assignedToName,
+      );
+      if (!mounted) return;
+      await Navigator.pushNamed(context, RouteNames.conversation,
+          arguments: convId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('task_discussion_error'.tr())),
+      );
+    } finally {
+      if (mounted) setState(() => _openingThread = false);
+    }
   }
 
   TaskModel _findTask(TasksState state) {
@@ -63,10 +99,31 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         currentUser != null &&
         (currentUser.role == 'admin' || task.assignedBy == currentUser.id);
 
+    final canDiscuss = currentUser != null &&
+        (currentUser.id == task.assignedBy ||
+            currentUser.id == task.assignedTo);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('task_details'.tr()),
         actions: [
+          if (canDiscuss)
+            _openingThread
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    tooltip: 'task_discussion'.tr(),
+                    onPressed: () => _openTaskThread(task),
+                  ),
           if (canEditOrDelete)
             IconButton(
               onPressed: () async {
@@ -162,9 +219,31 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           const SizedBox(height: AppSizes.sm),
-                          Text(
-                            task.description,
+                          SelectableLinkify(
+                            text: task.description,
                             style: Theme.of(context).textTheme.bodyLarge,
+                            // No linkStyle override — flutter_linkify's default
+                            // (blueAccent + underline) is already correct.
+                            // Overriding color with colorScheme.primary was
+                            // making links visually indistinguishable from text.
+                            linkifiers: const [
+                              UrlLinkifier(),
+                              EmailLinkifier(),
+                              PhoneNumberLinkifier(),
+                            ],
+                            contextMenuBuilder: (context, editableTextState) =>
+                                AdaptiveTextSelectionToolbar.editableText(
+                              editableTextState: editableTextState,
+                            ),
+                            onOpen: (link) async {
+                              final uri = Uri.parse(link.url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            },
                           ),
                           const SizedBox(height: AppSizes.lg),
                           Wrap(

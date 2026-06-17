@@ -1,3 +1,133 @@
+## 2026-06-17 — Claude Sonnet 4.6 — Chat Phase 2: employee DM, task threads, broadcast channels
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/chat-phase-2`
+- **Goal**: Implement three Chat Phase 2 features agreed in v1.6.0 scope.
+- **Outcome**: ✅ All three features implemented, quality gates green, commit `4561262`.
+
+### Features shipped
+
+**1. Employee DM quick-action** (`employees_screen.dart`)
+- Chat bubble icon on each employee card in EmployeesScreen
+- Tapping calls `ChatListCubit.getOrCreateDm()` and navigates to the conversation
+- Loading spinner replaces icon while Firestore call is in flight; `_openingDmFor` guard prevents double-taps
+- No state emitted from cubit — pure fire-and-navigate pattern consistent with existing DM flow
+
+**2. Task-linked conversations** (`task_details_screen.dart`, `chat_repository.dart`, `chat_list_cubit.dart`)
+- Chat bubble in TaskDetailsScreen AppBar
+- Visible only when `currentUser.id == task.assignedBy || currentUser.id == task.assignedTo` — the two natural participants
+- Added `getOrCreateTaskThread()` to `ChatListCubit` (previously only on the repository)
+- Fixed long-standing `createdBy` bug: `getOrCreateTaskThread()` now takes `initiatorUid` (the currently-signed-in user) and uses it for `createdBy` and the system message sender; previously always used `task.assignedBy`, causing Firestore permission-denied when the assignee opened the thread first
+
+**3. Admin broadcast channels** (`new_group_screen.dart`, `conversation_screen.dart`, `conversation_tile.dart`, `chat_repository.dart`, `chat_list_cubit.dart`)
+- `createGroup()` now accepts optional `writeRestriction` parameter; passes it through to Firestore; no other create-flow changes
+- `NewGroupScreen`: admin-only `SwitchListTile` for broadcast mode; AppBar title adapts; "Select All" `TextButton` to add all active employees; system message text switches to "created this channel"
+- `ConversationScreen`: `_ReadOnlyNotice` banner (megaphone icon + text) replaces `ChatInputBar` for non-admin participants when `writeRestriction == 'admin_only'`; admin sees no difference
+- `ConversationTile`: megaphone `CircleAvatar` (secondaryContainer colour) replaces initial-letter avatar for broadcast conversations
+- No changes to `firestore.rules` — `conversationAllowsWrite()` already enforces `writeRestriction: 'admin_only'`
+- No changes to `functions/index.js` — `onNewChatMessage` already handles all group types
+
+### Quality gates
+
+- `flutter analyze lib/` — no issues
+- `flutter test` — 6/6 green
+- Translation parity — `365 365 []` (8 new keys × 2 locales)
+
+### Files touched
+
+`chat_repository.dart`, `chat_list_cubit.dart`, `employees_screen.dart`, `task_details_screen.dart`, `new_group_screen.dart`, `conversation_screen.dart`, `conversation_tile.dart`, `en.json`, `ar.json`
+
+- **Follow-ups**: Owner smoke test → version bump 1.6.0+9 → Shorebird releases → store submission → merge to main.
+
+---
+
+## 2026-06-17 — Claude Sonnet 4.6 — FlutterFire upgrade: firebase-ios-sdk 12.14.0 + v1.5.0+8 Shorebird release (iOS + Android)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `chore/flutterfire-upgrade`
+- **Goal**: Fix `shorebird release ios` failure (blocked since v1.4.0) by upgrading FlutterFire packages, then cut v1.5.0+8 Shorebird baselines for both platforms.
+- **Outcome**: ✅ Both `shorebird release ios` and `shorebird release android` published for v1.5.0+8. Store binary uploads pending (owner action).
+
+### Root cause (corrected from earlier diagnosis)
+
+The original session (2026-06-16) incorrectly attributed the failure to a cloud_firestore 6.x / Firebase iOS SDK 11.x mismatch. The actual cause:
+
+- `cloud_firestore 6.3.0`'s `FLTPipelineParser.m` called `[[FIRCollectionSourceStageBridge alloc] initWithRef:ref firestore:firestore]` (2-arg initializer)
+- firebase-ios-sdk 12.14.0 changed this to `initWithRef:firestore:forceIndex:` (3-arg) — link-time selector mismatch
+- Shorebird's SPM resolved `from: "12.12.0"` to 12.14.0; CocoaPods pinned to exactly 12.12.0, so local builds passed
+- `cloud_firestore 6.5.0` changelog: "Fixed iOS collection source initialization with `forceIndex` parameter" — exact fix
+
+### Packages upgraded (all same major version — no Dart API breaking changes)
+
+| Package | Before | After |
+|---|---|---|
+| `firebase_core` | 4.7.0 | 4.10.0 |
+| `cloud_firestore` | 6.3.0 | 6.5.0 |
+| `firebase_auth` | 6.4.0 | 6.5.2 |
+| `firebase_crashlytics` | 5.2.0 | 5.2.3 |
+| `firebase_messaging` | 16.2.0 | 16.3.0 |
+| `cloud_functions` | 6.2.0 | 6.3.2 |
+
+### Validation results
+
+1. `flutter pub upgrade` — all 6 packages resolved to targets ✅
+2. `flutter analyze lib/ test/` — no issues ✅
+3. `flutter build ios --no-codesign` — succeeded after: deleting stale `Podfile.lock` (pinned to Firebase 12.12.0) + running `pod repo update` (local CocoaPods spec cache lacked Firebase 12.14.0 podspec) ✅
+4. Manual smoke test on real devices (owner): sign-in, task list, task creation, push notifications, chat, attendance — all passed ✅
+5. `shorebird release ios` → Published Release 1.5.0+8 ✅ (IPA at `build/ios/ipa/`)
+6. `shorebird release android` → Published Release 1.5.0+8 ✅ (AAB at `build/app/outputs/bundle/release/app-release.aab`)
+
+### Notable warnings (non-blocking)
+
+Android build printed deprecation warnings: Gradle 8.12.0 (needs 8.14.0+), AGP 8.9.1 (needs 8.11.1+), Kotlin 2.1.0 (needs 2.2.20+). Current builds succeed; these become errors in a future Flutter version. Added to NEXT_STEPS.md.
+
+- **Files touched**: `pubspec.yaml`, `pubspec.lock`, `ios/Podfile.lock`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/NEXT_STEPS.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: (1) Owner: upload IPA + AAB to stores. (2) Chat Phase 2 implementation.
+
+---
+
+## 2026-06-16 — Owner — Shorebird asset patching verification: FAIL
+
+- **Agent**: Owner (manual device test)
+- **Branch**: `chore/shorebird-asset-patch-test` (created and deleted; never merged)
+- **Goal**: Confirm whether `shorebird patch android` includes changed `assets/translations/*.json` files.
+- **Outcome**: **NOT supported.** Shorebird CLI printed `[WARN] Your app contains asset changes, which will not be included in the patch` and listed `base/assets/flutter_assets/assets/translations/en.json`. Owner aborted the patch (`N`). Test branch reverted and deleted without merging.
+- **Implication**: Any PR that adds or modifies translation keys is a full binary store release — never a Shorebird patch. This applies to all future feature work including Chat Phase 2.
+- **Files touched (docs only)**: `docs/release-checklist.md` (patch-eligibility checklist updated; first-time setup item marked ✅), `docs/ai-workflow/NEXT_STEPS.md` (verification item closed), `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: Proceed to FlutterFire upgrade (`chore/flutterfire-upgrade`) — the next item on the roadmap.
+
+---
+
+## 2026-06-16 — Claude Sonnet 4.6 — v1.4.0 post-release: Shorebird iOS diagnosis + full roadmap re-assessment
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `main` (no code changes — diagnosis + doc updates only)
+- **Goal**: (1) Deliver the definitive root-cause and fix path for the Shorebird iOS build failure from the v1.4.0 release attempt. (2) Re-assess the project roadmap from scratch based on the current codebase state, not historical planning assumptions.
+- **Outcome**: Root cause confirmed and documented. Full roadmap produced. Workflow docs updated to reflect v1.4.0 completion state.
+
+### Shorebird iOS root cause (confirmed)
+
+Three facts combine:
+1. `Generated.xcconfig` has `FLUTTER_ROOT` pointing to Shorebird's Flutter 3.44.2 (not local 3.35.7), so `pod install` uses Shorebird's `podhelper.rb`.
+2. Flutter 3.29+ lets plugins with a `Package.swift` skip CocoaPods. The FlutterFire packages (firebase_core 4.x, cloud_firestore 6.x) have SPM manifests, so Firebase is resolved entirely via SPM at `firebase-ios-sdk 12.14.0` — confirmed by `Package.resolved` (12.14.0) and `Podfile.lock` (no Firebase entries at all).
+3. `cloud_firestore 6.x` was written against Firebase iOS SDK 11.x ObjC bridge API. `FIRCollectionSourceStageBridge.initWithRef:firestore:` and `FIRCollectionGroupSourceStageBridge.initWithCollectionId:` exist in 11.x but changed in 12.x → selector mismatch at link time.
+
+Local Flutter 3.35.7 builds work because its `podhelper.rb` uses CocoaPods for Firebase (SPM opt-in behavior is different), so firebase-ios-sdk 12.14.0 via SPM is never invoked.
+
+**Fix**: Upgrade FlutterFire stack to the versions whose `Package.swift` targets `firebase-ios-sdk ~> 12.0`. One clean path; no fragile workarounds. Branch: `chore/flutterfire-upgrade`.
+
+### Roadmap decisions
+
+- iOS v1.4.0 ships as plain Xcode archive (not Shorebird) until the FlutterFire upgrade is done.
+- Android Shorebird release can be deployed to Play Console now.
+- Chat Phase 2 (Employees quick-action → task thread → member management) is the next feature milestone after triage.
+- functions/index.js (~1,978 lines, 15 exports) should be split by domain when the next CF is added — not as a standalone refactor.
+
+- **Files touched**: `docs/ai-workflow/BACKLOG.md`, `docs/ai-workflow/NEXT_STEPS.md`, `docs/ai-workflow/PROJECT_CONTEXT.md`, `docs/ai-workflow/SESSION_LOG.md`.
+- **Follow-ups**: FlutterFire upgrade (`chore/flutterfire-upgrade`) is the next code task. Then Firebase deploy + store binary submissions for v1.4.0.
+
+---
+
 ## 2026-06-14 — Claude Sonnet 4.6 — iOS foreground notification suppression: fixed + validated on device
 
 - **Agent**: Claude Sonnet 4.6

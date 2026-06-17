@@ -268,6 +268,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
         }
       },
       builder: (context, state) {
+        final isAdminOnly =
+            state.conversation?.writeRestriction == 'admin_only';
+        final isAdmin =
+            context.read<AuthCubit>().state.user?.role == 'admin';
+        final showReadOnly = isAdminOnly && !isAdmin;
+
         return Scaffold(
           appBar: _buildAppBar(context, state),
           body: Column(
@@ -298,16 +304,58 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 ),
               ),
 
-              // Input bar
-              ChatInputBar(
-                isSending: state.isSending,
-                onSend: (text) =>
-                    context.read<ConversationCubit>().sendMessage(text),
-              ),
+              // Input bar or read-only notice
+              if (showReadOnly)
+                const _ReadOnlyNotice()
+              else
+                ChatInputBar(
+                  isSending: state.isSending,
+                  onSend: (text) =>
+                      context.read<ConversationCubit>().sendMessage(text),
+                ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _ReadOnlyNotice extends StatelessWidget {
+  const _ReadOnlyNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.campaign_outlined,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'admin_only_can_post'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
