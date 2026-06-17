@@ -363,5 +363,12 @@
   "add_members": "Add Members",
   "no_members_selected": "Select at least one member",
   "create_group_error": "Failed to create group",
-  "create": "Create"
+  "create": "Create",
+  "send_message": "Message",
+  "task_discussion": "Task Discussion",
+  "task_discussion_error": "Failed to open task discussion",
+  "broadcast_channel": "Broadcast Channel",
+  "broadcast_channel_hint": "Only admins can post in this channel",
+  "admin_only_can_post": "Only admins can post in this channel",
+  "select_all": "Select All"
 }

@@ -363,5 +363,12 @@
   "add_members": "إضافة أعضاء",
   "no_members_selected": "اختر عضواً واحداً على الأقل",
   "create_group_error": "فشل إنشاء المجموعة",
-  "create": "إنشاء"
+  "create": "إنشاء",
+  "send_message": "مراسلة",
+  "task_discussion": "نقاش المهمة",
+  "task_discussion_error": "فشل فتح نقاش المهمة",
+  "broadcast_channel": "قناة إعلانات",
+  "broadcast_channel_hint": "المسؤولون فقط يمكنهم النشر في هذه القناة",
+  "admin_only_can_post": "المسؤولون فقط يمكنهم النشر في هذه القناة",
+  "select_all": "تحديد الكل"
 }

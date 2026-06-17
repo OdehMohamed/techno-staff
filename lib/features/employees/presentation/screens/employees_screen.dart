@@ -6,6 +6,7 @@ import 'package:techno_staff/features/attendance/data/models/work_schedule_model
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -24,10 +25,36 @@ class EmployeesScreen extends StatefulWidget {
 }
 
 class _EmployeesScreenState extends State<EmployeesScreen> {
+  String? _openingDmFor;
+
   @override
   void initState() {
     super.initState();
     context.read<EmployeesCubit>().fetchEmployees();
+  }
+
+  Future<void> _openDm(
+    String employeeId,
+    String employeeName,
+  ) async {
+    if (_openingDmFor != null) return;
+    final auth = context.read<AuthCubit>().state.user;
+    if (auth == null) return;
+    final chatCubit = context.read<ChatListCubit>();
+    setState(() => _openingDmFor = employeeId);
+    try {
+      final convId = await chatCubit.getOrCreateDm(
+        auth.id,
+        employeeId,
+        auth.name,
+        employeeName,
+      );
+      if (!mounted) return;
+      await Navigator.pushNamed(context, RouteNames.conversation,
+          arguments: convId);
+    } finally {
+      if (mounted) setState(() => _openingDmFor = null);
+    }
   }
 
   void _openScheduleSheet(
@@ -217,14 +244,46 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                           ).textTheme.bodyMedium,
                                         ),
                                         const SizedBox(height: AppSizes.xs),
-                                        IconButton(
-                                          icon: const Icon(Icons.schedule),
-                                          tooltip: 'schedule'.tr(),
-                                          onPressed: () => _openScheduleSheet(
-                                            context,
-                                            employee.id,
-                                            employee.name,
-                                          ),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _openingDmFor == employee.id
+                                                ? const SizedBox(
+                                                    width: 40,
+                                                    height: 40,
+                                                    child: Center(
+                                                      child:
+                                                          SizedBox(
+                                                        width: 18,
+                                                        height: 18,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                : IconButton(
+                                                    icon: const Icon(
+                                                        Icons.chat_bubble_outline),
+                                                    tooltip:
+                                                        'send_message'.tr(),
+                                                    onPressed: () => _openDm(
+                                                      employee.id,
+                                                      employee.name,
+                                                    ),
+                                                  ),
+                                            IconButton(
+                                              icon: const Icon(Icons.schedule),
+                                              tooltip: 'schedule'.tr(),
+                                              onPressed: () =>
+                                                  _openScheduleSheet(
+                                                context,
+                                                employee.id,
+                                                employee.name,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),

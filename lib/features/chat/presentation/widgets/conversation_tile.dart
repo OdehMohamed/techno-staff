@@ -82,6 +82,7 @@ class ConversationTile extends StatelessWidget {
     final timestamp = _formatTimestamp(conversation.lastMessageAt, context);
     final (avatarName, avatarUid) = _avatarSource();
     final isDeleted = preview == 'message_deleted'.tr();
+    final isBroadcast = conversation.writeRestriction == 'admin_only';
 
     return InkWell(
       onTap: onTap,
@@ -89,8 +90,19 @@ class ConversationTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            // Avatar
-            UserAvatarWidget(name: avatarName, uid: avatarUid, radius: 24),
+            // Avatar — megaphone for broadcast channels, initials otherwise
+            if (isBroadcast)
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: theme.colorScheme.secondaryContainer,
+                child: Icon(
+                  Icons.campaign_outlined,
+                  size: 22,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              )
+            else
+              UserAvatarWidget(name: avatarName, uid: avatarUid, radius: 24),
             const SizedBox(width: 12),
 
             // Name + preview

@@ -158,12 +158,15 @@ class ChatRepository {
     required String creatorName,
     required List<String> memberUids,
     required Map<String, String> memberNames,
+    String? writeRestriction,
   }) async {
     final convRef =
         _firestore.collection(FirebasePaths.conversations).doc();
     final allUids = [creatorUid, ...memberUids];
     final allNames = {creatorUid: creatorName, ...memberNames};
-    final systemText = '$creatorName created this group';
+    final systemText = writeRestriction == 'admin_only'
+        ? '$creatorName created this channel'
+        : '$creatorName created this group';
 
     // Write 1: create the conversation document so the message security rule
     // can verify participantIds via get(conversation_doc).
@@ -184,7 +187,7 @@ class ChatRepository {
       'lastMessageAt': FieldValue.serverTimestamp(),
       'memberLastRead': {},
       'unreadCounts': {},
-      'writeRestriction': null,
+      'writeRestriction': writeRestriction,
     });
 
     // Write 2: create the system message now that the conversation exists.
@@ -214,6 +217,8 @@ class ChatRepository {
   Future<String> getOrCreateTaskThread({
     required String taskId,
     required String taskTitle,
+    required String initiatorUid,
+    required String initiatorName,
     required String creatorUid,
     required String creatorName,
     required String assigneeUid,
@@ -242,12 +247,12 @@ class ChatRepository {
       'participantNames': participantNames,
       'name': taskTitle,
       'taskId': taskId,
-      'createdBy': creatorUid,
+      'createdBy': initiatorUid,
       'createdAt': FieldValue.serverTimestamp(),
       'lastMessage': {
         'text': systemText,
-        'senderId': creatorUid,
-        'senderName': creatorName,
+        'senderId': initiatorUid,
+        'senderName': initiatorName,
         'sentAt': FieldValue.serverTimestamp(),
       },
       'lastMessageAt': FieldValue.serverTimestamp(),
@@ -257,8 +262,8 @@ class ChatRepository {
     });
 
     batch.set(msgRef, {
-      'senderId': creatorUid,
-      'senderName': creatorName,
+      'senderId': initiatorUid,
+      'senderName': initiatorName,
       'text': systemText,
       'type': 'system',
       'sentAt': FieldValue.serverTimestamp(),
