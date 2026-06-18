@@ -138,7 +138,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             padding: EdgeInsets.only(bottom: AppSizes.sm),
             child: LinearProgressIndicator(),
           ),
-        if (_pendingBriefAttachments.length < 5 && !_isUploadingAttachment)
+        if (!_isUploadingAttachment)
           OutlinedButton.icon(
             onPressed: () => _pickAttachment(context, userId, userName),
             icon: const Icon(Icons.add_a_photo_outlined),

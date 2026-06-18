@@ -1,6 +1,7 @@
 const {onCall, HttpsError} = require("firebase-functions/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {onDocumentDeleted} = require("firebase-functions/v2/firestore");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
@@ -1942,6 +1943,34 @@ exports.onNewChatMessage = onDocumentCreated(
       });
 
       await Promise.allSettled(perRecipient);
+    },
+);
+
+exports.cleanupTaskAttachments = onDocumentDeleted(
+    "tasks/{taskId}",
+    async (event) => {
+      const taskId = event.params.taskId;
+      const db = admin.firestore();
+
+      // Delete Firestore sub-collection documents.
+      const attachmentsRef = db
+          .collection("tasks")
+          .doc(taskId)
+          .collection("attachments");
+      const snapshots = await attachmentsRef.get();
+      if (!snapshots.empty) {
+        await Promise.all(snapshots.docs.map((doc) => doc.ref.delete()));
+      }
+
+      // Delete Storage folder — non-fatal if files don't exist.
+      try {
+        await admin
+            .storage()
+            .bucket()
+            .deleteFiles({prefix: `tasks/${taskId}/attachments/`});
+      } catch (err) {
+        console.error(`Storage cleanup failed for task ${taskId}:`, err);
+      }
     },
 );
 

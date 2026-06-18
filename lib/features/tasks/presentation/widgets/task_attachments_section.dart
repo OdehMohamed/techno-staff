@@ -90,7 +90,7 @@ class TaskAttachmentsSection extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: AppSizes.sm),
                 child: LinearProgressIndicator(),
               ),
-            if (canUpload && attachments.length < 5 && !state.isUploading)
+            if (canUpload && !state.isUploading)
               OutlinedButton.icon(
                 onPressed: () => _pickPhoto(context),
                 icon: const Icon(Icons.add_a_photo_outlined),

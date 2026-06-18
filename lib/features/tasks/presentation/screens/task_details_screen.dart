@@ -37,19 +37,20 @@ class TaskDetailsScreen extends StatefulWidget {
 
 class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   bool _openingThread = false;
+  late final TaskAttachmentsCubit _attachmentsCubit;
   StreamSubscription<TaskAttachmentsState>? _attachmentsSub;
   String? _lastSeenAttachmentError;
 
   @override
   void initState() {
     super.initState();
+    _attachmentsCubit = context.read<TaskAttachmentsCubit>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<TaskLogsCubit>().fetchTaskLogs(widget.task.id);
-      final cubit = context.read<TaskAttachmentsCubit>();
-      cubit.loadAttachments(widget.task.id);
-      _attachmentsSub = cubit.stream.listen((state) {
+      _attachmentsCubit.loadAttachments(widget.task.id);
+      _attachmentsSub = _attachmentsCubit.stream.listen((state) {
         if (state.error != null &&
             state.error != _lastSeenAttachmentError &&
             mounted) {
@@ -65,7 +66,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   @override
   void dispose() {
     _attachmentsSub?.cancel();
-    context.read<TaskAttachmentsCubit>().clear();
+    _attachmentsCubit.clear();
     super.dispose();
   }
 

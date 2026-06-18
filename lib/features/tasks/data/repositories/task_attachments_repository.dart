@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,10 +44,16 @@ class TaskAttachmentsRepository {
     final sizeBytes = await file.length();
 
     final ref = _storage.ref(storagePath);
-    await ref.putFile(
+    final uploadTask = ref.putFile(
       File(file.path),
       SettableMetadata(contentType: mimeType),
     );
+    try {
+      await uploadTask.timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      uploadTask.cancel();
+      rethrow;
+    }
     final url = await ref.getDownloadURL();
 
     return StorageUploadResult(

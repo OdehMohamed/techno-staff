@@ -37,12 +37,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   DateTime? _selectedDueDate;
   bool _hasDueTime = false;
   bool _isSaving = false;
+  late final TaskAttachmentsCubit _attachmentsCubit;
   StreamSubscription<TaskAttachmentsState>? _attachmentsSub;
   String? _lastSeenAttachmentError;
 
   @override
   void initState() {
     super.initState();
+    _attachmentsCubit = context.read<TaskAttachmentsCubit>();
     context.read<EmployeesCubit>().fetchEmployees();
 
     _titleController = TextEditingController(text: widget.task.title);
@@ -63,9 +65,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final cubit = context.read<TaskAttachmentsCubit>();
-      cubit.loadAttachments(widget.task.id);
-      _attachmentsSub = cubit.stream.listen((state) {
+      _attachmentsCubit.loadAttachments(widget.task.id);
+      _attachmentsSub = _attachmentsCubit.stream.listen((state) {
         if (state.error != null &&
             state.error != _lastSeenAttachmentError &&
             mounted) {
@@ -81,7 +82,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   @override
   void dispose() {
     _attachmentsSub?.cancel();
-    context.read<TaskAttachmentsCubit>().clear();
+    _attachmentsCubit.clear();
     _titleController.dispose();
     _descriptionController.dispose();
     _targetCountController.dispose();
