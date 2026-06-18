@@ -1,17 +1,41 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../shared/widgets/section_header.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
+import '../../data/models/task_attachment_model.dart';
 import '../../data/models/task_model.dart';
 import '../../data/models/task_template_model.dart';
+import '../../data/repositories/task_attachments_repository.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../cubit/templates_cubit.dart';
 import '../cubit/templates_state.dart';
 import '../widgets/due_date_time_picker.dart';
+
+class _PendingUpload {
+  final String uuid;
+  final String storagePath;
+  final String url;
+  final String filename;
+  final String mimeType;
+  final int sizeBytes;
+
+  const _PendingUpload({
+    required this.uuid,
+    required this.storagePath,
+    required this.url,
+    required this.filename,
+    required this.mimeType,
+    required this.sizeBytes,
+  });
+}
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -35,6 +59,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   DateTime? _selectedDueDate;
   bool _hasDueTime = false;
   bool _isSaving = false;
+  late final String _pregenTaskId;
+  late final TaskAttachmentsRepository _attachmentsRepo;
+  final List<_PendingUpload> _pendingBriefAttachments = [];
+  bool _isUploadingAttachment = false;
+  bool _taskWasSaved = false;
 
   // Recurring task options
   bool _isRecurring = false;
@@ -49,16 +78,206 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   void initState() {
     super.initState();
+    _pregenTaskId = const Uuid().v4();
+    _attachmentsRepo = TaskAttachmentsRepository(
+      FirebaseFirestore.instance,
+      FirebaseStorage.instance,
+    );
     context.read<EmployeesCubit>().fetchEmployees();
   }
 
   @override
   void dispose() {
+    if (!_taskWasSaved) {
+      for (final p in _pendingBriefAttachments) {
+        _attachmentsRepo.deleteStorageFile(p.storagePath);
+      }
+    }
     _titleController.dispose();
     _descriptionController.dispose();
     _targetCountController.dispose();
     _dayOfMonthController.dispose();
     super.dispose();
+  }
+
+  Widget _buildAttachmentsSection(BuildContext context) {
+    final user = context.read<AuthCubit>().state.user;
+    final userId = user?.id ?? '';
+    final userName = user?.name ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'task_materials'.tr(),
+          subtitle: 'task_materials_subtitle'.tr(),
+        ),
+        if (_pendingBriefAttachments.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.sm),
+            child: Text(
+              'no_task_materials'.tr(),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.sm),
+            child: Wrap(
+              spacing: AppSizes.sm,
+              runSpacing: AppSizes.sm,
+              children: _pendingBriefAttachments
+                  .map((p) => _buildPendingThumbnail(context, p))
+                  .toList(),
+            ),
+          ),
+        if (_isUploadingAttachment)
+          const Padding(
+            padding: EdgeInsets.only(bottom: AppSizes.sm),
+            child: LinearProgressIndicator(),
+          ),
+        if (_pendingBriefAttachments.length < 5 && !_isUploadingAttachment)
+          OutlinedButton.icon(
+            onPressed: () => _pickAttachment(context, userId, userName),
+            icon: const Icon(Icons.add_a_photo_outlined),
+            label: Text('add_photo'.tr()),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPendingThumbnail(BuildContext context, _PendingUpload p) {
+    return GestureDetector(
+      onTap: () => _openImageViewer(context, p.url),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 80,
+          height: 80,
+          child: Image.network(
+            p.url,
+            fit: BoxFit.cover,
+            loadingBuilder: (_, child, progress) => progress == null
+                ? child
+                : const ColoredBox(
+                    color: Color(0x1A000000),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+            errorBuilder: (_, __, ___) => const ColoredBox(
+              color: Color(0x1A000000),
+              child: Icon(Icons.broken_image_outlined),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openImageViewer(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(ctx),
+              child: InteractiveViewer(
+                child: Center(
+                  child: Image.network(url, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAttachment(
+    BuildContext context,
+    String userId,
+    String userName,
+  ) async {
+    final source = await _showAttachmentSourcePicker(context);
+    if (source == null) return;
+
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 2048,
+      maxHeight: 2048,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    if (!mounted) return;
+
+    setState(() => _isUploadingAttachment = true);
+
+    try {
+      final uuid = const Uuid().v4();
+      final result = await _attachmentsRepo.uploadToStorage(
+        taskId: _pregenTaskId,
+        uuid: uuid,
+        file: file,
+      );
+      if (mounted) {
+        setState(() {
+          _pendingBriefAttachments.add(_PendingUpload(
+            uuid: uuid,
+            storagePath: result.storagePath,
+            url: result.url,
+            filename: result.filename,
+            mimeType: result.mimeType,
+            sizeBytes: result.sizeBytes,
+          ));
+          _isUploadingAttachment = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isUploadingAttachment = false);
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          SnackBar(content: Text('attachment_upload_failed'.tr())),
+        );
+      }
+    }
+  }
+
+  Future<ImageSource?> _showAttachmentSourcePicker(BuildContext context) {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text('photo_source_camera'.tr()),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text('photo_source_gallery'.tr()),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _saveTask() async {
@@ -186,7 +405,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             ? _selectedDueDate!
             : TaskModel.dueDateEndOfDay(_selectedDueDate!);
         final task = TaskModel(
-          id: '',
+          id: _pregenTaskId,
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
           assignedTo: _selectedEmployeeId!,
@@ -206,8 +425,26 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         );
         final repository = TasksRepository(FirebaseFirestore.instance);
         await repository.createTask(task);
+        for (final p in _pendingBriefAttachments) {
+          await _attachmentsRepo.createAttachmentRecord(
+            taskId: _pregenTaskId,
+            attachment: TaskAttachmentModel(
+              id: p.uuid,
+              type: 'brief',
+              uploadedBy: currentUser.id,
+              uploadedByName: currentUser.name,
+              uploadedAt: DateTime.now(),
+              url: p.url,
+              storagePath: p.storagePath,
+              mimeType: p.mimeType,
+              filename: p.filename,
+              sizeBytes: p.sizeBytes,
+            ),
+          );
+        }
       }
 
+      _taskWasSaved = true;
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (_) {
@@ -283,6 +520,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       ),
                       const SizedBox(height: AppSizes.md),
                       if (!_isRecurring) ...[
+                        _buildAttachmentsSection(context),
+                        const SizedBox(height: AppSizes.md),
                         if (isEmployeesLoading)
                           const Padding(
                             padding: EdgeInsets.only(bottom: AppSizes.md),

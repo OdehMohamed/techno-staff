@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -36,8 +37,10 @@ import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'firebase_options.dart';
 import 'features/employees/data/repositories/employees_repository.dart';
 import 'features/employees/presentation/cubit/employees_cubit.dart';
+import 'features/tasks/data/repositories/task_attachments_repository.dart';
 import 'features/tasks/data/repositories/tasks_repository.dart';
 import 'features/tasks/data/repositories/templates_repository.dart';
+import 'features/tasks/presentation/cubit/task_attachments_cubit.dart';
 import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'features/tasks/presentation/cubit/templates_cubit.dart';
 
@@ -171,6 +174,10 @@ Future<void> main() async {
   final pdfReportService = PdfReportService();
   final attendanceRepository = AttendanceRepository();
   final scheduleRepository = ScheduleRepository();
+  final taskAttachmentsRepository = TaskAttachmentsRepository(
+    FirebaseFirestore.instance,
+    FirebaseStorage.instance,
+  );
 
   runApp(
     EasyLocalization(
@@ -229,6 +236,11 @@ Future<void> main() async {
           BlocProvider(
             create: (_) =>
                 ChatListCubit(chatRepository: chatRepository),
+          ),
+          BlocProvider(
+            create: (_) => TaskAttachmentsCubit(
+              repository: taskAttachmentsRepository,
+            ),
           ),
           // Pre-created instance — shared with the FCM onMessage suppression
           // logic above so no BuildContext is needed in the listener.

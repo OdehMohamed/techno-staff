@@ -15,6 +15,7 @@ class FirebasePaths {
   static const String appSettings = 'app_settings';
   static const String conversations = 'conversations';
   static const String messages = 'messages';
+  static const String taskAttachments = 'attachments';
 
   // Fields (اختياري بس مهم لقدام)
   static const String createdAt = 'createdAt';

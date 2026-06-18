@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +15,8 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/priority_badge.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../cubit/task_attachments_cubit.dart';
+import '../cubit/task_attachments_state.dart';
 import '../cubit/task_logs_cubit.dart';
 import '../cubit/task_logs_state.dart';
 import '../cubit/tasks_cubit.dart';
@@ -20,6 +24,7 @@ import '../cubit/tasks_state.dart';
 import '../../data/models/task_model.dart';
 import '../widgets/countdown_chip.dart';
 import '../widgets/countdown_clock_provider.dart';
+import '../widgets/task_attachments_section.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskModel task;
@@ -32,14 +37,36 @@ class TaskDetailsScreen extends StatefulWidget {
 
 class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   bool _openingThread = false;
+  StreamSubscription<TaskAttachmentsState>? _attachmentsSub;
+  String? _lastSeenAttachmentError;
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<TaskLogsCubit>().fetchTaskLogs(widget.task.id);
+      final cubit = context.read<TaskAttachmentsCubit>();
+      cubit.loadAttachments(widget.task.id);
+      _attachmentsSub = cubit.stream.listen((state) {
+        if (state.error != null &&
+            state.error != _lastSeenAttachmentError &&
+            mounted) {
+          _lastSeenAttachmentError = state.error;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error!.tr())),
+          );
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _attachmentsSub?.cancel();
+    context.read<TaskAttachmentsCubit>().clear();
+    super.dispose();
   }
 
   Future<void> _openTaskThread(TaskModel task) async {
@@ -102,6 +129,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final canDiscuss = currentUser != null &&
         (currentUser.id == task.assignedBy ||
             currentUser.id == task.assignedTo);
+
+    final canUploadEvidence = currentUser != null &&
+        (currentUser.role == 'admin' || task.assignedTo == currentUser.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -338,6 +368,22 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                           ],
                         ],
                       ),
+                    ),
+                    const SizedBox(height: AppSizes.xl),
+                    TaskAttachmentsSection(
+                      taskId: task.id,
+                      type: 'brief',
+                      canUpload: canEditOrDelete,
+                      uploadedBy: currentUser?.id ?? '',
+                      uploadedByName: currentUser?.name ?? '',
+                    ),
+                    const SizedBox(height: AppSizes.xl),
+                    TaskAttachmentsSection(
+                      taskId: task.id,
+                      type: 'evidence',
+                      canUpload: canUploadEvidence,
+                      uploadedBy: currentUser?.id ?? '',
+                      uploadedByName: currentUser?.name ?? '',
                     ),
                     const SizedBox(height: AppSizes.xl),
                     SectionHeader(

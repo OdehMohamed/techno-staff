@@ -242,6 +242,20 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
 ---
 
+### v1.7.0 — Task Attachments
+
+#### 19. Task Attachments — `feat/task-attachments`
+
+- **Priority**: Should-fix (feature)
+- **Status**: In progress — implementation complete, awaiting owner smoke test
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.7.0+10
+- **Added**: 2026-06-18
+- **Description**: Unified `task_attachments` Firestore sub-collection with two attachment types: Task Materials (`brief`) for creator/admin reference files at creation/edit time, and Completion Evidence (`evidence`) for assignee proof-of-completion photos. Image-only in v1.7.0 (camera + gallery); documents deferred to v1.8.0. Pre-generated task ID enables eager uploads during task creation. Same UUID for Storage key and Firestore doc ID enables O(1) orphan-cleanup verification. Firestore rules enforce brief vs. evidence write permissions; Storage rules are auth-only permissive. New deps: `firebase_storage ^13.4.2`, `image_picker ^1.1.2`. 14 new translation keys (EN + AR). Full binary release required (new native plugins).
+- **Acceptance criteria**: 12 smoke-test checklist items in `CURRENT_TASK.md` pass. `flutter analyze lib/` clean. `firebase deploy --only firestore:rules,storage` succeeds.
+
+---
+
 ### v1.6.0 — Chat Phase 2
 
 #### 18. Chat Phase 2 — `feat/chat-phase-2`
