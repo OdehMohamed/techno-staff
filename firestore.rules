@@ -109,7 +109,9 @@ service cloud.firestore {
           );
 
         allow update: if false;
-        allow delete: if false;
+        allow delete: if isAdmin()
+          || relatedTask(taskId).data.assignedBy == request.auth.uid
+          || resource.data.uploadedBy == request.auth.uid;
       }
     }
 

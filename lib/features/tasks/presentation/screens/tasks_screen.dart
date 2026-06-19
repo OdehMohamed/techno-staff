@@ -32,6 +32,21 @@ class _TasksScreenState extends State<TasksScreen> {
   final TextEditingController _searchController = TextEditingController();
   TaskFilters _filters = const TaskFilters();
   Set<_QuickFilter> _quickFilters = {};
+  int _initialTabIndex = 0;
+  bool _argsRead = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_argsRead) {
+      _argsRead = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is String && args.isNotEmpty) {
+        _filters = _filters.copyWith(filterAssigneeId: args);
+        _initialTabIndex = 1; // "All Tasks" tab for admin
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -442,6 +457,7 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget _buildAdminTabs(TasksState state, AppUser? user) {
     return DefaultTabController(
       length: 3,
+      initialIndex: _initialTabIndex,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

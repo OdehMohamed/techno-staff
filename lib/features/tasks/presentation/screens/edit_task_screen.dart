@@ -82,7 +82,10 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   @override
   void dispose() {
     _attachmentsSub?.cancel();
-    _attachmentsCubit.clear();
+    // Do NOT call _attachmentsCubit.clear() here — this screen sits on top of
+    // TaskDetailsScreen which owns the stream for the same task. Clearing here
+    // kills the shared subscription and leaves TaskDetailsScreen with no data.
+    // TaskDetailsScreen.dispose() is responsible for clearing.
     _titleController.dispose();
     _descriptionController.dispose();
     _targetCountController.dispose();
@@ -241,6 +244,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                         taskId: widget.task.id,
                         type: 'brief',
                         canUpload: canEditTask,
+                        canDeleteAny: canEditTask,
                         uploadedBy: currentUser.id,
                         uploadedByName: currentUser.name,
                       ),

@@ -384,5 +384,9 @@
   "uploading_attachment": "Uploading...",
   "attachments_limit_reached": "Maximum of 5 attachments reached",
   "photo_source_camera": "Take Photo",
-  "photo_source_gallery": "Choose from Gallery"
+  "photo_source_gallery": "Choose from Gallery",
+  "delete_attachment": "Delete Photo",
+  "delete_attachment_confirm": "This photo will be permanently deleted.",
+  "attachment_deleted": "Photo deleted",
+  "attachment_delete_failed": "Failed to delete photo"
 }

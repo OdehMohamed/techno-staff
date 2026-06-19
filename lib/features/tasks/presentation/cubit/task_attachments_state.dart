@@ -8,6 +8,7 @@ class TaskAttachmentsState {
   final List<TaskAttachmentModel> briefAttachments;
   final List<TaskAttachmentModel> evidenceAttachments;
   final bool isUploading;
+  final bool isDeleting;
   final String? error;
 
   const TaskAttachmentsState({
@@ -16,6 +17,7 @@ class TaskAttachmentsState {
     this.briefAttachments = const [],
     this.evidenceAttachments = const [],
     this.isUploading = false,
+    this.isDeleting = false,
     this.error,
   });
 
@@ -25,6 +27,7 @@ class TaskAttachmentsState {
     List<TaskAttachmentModel>? briefAttachments,
     List<TaskAttachmentModel>? evidenceAttachments,
     bool? isUploading,
+    bool? isDeleting,
     String? error,
     bool clearError = false,
   }) {
@@ -34,6 +37,7 @@ class TaskAttachmentsState {
       briefAttachments: briefAttachments ?? this.briefAttachments,
       evidenceAttachments: evidenceAttachments ?? this.evidenceAttachments,
       isUploading: isUploading ?? this.isUploading,
+      isDeleting: isDeleting ?? this.isDeleting,
       error: clearError ? null : (error ?? this.error),
     );
   }

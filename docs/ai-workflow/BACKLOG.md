@@ -242,6 +242,20 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
 ---
 
+### v1.8.0 — Attachment Workflow Completion + Maintenance
+
+#### 20. v1.8.0 — `feat/v1.8.0`
+
+- **Priority**: Should-fix (feature + maintenance)
+- **Status**: Implementation complete — awaiting PR + deploy
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.8.0+11
+- **Added**: 2026-06-19
+- **Description**: Six items in one cycle. (1) Individual attachment deletion — Firestore rule expanded; uploader/creator/admin can delete their own or any attachment; real circle-X overlay with confirmation dialog. (2) Real-time attachment sync — cubit now holds a `StreamSubscription` on `snapshots()`; additions and deletions appear without screen refresh. (3) Notification auto-expiry — `cleanupExpiredNotifications` CF (weekly cron, 30-day retention, 500-doc batch deletes, Admin SDK bypass). (4) Cloud Functions modularization — `index.js` split into 7 modules under `functions/lib/`; zero behavioral change. (5) Android toolchain cleanup — removed two deprecated Gradle migrator flags. (6) Employee → Tasks shortcut — task-icon button on each employee card pre-filters the Tasks screen to that employee.
+- **Acceptance criteria**: 12 smoke-test checklist items in `CURRENT_TASK.md` pass. `flutter analyze lib/` clean. `npm run lint` clean. `firebase deploy --only functions,firestore:rules` succeeds.
+
+---
+
 ### v1.7.0 — Task Attachments
 
 #### 19. Task Attachments — `feat/task-attachments`
