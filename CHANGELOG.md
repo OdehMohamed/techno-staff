@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Task Materials** — task creators and admins can attach up to 5 reference photos to a task at creation time or via Edit Task. Photos are stored in Firebase Storage and displayed as a scrollable thumbnail grid in Task Details and Edit Task.
-- **Completion Evidence** — task assignees (and admins) can upload up to 5 photos as proof of completion directly from the Task Details screen. Photos are stored in a separate `evidence` bucket within the same attachment sub-collection and displayed below Task Materials.
+- **Task Materials** — task creators and admins can attach reference photos to a task at creation time or via Edit Task. Photos are stored in Firebase Storage and displayed as a scrollable thumbnail grid in Task Details and Edit Task.
+- **Completion Evidence** — task assignees (and admins) can upload photos as proof of completion directly from the Task Details screen. Photos are stored in a separate `evidence` bucket within the same attachment sub-collection and displayed below Task Materials.
 - **Full-screen image viewer** — tapping any attachment thumbnail opens a full-screen black-background viewer with pinch-to-zoom (`InteractiveViewer`) and an `×` close button.
 - **Camera and gallery support** — bottom sheet source picker allows choosing between the device camera and the photo library on both iOS and Android.
 - **14 new translation keys** across English and Arabic for all attachment labels, empty states, error messages, and source picker options.
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New dependencies: `firebase_storage ^13.4.2`, `image_picker ^1.1.2`.
 - iOS: `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` added to `Info.plist`.
 - **Requires full binary release** (new native plugins).
-- **Requires `firebase deploy --only firestore:rules,storage`** after merge.
+- **Requires `firebase deploy --only firestore:rules,storage,functions`** after merge (new `cleanupTaskAttachments` function).
 
 ## [1.6.0] - 2026-06-17
 
