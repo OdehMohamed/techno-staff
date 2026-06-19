@@ -1,22 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../data/models/task_attachment_model.dart';
 import '../../data/repositories/task_attachments_repository.dart';
 import 'task_attachments_state.dart';
 
 class TaskAttachmentsCubit extends Cubit<TaskAttachmentsState> {
   final TaskAttachmentsRepository _repository;
+  StreamSubscription<List<TaskAttachmentModel>>? _watchSub;
 
   TaskAttachmentsCubit({required TaskAttachmentsRepository repository})
       : _repository = repository,
         super(const TaskAttachmentsState());
 
   Future<void> loadAttachments(String taskId) async {
-    if (state.currentTaskId == taskId &&
-        state.status == TaskAttachmentsStatus.loaded) {
-      return;
-    }
+    if (state.currentTaskId == taskId) return; // already watching this task
+
+    await _watchSub?.cancel();
 
     emit(state.copyWith(
       status: TaskAttachmentsStatus.loading,
@@ -26,16 +29,20 @@ class TaskAttachmentsCubit extends Cubit<TaskAttachmentsState> {
       clearError: true,
     ));
 
-    try {
-      final all = await _repository.getAttachments(taskId);
-      emit(state.copyWith(
-        status: TaskAttachmentsStatus.loaded,
-        briefAttachments: all.where((a) => a.type == 'brief').toList(),
-        evidenceAttachments: all.where((a) => a.type == 'evidence').toList(),
-      ));
-    } catch (_) {
-      emit(state.copyWith(status: TaskAttachmentsStatus.error));
-    }
+    _watchSub = _repository.watchAttachments(taskId).listen(
+      (all) {
+        if (isClosed) return;
+        emit(state.copyWith(
+          status: TaskAttachmentsStatus.loaded,
+          briefAttachments: all.where((a) => a.type == 'brief').toList(),
+          evidenceAttachments: all.where((a) => a.type == 'evidence').toList(),
+        ));
+      },
+      onError: (_) {
+        if (isClosed) return;
+        emit(state.copyWith(status: TaskAttachmentsStatus.error));
+      },
+    );
   }
 
   Future<void> addAttachment({
@@ -50,7 +57,7 @@ class TaskAttachmentsCubit extends Cubit<TaskAttachmentsState> {
 
     try {
       final uuid = const Uuid().v4();
-      final attachment = await _repository.uploadAttachment(
+      await _repository.uploadAttachment(
         taskId: taskId,
         type: type,
         uuid: uuid,
@@ -58,18 +65,9 @@ class TaskAttachmentsCubit extends Cubit<TaskAttachmentsState> {
         uploadedBy: uploadedBy,
         uploadedByName: uploadedByName,
       );
-
-      if (type == 'brief') {
-        emit(state.copyWith(
-          isUploading: false,
-          briefAttachments: [...state.briefAttachments, attachment],
-        ));
-      } else {
-        emit(state.copyWith(
-          isUploading: false,
-          evidenceAttachments: [...state.evidenceAttachments, attachment],
-        ));
-      }
+      // The stream delivers the new attachment automatically; no manual
+      // list append needed here.
+      emit(state.copyWith(isUploading: false));
     } catch (_) {
       emit(state.copyWith(
         isUploading: false,
@@ -78,5 +76,39 @@ class TaskAttachmentsCubit extends Cubit<TaskAttachmentsState> {
     }
   }
 
-  void clear() => emit(const TaskAttachmentsState());
+  Future<void> deleteAttachment({
+    required String taskId,
+    required String attachmentId,
+    required String storagePath,
+  }) async {
+    if (state.isDeleting) return;
+    emit(state.copyWith(isDeleting: true, clearError: true));
+
+    try {
+      await _repository.deleteAttachment(
+        taskId: taskId,
+        attachmentId: attachmentId,
+        storagePath: storagePath,
+      );
+      // The stream removes the tile automatically.
+      emit(state.copyWith(isDeleting: false));
+    } catch (_) {
+      emit(state.copyWith(
+        isDeleting: false,
+        error: 'attachment_delete_failed',
+      ));
+    }
+  }
+
+  Future<void> clear() async {
+    await _watchSub?.cancel();
+    _watchSub = null;
+    emit(const TaskAttachmentsState());
+  }
+
+  @override
+  Future<void> close() async {
+    await _watchSub?.cancel();
+    return super.close();
+  }
 }

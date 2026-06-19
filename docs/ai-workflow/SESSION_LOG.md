@@ -1,3 +1,55 @@
+## 2026-06-19 — Claude Sonnet 4.6 — v1.8.0 Attachment workflow completion + maintenance
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.8.0`
+- **Goal**: Complete the attachment workflow (real-time sync + individual deletion), add notification auto-expiry, modularize Cloud Functions, clean up Android toolchain, add Employee → Tasks shortcut.
+- **Outcome**: ✅ All 6 items implemented. `flutter analyze lib/` clean. `npm run lint` clean. 4 translation keys added.
+
+### Work done
+
+**Cloud Functions modularization**
+- `functions/index.js` rewritten to ~30-line thin re-export; `admin.initializeApp()` called once before any module require
+- `functions/lib/shared.js` — shared timezone helpers, i18n, FCM/notification helpers (extracted from monolith)
+- `functions/lib/tasks.js` — `generateRecurringTaskInstances`, `cleanupTaskAttachments`
+- `functions/lib/task-notifications.js` — 6 task notification functions
+- `functions/lib/attendance.js` — 4 attendance functions
+- `functions/lib/users.js` — 3 user management functions
+- `functions/lib/chat.js` — `onNewChatMessage`
+- `functions/lib/notifications.js` — new `cleanupExpiredNotifications` (weekly cron, 30-day retention)
+
+**Real-time attachment sync**
+- `task_attachments_repository.dart` — removed `getAttachments()`; added `watchAttachments()` stream + `deleteAttachment()` (Firestore-first, Storage fire-and-forget)
+- `task_attachments_cubit.dart` — rewritten with `StreamSubscription<List<TaskAttachmentModel>>`, `deleteAttachment()`, async `clear()`, `close()` override
+- `task_attachments_state.dart` — added `isDeleting: bool` field
+
+**Individual attachment deletion**
+- `firestore.rules` — attachment `allow delete` expanded from `if false` to admin / task-creator / uploader
+- `attachment_tile.dart` — `taskId` + `canDelete` params; `_DeleteButton` overlay (22×22 red circle, X icon) with confirmation dialog + snackbar on success
+- `task_attachments_section.dart` — `canDeleteAny` param; per-tile `canDelete = canDeleteAny || a.uploadedBy == uploadedBy`; upload/delete progress gate on `!isDeleting`
+- `task_details_screen.dart` + `edit_task_screen.dart` — `canDeleteAny: canEditOrDelete` / `canEditTask` passed to sections
+
+**Android toolchain cleanup**
+- `android/gradle.properties` — removed `android.builtInKotlin=false` and `android.newDsl=false` (deprecated Flutter Gradle migrator flags)
+
+**Employee → Tasks shortcut**
+- `employees_screen.dart` — `task_alt_outlined` IconButton on each employee card; pushes `RouteNames.tasks` with `employee.id` as argument
+- `tasks_screen.dart` — `initState` reads `ModalRoute` argument; calls `_filters.copyWith(filterAssigneeId: args)` before first load
+
+**Translations**
+- 4 new keys × 2 locales: `delete_attachment`, `delete_attachment_confirm`, `attachment_deleted`, `attachment_delete_failed`
+
+### Quality gates
+
+- `flutter analyze lib/` — no issues
+- `npm run lint` — clean
+- `flutter test` — pending owner run
+
+### Follow-ups
+
+Version bump `1.7.0+10` → `1.8.0+11`, CHANGELOG update, PR, `firebase deploy --only functions,firestore:rules`, full binary release (Shorebird patch not eligible — new CF + Firestore rule).
+
+---
+
 ## 2026-06-18 — Claude Sonnet 4.6 — v1.7.0 Task Attachments
 
 - **Agent**: Claude Sonnet 4.6

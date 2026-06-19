@@ -173,56 +173,60 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                               duration: const Duration(milliseconds: 220),
                               curve: Curves.easeInOut,
                               child: AppCard(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    CircleAvatar(
-                                      radius: 24,
-                                      child: Text(
-                                        employee.name.isNotEmpty
-                                            ? employee.name[0].toUpperCase()
-                                            : '?',
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
+                                    // Identity row — full card width, no competing columns
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 24,
+                                          child: Text(
+                                            employee.name.isNotEmpty
+                                                ? employee.name[0]
+                                                    .toUpperCase()
+                                                : '?',
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSizes.md),
+                                        Expanded(
+                                          child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Expanded(
-                                                child: Text(
-                                                  employee.name,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.titleLarge,
-                                                ),
+                                              Text(
+                                                employee.name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleLarge,
                                               ),
-                                              StatusBadge(
-                                                status: employee.isActive
-                                                    ? 'active'
-                                                    : 'inactive',
+                                              const SizedBox(
+                                                  height: AppSizes.xs),
+                                              Text(employee.email),
+                                              const SizedBox(
+                                                  height: AppSizes.xs),
+                                              Text(
+                                                '${'role'.tr()}: ${employee.role.tr()}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium,
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: AppSizes.sm),
-                                          Text(employee.email),
-                                          const SizedBox(height: AppSizes.xs),
-                                          Text(
-                                            '${'role'.tr()}: ${employee.role.tr()}',
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium,
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                        StatusBadge(
+                                          status: employee.isActive
+                                              ? 'active'
+                                              : 'inactive',
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: AppSizes.md),
-                                    Column(
+                                    const Divider(height: AppSizes.lg),
+                                    // Actions row — switch on left, buttons on right
+                                    Row(
                                       children: [
                                         Switch(
                                           value: employee.isActive,
@@ -239,51 +243,55 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                           employee.isActive
                                               ? 'active'.tr()
                                               : 'inactive'.tr(),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium,
                                         ),
-                                        const SizedBox(height: AppSizes.xs),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            _openingDmFor == employee.id
-                                                ? const SizedBox(
-                                                    width: 40,
-                                                    height: 40,
-                                                    child: Center(
-                                                      child:
-                                                          SizedBox(
-                                                        width: 18,
-                                                        height: 18,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                : IconButton(
-                                                    icon: const Icon(
-                                                        Icons.chat_bubble_outline),
-                                                    tooltip:
-                                                        'send_message'.tr(),
-                                                    onPressed: () => _openDm(
-                                                      employee.id,
-                                                      employee.name,
+                                        const Spacer(),
+                                        _openingDmFor == employee.id
+                                            ? const SizedBox(
+                                                width: 48,
+                                                height: 48,
+                                                child: Center(
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
                                                     ),
                                                   ),
-                                            IconButton(
-                                              icon: const Icon(Icons.schedule),
-                                              tooltip: 'schedule'.tr(),
-                                              onPressed: () =>
-                                                  _openScheduleSheet(
-                                                context,
-                                                employee.id,
-                                                employee.name,
+                                                ),
+                                              )
+                                            : IconButton(
+                                                icon: const Icon(
+                                                    Icons.chat_bubble_outline),
+                                                tooltip: 'send_message'.tr(),
+                                                onPressed: () => _openDm(
+                                                  employee.id,
+                                                  employee.name,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                        IconButton(
+                                          icon: const Icon(Icons.schedule),
+                                          tooltip: 'schedule'.tr(),
+                                          onPressed: () =>
+                                              _openScheduleSheet(
+                                            context,
+                                            employee.id,
+                                            employee.name,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                              Icons.task_alt_outlined),
+                                          tooltip: 'tasks'.tr(),
+                                          onPressed: () =>
+                                              Navigator.pushNamed(
+                                            context,
+                                            RouteNames.tasks,
+                                            arguments: employee.id,
+                                          ),
                                         ),
                                       ],
                                     ),

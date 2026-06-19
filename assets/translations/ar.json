@@ -384,5 +384,9 @@
   "uploading_attachment": "جارٍ الرفع...",
   "attachments_limit_reached": "تم الوصول إلى الحد الأقصى وهو 5 مرفقات",
   "photo_source_camera": "التقاط صورة",
-  "photo_source_gallery": "اختيار من المعرض"
+  "photo_source_gallery": "اختيار من المعرض",
+  "delete_attachment": "حذف الصورة",
+  "delete_attachment_confirm": "سيتم حذف هذه الصورة بشكل دائم.",
+  "attachment_deleted": "تم حذف الصورة",
+  "attachment_delete_failed": "فشل حذف الصورة"
 }

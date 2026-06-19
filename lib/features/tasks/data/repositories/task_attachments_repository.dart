@@ -104,17 +104,31 @@ class TaskAttachmentsRepository {
     return attachment;
   }
 
-  Future<List<TaskAttachmentModel>> getAttachments(String taskId) async {
-    final snapshot = await _firestore
+  Stream<List<TaskAttachmentModel>> watchAttachments(String taskId) {
+    return _firestore
         .collection(FirebasePaths.tasks)
         .doc(taskId)
         .collection(FirebasePaths.taskAttachments)
         .orderBy('uploadedAt')
-        .get(const GetOptions(source: Source.server));
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => TaskAttachmentModel.fromMap(doc.id, doc.data()))
+            .toList());
+  }
 
-    return snapshot.docs
-        .map((doc) => TaskAttachmentModel.fromMap(doc.id, doc.data()))
-        .toList();
+  Future<void> deleteAttachment({
+    required String taskId,
+    required String attachmentId,
+    required String storagePath,
+  }) async {
+    await _firestore
+        .collection(FirebasePaths.tasks)
+        .doc(taskId)
+        .collection(FirebasePaths.taskAttachments)
+        .doc(attachmentId)
+        .delete();
+    // Fire-and-forget — Storage orphans handled by cleanupTaskAttachments CF.
+    unawaited(deleteStorageFile(storagePath));
   }
 
   // Fire-and-forget orphan cleanup — swallows all errors intentionally.

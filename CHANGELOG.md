@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-06-19
+
+### Added
+
+- **Individual attachment deletion** — admins, task creators, and the original uploader can now delete individual attachment photos. A red ✕ overlay appears on each photo the current user is authorised to delete; tapping it shows a confirmation dialog before the photo is permanently removed.
+- **Employee → Tasks shortcut** — each employee card in the Employees screen now includes a Tasks icon button. Tapping it opens the Tasks screen pre-filtered to show only that employee's tasks, landing directly on the All Tasks tab.
+- **Notification auto-expiry** — a new Cloud Function (`cleanupExpiredNotifications`) runs every Sunday at 02:00 Asia/Jerusalem and permanently deletes in-app notifications older than 30 days, keeping the notifications collection from growing unbounded.
+
+### Improved
+
+- **Real-time attachment sync** — the attachment list in Task Details and Edit Task now updates in real time via a Firestore stream. Photos added or deleted by another user on a different device appear (or disappear) without needing to navigate away and back.
+- **Employee card redesign** — the Employees screen card layout has been restructured into two clear sections: an identity row (avatar, name, email, role, status badge) with full card width, and a separate action row (active switch on the left, Chat / Schedule / Tasks buttons on the right). Names and email addresses no longer wrap awkwardly regardless of length.
+
+### Fixed
+
+- **Edit Task back-navigation attachment loss** — returning from Edit Task to Task Details no longer briefly clears the attachment grid. The shared attachment stream is now owned exclusively by Task Details, which is the correct lifecycle owner.
+
+### Technical
+
+- **Cloud Functions modularised** — `functions/index.js` (1 999 lines) split into six focused modules under `functions/lib/` (`shared`, `tasks`, `task-notifications`, `attendance`, `users`, `chat`, `notifications`). All 18 exported function names are unchanged; no behavioural differences.
+- **Android toolchain** — removed deprecated `android.builtInKotlin=false` and `android.newDsl=false` flags from `android/gradle.properties`. These were injected by the Flutter Gradle migrator and are not needed since the project already uses Kotlin DSL.
+- **4 new translation keys** across English and Arabic (`delete_attachment`, `delete_attachment_confirm`, `attachment_deleted`, `attachment_delete_failed`).
+- **Requires `firebase deploy --only functions,firestore:rules`** after merge (new `cleanupExpiredNotifications` function + expanded attachment delete rule).
+- **Requires full binary release** (new Firestore stream path + Cloud Function deploy; Shorebird patch not eligible).
+
 ## [1.7.0] - 2026-06-18
 
 ### Added

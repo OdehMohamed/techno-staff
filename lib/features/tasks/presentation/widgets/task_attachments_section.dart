@@ -16,6 +16,10 @@ class TaskAttachmentsSection extends StatelessWidget {
   final String uploadedBy;
   final String uploadedByName;
 
+  /// True when the viewer is an admin or the task creator — they may delete
+  /// any attachment on this task regardless of who uploaded it.
+  final bool canDeleteAny;
+
   const TaskAttachmentsSection({
     super.key,
     required this.taskId,
@@ -23,6 +27,7 @@ class TaskAttachmentsSection extends StatelessWidget {
     required this.canUpload,
     required this.uploadedBy,
     required this.uploadedByName,
+    this.canDeleteAny = false,
   });
 
   @override
@@ -45,6 +50,7 @@ class TaskAttachmentsSection extends StatelessWidget {
         // Hide empty read-only sections entirely.
         if (attachments.isEmpty &&
             !canUpload &&
+            !canDeleteAny &&
             state.status == TaskAttachmentsStatus.loaded) {
           return const SizedBox.shrink();
         }
@@ -81,16 +87,23 @@ class TaskAttachmentsSection extends StatelessWidget {
                 child: Wrap(
                   spacing: AppSizes.sm,
                   runSpacing: AppSizes.sm,
-                  children:
-                      attachments.map((a) => AttachmentTile(attachment: a)).toList(),
+                  children: attachments.map((a) {
+                    final canDelete =
+                        canDeleteAny || a.uploadedBy == uploadedBy;
+                    return AttachmentTile(
+                      attachment: a,
+                      taskId: taskId,
+                      canDelete: canDelete,
+                    );
+                  }).toList(),
                 ),
               ),
-            if (state.isUploading)
+            if (state.isUploading || state.isDeleting)
               const Padding(
                 padding: EdgeInsets.only(bottom: AppSizes.sm),
                 child: LinearProgressIndicator(),
               ),
-            if (canUpload && !state.isUploading)
+            if (canUpload && !state.isUploading && !state.isDeleting)
               OutlinedButton.icon(
                 onPressed: () => _pickPhoto(context),
                 icon: const Icon(Icons.add_a_photo_outlined),
