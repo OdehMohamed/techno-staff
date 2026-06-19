@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,8 +10,10 @@ import '../../../../features/employees/presentation/cubit/employees_cubit.dart';
 import '../../../../features/employees/presentation/cubit/employees_state.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/tasks_repository.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../cubit/task_attachments_cubit.dart';
+import '../cubit/task_attachments_state.dart';
 import '../widgets/due_date_time_picker.dart';
+import '../widgets/task_attachments_section.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final TaskModel task;
@@ -32,10 +37,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   DateTime? _selectedDueDate;
   bool _hasDueTime = false;
   bool _isSaving = false;
+  late final TaskAttachmentsCubit _attachmentsCubit;
+  StreamSubscription<TaskAttachmentsState>? _attachmentsSub;
+  String? _lastSeenAttachmentError;
 
   @override
   void initState() {
     super.initState();
+    _attachmentsCubit = context.read<TaskAttachmentsCubit>();
     context.read<EmployeesCubit>().fetchEmployees();
 
     _titleController = TextEditingController(text: widget.task.title);
@@ -53,10 +62,27 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     _currentCountController = TextEditingController(
       text: widget.task.currentCount.toString(),
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _attachmentsCubit.loadAttachments(widget.task.id);
+      _attachmentsSub = _attachmentsCubit.stream.listen((state) {
+        if (state.error != null &&
+            state.error != _lastSeenAttachmentError &&
+            mounted) {
+          _lastSeenAttachmentError = state.error;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error!.tr())),
+          );
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
+    _attachmentsSub?.cancel();
+    _attachmentsCubit.clear();
     _titleController.dispose();
     _descriptionController.dispose();
     _targetCountController.dispose();
@@ -209,6 +235,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                      TaskAttachmentsSection(
+                        taskId: widget.task.id,
+                        type: 'brief',
+                        canUpload: canEditTask,
+                        uploadedBy: currentUser.id,
+                        uploadedByName: currentUser.name,
                       ),
                       const SizedBox(height: AppSizes.md),
                       DropdownButtonFormField<String>(

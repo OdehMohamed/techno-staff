@@ -1,3 +1,51 @@
+## 2026-06-18 — Claude Sonnet 4.6 — v1.7.0 Task Attachments
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/task-attachments`
+- **Goal**: Implement unified task attachment system (Task Materials + Completion Evidence) with Firebase Storage + Firestore sub-collection.
+- **Outcome**: ✅ Full implementation complete. `flutter analyze lib/` clean. 14 translation keys added.
+
+### Work done
+
+**Infrastructure**
+- `storage.rules` — new file; permissive auth-only Storage rules
+- `firebase.json` — added `storage` rules deployment
+- `firestore.rules` — added `attachments/{attachmentId}` sub-collection block inside `tasks/{taskId}` with brief/evidence write gating
+- `pubspec.yaml` — version `1.6.0+9` → `1.7.0+10`; added `firebase_storage ^13.4.2`, `image_picker ^1.1.2`
+- `ios/Runner/Info.plist` — `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription`
+- `lib/core/constants/firebase_paths.dart` — added `taskAttachments = 'attachments'`
+
+**Data layer**
+- `task_attachment_model.dart` — Firestore DTO; `isImage` computed getter; `fromMap`/`toMap`
+- `task_attachments_repository.dart` — `uploadToStorage` (Storage only), `createAttachmentRecord` (Firestore only), `uploadAttachment` (combined for existing tasks), `getAttachments`, `deleteStorageFile` (fire-and-forget orphan cleanup); `StorageUploadResult` value type
+- `tasks_repository.dart` — `createTask` now uses `set(doc)` when `task.id` is non-empty (pre-generated ID path)
+
+**State management**
+- `task_attachments_state.dart` — `TaskAttachmentsStatus` enum; state with `briefAttachments`, `evidenceAttachments`, `isUploading`, `error`, `currentTaskId`; `copyWith` with `clearError` flag
+- `task_attachments_cubit.dart` — `loadAttachments` (same-task guard), `addAttachment` (UUID generation, Storage+Firestore combined write), `clear`
+
+**UI**
+- `attachment_tile.dart` — 80×80 tap-to-view thumbnail; full-screen `Dialog` + `InteractiveViewer` + close button
+- `task_attachments_section.dart` — pure `BlocBuilder`; hides when empty+read-only; camera/gallery source picker; 5-attachment limit; upload progress bar
+- `add_task_screen.dart` — pre-generated `_pregenTaskId`, `_PendingUpload` struct, eager Storage uploads during form fill, Firestore records committed after task create, `dispose()` cleanup for abandoned uploads, Task Materials section (non-recurring path only)
+- `edit_task_screen.dart` — Task Materials section after description; `loadAttachments` + stream error listener in `initState`; `clear()` in `dispose`
+- `task_details_screen.dart` — Task Materials + Completion Evidence sections between AppCard and activity log; `loadAttachments` + stream error listener; `clear()` in `dispose`; `canUploadEvidence` flag
+- `main.dart` — `TaskAttachmentsRepository` + `TaskAttachmentsCubit` wired into `MultiBlocProvider`
+
+**Translations**
+- 14 new keys × 2 locales: `task_materials`, `task_materials_subtitle`, `task_materials_hint`, `completion_evidence`, `completion_evidence_subtitle`, `completion_evidence_hint`, `add_photo`, `no_task_materials`, `no_completion_evidence`, `attachment_upload_failed`, `uploading_attachment`, `attachments_limit_reached`, `photo_source_camera`, `photo_source_gallery`
+
+### Quality gates
+
+- `flutter analyze lib/` — no issues
+- `flutter test` — pending owner run
+
+### Follow-ups
+
+Owner smoke test (12 items in `CURRENT_TASK.md`) → PR creation → `firebase deploy --only firestore:rules,storage` → Shorebird full binary release → store submission.
+
+---
+
 ## 2026-06-17 — Claude Sonnet 4.6 — Chat Phase 2: employee DM, task threads, broadcast channels
 
 - **Agent**: Claude Sonnet 4.6

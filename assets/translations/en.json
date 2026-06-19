@@ -370,5 +370,19 @@
   "broadcast_channel": "Broadcast Channel",
   "broadcast_channel_hint": "Only admins can post in this channel",
   "admin_only_can_post": "Only admins can post in this channel",
-  "select_all": "Select All"
+  "select_all": "Select All",
+  "task_materials": "Task Materials",
+  "task_materials_subtitle": "Reference files attached by the task creator",
+  "task_materials_hint": "Add photos or files to help the assignee complete this task",
+  "completion_evidence": "Completion Evidence",
+  "completion_evidence_subtitle": "Photos submitted by the assignee as proof of completion",
+  "completion_evidence_hint": "Upload photos to show that this task has been completed",
+  "add_photo": "Add Photo",
+  "no_task_materials": "No materials attached yet",
+  "no_completion_evidence": "No evidence submitted yet",
+  "attachment_upload_failed": "Failed to upload attachment. Please try again.",
+  "uploading_attachment": "Uploading...",
+  "attachments_limit_reached": "Maximum of 5 attachments reached",
+  "photo_source_camera": "Take Photo",
+  "photo_source_gallery": "Choose from Gallery"
 }

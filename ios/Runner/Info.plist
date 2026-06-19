@@ -26,8 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to attach photos to tasks.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to verify attendance check-in and check-out.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to attach photos to tasks.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

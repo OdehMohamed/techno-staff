@@ -9,7 +9,12 @@ class TasksRepository {
   TasksRepository(this._firestore);
 
   Future<void> createTask(TaskModel task) async {
-    await _firestore.collection(FirebasePaths.tasks).add(task.toMap());
+    final collection = _firestore.collection(FirebasePaths.tasks);
+    if (task.id.isEmpty) {
+      await collection.add(task.toMap());
+    } else {
+      await collection.doc(task.id).set(task.toMap());
+    }
   }
 
   Future<List<TaskModel>> getTasksAssignedTo(String userId) async {

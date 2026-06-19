@@ -370,5 +370,19 @@
   "broadcast_channel": "قناة إعلانات",
   "broadcast_channel_hint": "المسؤولون فقط يمكنهم النشر في هذه القناة",
   "admin_only_can_post": "المسؤولون فقط يمكنهم النشر في هذه القناة",
-  "select_all": "تحديد الكل"
+  "select_all": "تحديد الكل",
+  "task_materials": "مواد المهمة",
+  "task_materials_subtitle": "ملفات مرجعية أرفقها منشئ المهمة",
+  "task_materials_hint": "أضف صوراً أو ملفات لمساعدة المُكلَّف على إنجاز المهمة",
+  "completion_evidence": "دليل الإنجاز",
+  "completion_evidence_subtitle": "صور قدّمها المُكلَّف كدليل على إتمام المهمة",
+  "completion_evidence_hint": "ارفع صوراً لإثبات إتمام هذه المهمة",
+  "add_photo": "إضافة صورة",
+  "no_task_materials": "لم تُضَف أي مواد بعد",
+  "no_completion_evidence": "لم يُقدَّم أي دليل بعد",
+  "attachment_upload_failed": "فشل رفع المرفق. يرجى المحاولة مجدداً.",
+  "uploading_attachment": "جارٍ الرفع...",
+  "attachments_limit_reached": "تم الوصول إلى الحد الأقصى وهو 5 مرفقات",
+  "photo_source_camera": "التقاط صورة",
+  "photo_source_gallery": "اختيار من المعرض"
 }

@@ -90,6 +90,27 @@ service cloud.firestore {
       ) || (taskAssignee() && onlyAllowedTaskStatusFieldsChanged());
 
       allow delete: if isAdmin() || taskCreator();
+
+      match /attachments/{attachmentId} {
+        allow read: if isAdmin()
+          || relatedTask(taskId).data.assignedBy == request.auth.uid
+          || relatedTask(taskId).data.assignedTo == request.auth.uid;
+
+        allow create: if signedIn()
+          && request.resource.data.uploadedBy == request.auth.uid
+          && (
+            (request.resource.data.type == 'brief'
+              && (isAdmin()
+                  || relatedTask(taskId).data.assignedBy == request.auth.uid))
+            ||
+            (request.resource.data.type == 'evidence'
+              && (isAdmin()
+                  || relatedTask(taskId).data.assignedTo == request.auth.uid))
+          );
+
+        allow update: if false;
+        allow delete: if false;
+      }
     }
 
     match /task_logs/{logId} {
