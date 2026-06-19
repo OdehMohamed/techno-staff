@@ -2,8 +2,10 @@
 
 ## In Progress — v1.7.0 Task Attachments
 
-**Branch**: `feat/task-attachments` → PR #43  
-**Status**: Owner-validated ✅ — awaiting merge + Firebase deploy + Shorebird release
+**Branch**: `feat/task-attachments` → merged to `main` via PR #43  
+**Tag**: `v1.7.0`  
+**GitHub release**: https://github.com/OdehMohamed/techno-staff/releases/tag/v1.7.0  
+**Status**: Merged ✅ — awaiting Firebase deploy + Shorebird binary generation + store upload
 
 ---
 
