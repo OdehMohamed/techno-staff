@@ -247,7 +247,7 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 #### 19. Task Attachments — `feat/task-attachments`
 
 - **Priority**: Should-fix (feature)
-- **Status**: In progress — implementation complete, awaiting owner smoke test
+- **Status**: Owner-validated ✅ — PR #43 open, awaiting merge + deploy
 - **Owner**: Claude Sonnet 4.6 (implementing agent)
 - **Target release**: 1.7.0+10
 - **Added**: 2026-06-18

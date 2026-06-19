@@ -2,8 +2,8 @@
 
 ## In Progress — v1.7.0 Task Attachments
 
-**Branch**: `feat/task-attachments`  
-**Status**: Implementation complete — awaiting owner smoke test + PR creation
+**Branch**: `feat/task-attachments` → PR #43  
+**Status**: Owner-validated ✅ — awaiting merge + Firebase deploy + Shorebird release
 
 ---
 
