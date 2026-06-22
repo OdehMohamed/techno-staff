@@ -37,7 +37,7 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   AppUser? _selectedEmployee;
-  DateTime _selectedMonth = DateTime.now();
+  DateTimeRange? _selectedRange;
 
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
@@ -46,110 +46,38 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedRange = DateTimeRange(
+      start: DateTime(now.year, now.month, 1),
+      end: DateTime(now.year, now.month + 1, 1),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportsCubit>().loadEmployees();
     });
   }
 
-  Future<void> _pickMonth() async {
-    final now = DateTime.now();
-    int selectedYear = _selectedMonth.year;
-    int selectedMonth = _selectedMonth.month;
-
-    final result = await showModalBottomSheet<DateTime>(
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'select_month'.tr(),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    initialValue: selectedYear,
-                    decoration: InputDecoration(labelText: 'year'.tr()),
-                    items: List.generate(5, (index) {
-                      final year = now.year - 2 + index;
-                      return DropdownMenuItem(
-                        value: year,
-                        child: Text(year.toString()),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setModalState(() {
-                        selectedYear = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    itemCount: 12,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 2.2,
-                        ),
-                    itemBuilder: (context, index) {
-                      final month = index + 1;
-                      final isSelected = month == selectedMonth;
-
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context, DateTime(selectedYear, month));
-                        },
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.12)
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            DateFormat.MMM(
-                              context.locale.languageCode,
-                            ).format(DateTime(2024, month)),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      initialDateRange: _selectedRange,
+      helpText: 'select_date_range'.tr(),
     );
-
-    if (result != null) {
+    if (picked != null) {
       setState(() {
-        _selectedMonth = DateTime(result.year, result.month);
+        _selectedRange = picked;
       });
     }
   }
 
   void _generateReport() {
-    if (_selectedEmployee == null) return;
+    if (_selectedEmployee == null || _selectedRange == null) return;
 
     context.read<ReportsCubit>().generateReport(
       employee: _selectedEmployee!,
-      month: _selectedMonth,
+      startDate: _selectedRange!.start,
+      endDate: _selectedRange!.end,
     );
   }
 
@@ -180,11 +108,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                 if (state.status == ReportsStatus.loaded &&
                     state.selectedEmployee != null &&
-                    state.selectedMonth != null) {
+                    state.selectedStartDate != null) {
                   context.read<AttendanceCubit>().loadMonthlyAttendance(
                     state.selectedEmployee!.id,
-                    state.selectedMonth!.year,
-                    state.selectedMonth!.month,
+                    state.selectedStartDate!.year,
+                    state.selectedStartDate!.month,
                   );
                   context.read<AttendanceCubit>().loadEmployeeSchedule(
                     state.selectedEmployee!.id,
@@ -258,10 +186,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
-                                  '${'selected_month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
+                                  _selectedRange == null
+                                      ? 'tap_to_select_range'.tr()
+                                      : '${DateFormat.yMMMd(context.locale.languageCode).format(_selectedRange!.start)} – ${DateFormat.yMMMd(context.locale.languageCode).format(_selectedRange!.end)}',
                                 ),
-                                trailing: const Icon(Icons.calendar_month),
-                                onTap: _pickMonth,
+                                subtitle: Text('selected_period'.tr()),
+                                trailing: const Icon(Icons.date_range),
+                                onTap: _pickDateRange,
                               ),
                               const SizedBox(height: AppSizes.md),
                               SizedBox(
@@ -284,8 +215,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           SectionHeader(
                             title:
                                 '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
-                            subtitle:
-                                '${'month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
+                            subtitle: state.selectedStartDate != null && state.selectedEndDate != null
+                                ? '${DateFormat.yMMMd(context.locale.languageCode).format(state.selectedStartDate!)} – ${DateFormat.yMMMd(context.locale.languageCode).format(state.selectedEndDate!)}'
+                                : '',
                           ),
                           const SizedBox(height: AppSizes.md),
 
@@ -557,9 +489,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(
                             title: 'monthly_attendance'.tr(),
-                            subtitle: DateFormat.yMMMM(
-                              context.locale.languageCode,
-                            ).format(_selectedMonth),
+                            subtitle: state.selectedStartDate != null
+                                ? DateFormat.yMMMM(
+                                    context.locale.languageCode,
+                                  ).format(state.selectedStartDate!)
+                                : '',
                           ),
                           BlocBuilder<AttendanceCubit, AttendanceState>(
                             builder: (context, attendanceState) {
@@ -625,11 +559,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               final schedule =
                                   attendanceState.editingSchedule;
                               double? attendanceRate;
-                              if (schedule != null) {
+                              if (schedule != null && state.selectedStartDate != null) {
                                 final workingDays = _countWorkingDays(
                                   schedule,
-                                  _selectedMonth.year,
-                                  _selectedMonth.month,
+                                  state.selectedStartDate!.year,
+                                  state.selectedStartDate!.month,
                                 );
                                 if (workingDays > 0) {
                                   attendanceRate =

@@ -630,6 +630,55 @@ class _CorrectionSheetState extends State<_CorrectionSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (widget.record.isCorrected &&
+                          widget.record.originalSessions != null &&
+                          widget.record.originalSessions!.isNotEmpty) ...[
+                        Text(
+                          'original_sessions'.tr(),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.5),
+                              ),
+                        ),
+                        const SizedBox(height: AppSizes.xs),
+                        ...widget.record.originalSessions!.map((s) {
+                          final localIn = s.checkInAt.toLocal();
+                          final localOut = s.checkOutAt?.toLocal();
+                          final inTime = TimeOfDay(
+                            hour: localIn.hour,
+                            minute: localIn.minute,
+                          ).format(context);
+                          final outTime = localOut != null
+                              ? TimeOfDay(
+                                  hour: localOut.hour,
+                                  minute: localOut.minute,
+                                ).format(context)
+                              : '--:--';
+                          return Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: AppSizes.xs),
+                            child: Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: Text(
+                                '$inTime → $outTime',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.5),
+                                    ),
+                              ),
+                            ),
+                          );
+                        }),
+                        const Divider(height: AppSizes.lg),
+                      ],
                       ...List.generate(_sessions.length, (i) {
                         final draft = _sessions[i];
                         return Padding(

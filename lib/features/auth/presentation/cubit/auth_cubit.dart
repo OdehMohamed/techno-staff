@@ -344,6 +344,15 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> signOutOtherDevices() async {
+    try {
+      await FirebaseFunctions.instance.httpsCallable('revokeUserSessions').call();
+    } catch (e, stack) {
+      await FirebaseCrashlytics.instance.recordError(e, stack);
+      rethrow;
+    }
+  }
+
   @override
   Future<void> close() async {
     await _authSub?.cancel();

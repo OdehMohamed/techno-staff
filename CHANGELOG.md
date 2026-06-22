@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-06-22
+
+### Added
+
+- **Sign Out of All Other Devices** — Settings → Account now includes a "Sign Out of All Other Devices" tile. Tapping it shows a confirmation dialog and then revokes all active sessions on other devices using the existing `revokeUserSessions` Cloud Function. The current device remains signed in.
+- **Attendance original-session audit** — the admin correction sheet now shows the original (pre-correction) session times when viewing a record that has already been corrected. The baseline is the `originalSessions` field preserved by the `adminCorrectAttendance` Cloud Function on the first correction.
+- **Reports custom date range** — the month picker in Reports has been replaced with Flutter's built-in `showDateRangePicker`. Admins can now generate task reports for any arbitrary date range, not just calendar months. The attendance section still loads the month of the range start date.
+
+### Technical
+
+- **Toolchain upgrade** — Gradle 8.12 → 8.14.1, AGP 8.9.1 → 8.11.1, Kotlin 2.1.0 → 2.2.20. All Android builds verified clean.
+- **Flutter 3.44.2** — aligned with Shorebird's current stable channel (was 3.35.7 local vs. 3.44.2 Shorebird).
+- **9 new translation keys** across English and Arabic (`confirm`, `sign_out_other_devices`, `sign_out_other_devices_confirm`, `sign_out_other_devices_success`, `sign_out_other_devices_failed`, `original_sessions`, `select_date_range`, `selected_period`, `tap_to_select_range`).
+- `ReportsState.selectedMonth` replaced with `selectedStartDate` / `selectedEndDate`; `ReportsRepository.getTasksForEmployeeByMonth` replaced with `getTasksForEmployee(startDate, endDate)`.
+- **Requires full binary release** (translation changes; Shorebird asset patching not supported).
+
 ## [1.8.0] - 2026-06-19
 
 ### Added

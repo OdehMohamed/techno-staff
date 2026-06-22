@@ -1,3 +1,41 @@
+## 2026-06-22 — Claude Sonnet 4.6 — v1.9.0 Toolchain upgrade + product improvements
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.9.0`
+- **Goal**: Toolchain upgrade (Gradle/AGP/Kotlin/Flutter), Sign Out of All Other Devices, attendance audit visibility, reports custom date range, documentation cleanup.
+- **Outcome**: ✅ All items implemented. `dart analyze lib/` clean. `npm run lint` clean. 9 translation keys added.
+
+### Work done
+
+**Toolchain upgrade**
+- Gradle wrapper: 8.12 → 8.14.1 (`gradle-wrapper.properties`)
+- AGP: 8.9.1 → 8.11.1; Kotlin: 2.1.0 → 2.2.20 (`settings.gradle.kts`)
+- Flutter: `flutter upgrade` to 3.44.2 (aligns with Shorebird stable); `flutter pub get` resolved cleanly
+- Debug APK build confirmed clean
+
+**Sign Out of All Other Devices**
+- `auth_cubit.dart` — added `signOutOtherDevices()` (calls `revokeUserSessions` CF, rethrows on error)
+- `settings_screen.dart` — new tile between Change Password and Delete Account; `_isSigningOutOtherDevices` spinner; confirmation dialog
+- 5 new translation keys (EN + AR): `confirm`, `sign_out_other_devices`, `sign_out_other_devices_confirm`, `sign_out_other_devices_success`, `sign_out_other_devices_failed`
+
+**Attendance audit visibility**
+- `attendance_model.dart` — added `originalSessions: List<AttendanceSession>?` field + parsing in `fromMap`
+- `admin_attendance_screen.dart` — `_CorrectionSheet` now shows read-only original sessions section (muted, LTR time arrows) when `isCorrected == true && originalSessions != null`
+- 1 new translation key: `original_sessions`
+
+**Reports custom date range**
+- `reports_state.dart` — replaced `selectedMonth: DateTime?` with `selectedStartDate`/`selectedEndDate`
+- `reports_repository.dart` — `getTasksForEmployee(startDate, endDate)` replaces `getTasksForEmployeeByMonth`
+- `reports_cubit.dart` — `generateReport(employee, startDate, endDate)`; `exportPdf` uses `startDate` as PDF month
+- `reports_screen.dart` — `_selectedRange: DateTimeRange?` initialized to current month; `_pickDateRange()` uses `showDateRangePicker`; BlocListener/subtitle/working-days all migrated to `selectedStartDate`
+- 3 new translation keys: `select_date_range`, `selected_period`, `tap_to_select_range`
+
+**Documentation cleanup**
+- `PROJECT_CONTEXT.md` — updated version, status, CF modularization, FCM token path, translation count
+- `NEXT_STEPS.md` — marked 6 completed items as closed; added Chat Phase 3 as new idea
+
+---
+
 ## 2026-06-19 — Claude Sonnet 4.6 — v1.8.0 Attachment workflow completion + maintenance
 
 - **Agent**: Claude Sonnet 4.6

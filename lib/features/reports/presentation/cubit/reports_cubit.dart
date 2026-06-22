@@ -43,21 +43,24 @@ class ReportsCubit extends Cubit<ReportsState> {
 
   Future<void> generateReport({
     required AppUser employee,
-    required DateTime month,
+    required DateTime startDate,
+    required DateTime endDate,
   }) async {
     emit(
       state.copyWith(
         status: ReportsStatus.loading,
         selectedEmployee: employee,
-        selectedMonth: month,
+        selectedStartDate: startDate,
+        selectedEndDate: endDate,
         clearError: true,
       ),
     );
 
     try {
-      final tasks = await _reportsRepository.getTasksForEmployeeByMonth(
+      final tasks = await _reportsRepository.getTasksForEmployee(
         employeeId: employee.id,
-        month: month,
+        startDate: startDate,
+        endDate: endDate,
       );
 
       emit(
@@ -65,7 +68,8 @@ class ReportsCubit extends Cubit<ReportsState> {
           status: ReportsStatus.loaded,
           tasks: tasks,
           selectedEmployee: employee,
-          selectedMonth: month,
+          selectedStartDate: startDate,
+          selectedEndDate: endDate,
           clearError: true,
         ),
       );
@@ -85,10 +89,10 @@ class ReportsCubit extends Cubit<ReportsState> {
     required String locale,
   }) async {
     final employee = state.selectedEmployee;
-    final month = state.selectedMonth;
+    final startDate = state.selectedStartDate;
     final tasks = state.tasks;
 
-    if (employee == null || month == null) {
+    if (employee == null || startDate == null) {
       emit(
         state.copyWith(
           status: ReportsStatus.error,
@@ -103,7 +107,7 @@ class ReportsCubit extends Cubit<ReportsState> {
     try {
       final file = await _pdfReportService.generateEmployeeMonthlyReport(
         employee: employee,
-        month: month,
+        month: startDate,
         tasks: tasks,
         monthlyRecords: monthlyRecords,
         schedule: schedule,
@@ -113,7 +117,7 @@ class ReportsCubit extends Cubit<ReportsState> {
       await Printing.sharePdf(
         bytes: await file.readAsBytes(),
         filename:
-            'report_${employee.name}_${month.year}_${month.month.toString().padLeft(2, '0')}.pdf',
+            'report_${employee.name}_${startDate.year}_${startDate.month.toString().padLeft(2, '0')}.pdf',
       );
 
       emit(state.copyWith(status: ReportsStatus.pdfExported, clearError: true));

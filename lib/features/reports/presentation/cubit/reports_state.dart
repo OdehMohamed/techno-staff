@@ -15,7 +15,8 @@ class ReportsState {
   final List<AppUser> employees;
   final List<TaskModel> tasks;
   final AppUser? selectedEmployee;
-  final DateTime? selectedMonth;
+  final DateTime? selectedStartDate;
+  final DateTime? selectedEndDate;
   final String? errorMessage;
 
   const ReportsState({
@@ -23,7 +24,8 @@ class ReportsState {
     this.employees = const [],
     this.tasks = const [],
     this.selectedEmployee,
-    this.selectedMonth,
+    this.selectedStartDate,
+    this.selectedEndDate,
     this.errorMessage,
   });
 
@@ -32,7 +34,8 @@ class ReportsState {
     List<AppUser>? employees,
     List<TaskModel>? tasks,
     AppUser? selectedEmployee,
-    DateTime? selectedMonth,
+    DateTime? selectedStartDate,
+    DateTime? selectedEndDate,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -41,7 +44,8 @@ class ReportsState {
       employees: employees ?? this.employees,
       tasks: tasks ?? this.tasks,
       selectedEmployee: selectedEmployee ?? this.selectedEmployee,
-      selectedMonth: selectedMonth ?? this.selectedMonth,
+      selectedStartDate: selectedStartDate ?? this.selectedStartDate,
+      selectedEndDate: selectedEndDate ?? this.selectedEndDate,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
