@@ -49,7 +49,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final now = DateTime.now();
     _selectedRange = DateTimeRange(
       start: DateTime(now.year, now.month, 1),
-      end: DateTime(now.year, now.month + 1, 1),
+      end: DateTime(now.year, now.month, now.day),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportsCubit>().loadEmployees();
@@ -57,11 +57,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _pickDateRange() async {
+    final today = DateTime.now();
+    final lastDate = DateTime(today.year, today.month, today.day);
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-      initialDateRange: _selectedRange,
+      lastDate: lastDate,
+      initialDateRange: _selectedRange != null &&
+              !_selectedRange!.end.isAfter(lastDate)
+          ? _selectedRange
+          : null,
       helpText: 'select_date_range'.tr(),
     );
     if (picked != null) {

@@ -212,7 +212,7 @@
   "change_password": "Change Password",
   "confirm": "Confirm",
   "sign_out_other_devices": "Sign Out of All Other Devices",
-  "sign_out_other_devices_confirm": "This will invalidate all active sessions on other devices. You will remain signed in on this device.",
+  "sign_out_other_devices_confirm": "This will invalidate active sessions on other devices. Those devices will be signed out the next time they try to refresh their session (within ~1 hour). You will remain signed in on this device.",
   "sign_out_other_devices_success": "All other devices have been signed out.",
   "sign_out_other_devices_failed": "Failed to sign out other devices. Please try again.",
   "name_too_short": "Name must be at least 2 characters",
