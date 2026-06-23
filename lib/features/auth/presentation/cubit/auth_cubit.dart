@@ -347,6 +347,12 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signOutOtherDevices() async {
     try {
       await FirebaseFunctions.instance.httpsCallable('revokeUserSessions').call();
+      // Force-refresh this device's ID token immediately after revocation.
+      // revokeUserSessions invalidates ALL refresh tokens (including this device's),
+      // so without this call the current device would also be signed out within ~1h.
+      // getIdToken(true) exchanges the still-valid current ID token for a fresh one
+      // before the old refresh token is used, giving this device a new valid session.
+      await FirebaseAuth.instance.currentUser?.getIdToken(true);
     } catch (e, stack) {
       await FirebaseCrashlytics.instance.recordError(e, stack);
       rethrow;

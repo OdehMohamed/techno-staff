@@ -322,7 +322,7 @@
   "session_number": "Session {n}",
   "sessions_count": "{count} sessions",
   "add_session": "Add Session",
-  "original_sessions": "Original Sessions (before correction)",
+  "original_sessions": "Original Sessions (before any admin correction)",
   "no_attendance_records_yet": "No records yet. Absent employees appear after end of day.",
   "attendance_rate": "Attendance Rate",
   "worked": "Worked",

@@ -17,15 +17,27 @@ import '../../../attendance/data/models/work_schedule_model.dart';
 import '../../../attendance/presentation/cubit/attendance_cubit.dart';
 import '../../../attendance/presentation/cubit/attendance_state.dart';
 
-int _countWorkingDays(WorkScheduleModel schedule, int year, int month) {
-  final daysInMonth = DateTime(year, month + 1, 0).day;
+int _countWorkingDaysInRange(
+  WorkScheduleModel schedule,
+  DateTime start,
+  DateTime end,
+) {
   var count = 0;
-  for (var day = 1; day <= daysInMonth; day++) {
-    final weekday = DateTime(year, month, day).weekday;
-    final daySchedule = schedule.days[weekday.toString()];
+  var current = DateTime(start.year, start.month, start.day);
+  final rangeEnd = DateTime(end.year, end.month, end.day);
+  while (!current.isAfter(rangeEnd)) {
+    final daySchedule = schedule.days[current.weekday.toString()];
     if (daySchedule?.isWorkingDay ?? true) count++;
+    current = current.add(const Duration(days: 1));
   }
   return count;
+}
+
+bool _recordInRange(String recordDate, DateTime start, DateTime end) {
+  // record.date is 'YYYY-MM-DD' — ISO dates sort correctly via compareTo
+  final startStr = DateFormat('yyyy-MM-dd').format(start);
+  final endStr = DateFormat('yyyy-MM-dd').format(end);
+  return recordDate.compareTo(startStr) >= 0 && recordDate.compareTo(endStr) <= 0;
 }
 
 class ReportsScreen extends StatefulWidget {
@@ -411,9 +423,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       final attState = context
                                           .read<AttendanceCubit>()
                                           .state;
+                                      final records = state.selectedStartDate != null &&
+                                              state.selectedEndDate != null
+                                          ? attState.monthlyRecords
+                                              .where((r) => _recordInRange(
+                                                    r.date,
+                                                    state.selectedStartDate!,
+                                                    state.selectedEndDate!,
+                                                  ))
+                                              .toList()
+                                          : attState.monthlyRecords;
                                       context.read<ReportsCubit>().exportPdf(
-                                        monthlyRecords:
-                                            attState.monthlyRecords,
+                                        monthlyRecords: records,
                                         schedule: attState.editingSchedule,
                                         locale:
                                             context.locale.languageCode,
@@ -526,49 +547,61 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               }
 
-                              if (attendanceState.monthlyRecords.isEmpty) {
+                              // Filter attendance records to the selected date range.
+                              final filteredRecords = state.selectedStartDate != null &&
+                                      state.selectedEndDate != null
+                                  ? attendanceState.monthlyRecords
+                                      .where((r) => _recordInRange(
+                                            r.date,
+                                            state.selectedStartDate!,
+                                            state.selectedEndDate!,
+                                          ))
+                                      .toList()
+                                  : attendanceState.monthlyRecords;
+
+                              if (filteredRecords.isEmpty) {
                                 return const EmptyStateWidget(
                                   icon: Icons.calendar_month_outlined,
                                   titleKey: 'no_attendance_records',
                                 );
                               }
 
-                              final daysPresent = attendanceState.monthlyRecords
+                              final daysPresent = filteredRecords
                                   .where((r) =>
                                       r.status == 'present' ||
                                       r.status == 'manual')
                                   .length;
-                              final daysLate = attendanceState.monthlyRecords
+                              final daysLate = filteredRecords
                                   .where((r) => r.status == 'late')
                                   .length;
-                              final daysAbsent = attendanceState.monthlyRecords
+                              final daysAbsent = filteredRecords
                                   .where((r) => r.status == 'absent')
                                   .length;
-                              final daysOff = attendanceState.monthlyRecords
+                              final daysOff = filteredRecords
                                   .where((r) => r.status == 'off_day')
                                   .length;
-                              final daysOffWork = attendanceState.monthlyRecords
+                              final daysOffWork = filteredRecords
                                   .where((r) => r.status == 'off_day_work')
                                   .length;
-                              final corrections = attendanceState.monthlyRecords
+                              final corrections = filteredRecords
                                   .where((r) => r.isCorrected)
                                   .length;
-                              final totalMinutes = attendanceState.monthlyRecords
-                                  .fold<int>(
-                                    0,
-                                    (sum, r) => sum + r.totalDurationMinutes,
-                                  );
+                              final totalMinutes = filteredRecords.fold<int>(
+                                0,
+                                (sum, r) => sum + r.totalDurationMinutes,
+                              );
 
                               final daysWorked =
                                   daysPresent + daysLate + daysOffWork;
-                              final schedule =
-                                  attendanceState.editingSchedule;
+                              final schedule = attendanceState.editingSchedule;
                               double? attendanceRate;
-                              if (schedule != null && state.selectedStartDate != null) {
-                                final workingDays = _countWorkingDays(
+                              if (schedule != null &&
+                                  state.selectedStartDate != null &&
+                                  state.selectedEndDate != null) {
+                                final workingDays = _countWorkingDaysInRange(
                                   schedule,
-                                  state.selectedStartDate!.year,
-                                  state.selectedStartDate!.month,
+                                  state.selectedStartDate!,
+                                  state.selectedEndDate!,
                                 );
                                 if (workingDays > 0) {
                                   attendanceRate =
@@ -594,15 +627,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     shrinkWrap: true,
                                     physics:
                                         const NeverScrollableScrollPhysics(),
-                                    itemCount:
-                                        attendanceState.monthlyRecords.length,
+                                    itemCount: filteredRecords.length,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: AppSizes.sm),
                                     itemBuilder: (context, index) {
-                                      final record =
-                                          attendanceState.monthlyRecords[index];
                                       return AttendanceRecordCard(
-                                        record: record,
+                                        record: filteredRecords[index],
                                       );
                                     },
                                   ),

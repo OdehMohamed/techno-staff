@@ -322,7 +322,7 @@
   "session_number": "جلسة {n}",
   "sessions_count": "{count} جلسات",
   "add_session": "إضافة جلسة",
-  "original_sessions": "الجلسات الأصلية (قبل التصحيح)",
+  "original_sessions": "الجلسات الأصلية (قبل أي تصحيح إداري)",
   "no_attendance_records_yet": "لا توجد سجلات بعد. يظهر الغياب بعد نهاية اليوم.",
   "attendance_rate": "نسبة الحضور",
   "worked": "حضور",
