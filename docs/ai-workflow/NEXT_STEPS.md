@@ -31,6 +31,15 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Infrastructure / Platform
 
+### Third-party plugin build warnings (tracked, not blocking)
+
+- **Category**: Engineering
+- **Why now**: Surfaced during v1.9.0 build smoke test.
+- **Android — KGP API warnings**: `cloud_functions`, `firebase_storage`, `image_picker_android`, `local_auth_android`, `package_info_plus`, `shared_preferences_android` use deprecated Kotlin Gradle Plugin APIs. Flutter warns these may become build failures in a future Flutter version. No action possible on our side — upstream plugins must migrate. Monitor FlutterFire / plugin changelogs and upgrade when fixes are released.
+- **iOS — `printing` / SPM**: The `printing` package does not support Swift Package Manager yet. No impact on builds today; will matter if we ever drop CocoaPods. Track upstream: `pub.dev/packages/printing`.
+- **iOS — FirebaseAuth deprecated application API**: `FIRApp.configure()` / deprecated `UIApplication` hook in the FirebaseAuth plugin. This is a Firebase iOS SDK issue, not ours. Will resolve when FlutterFire updates its underlying Firebase iOS SDK dependency.
+- **Open questions**: None blocking. Revisit when a Flutter upgrade causes an actual build failure.
+
 ### ✅ FlutterFire upgrade → Shorebird iOS — CLOSED (2026-06-17)
 
 Root cause: `FLTPipelineParser.m` in cloud_firestore 6.3.0 called `FIRCollectionSourceStageBridge initWithRef:firestore:` (2-arg), but firebase-ios-sdk 12.14.0 changed it to `initWithRef:firestore:forceIndex:` (3-arg). Shorebird's SPM resolved `from: "12.12.0"` to 12.14.0; CocoaPods pinned to exactly 12.12.0, so local builds worked and Shorebird builds failed.
