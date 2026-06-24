@@ -1,9 +1,9 @@
 # Current Task
 
-## In Progress — v1.9.0 Toolchain Upgrade + Product Improvements
+## ✅ COMPLETE — v1.9.0 Toolchain Upgrade + Product Improvements
 
 **Branch**: `feat/v1.9.0`  
-**Status**: Implementation complete — awaiting owner smoke test, PR merge, Firebase deploy + Shorebird release
+**Status**: All 4 smoke-test rounds passed — ready for PR merge, tag, and store release
 
 ---
 
@@ -67,7 +67,10 @@ Five items shipped together:
 - [x] `dart analyze lib/` — zero errors/warnings in our code
 - [x] `npm run lint` — ESLint clean
 - [x] `flutter build apk --debug` — toolchain upgrade verified
-- [ ] Owner smoke test: sign-out-other-devices flow, attendance correction audit, reports date range
+- [x] `firebase deploy --only functions` — deployed (revokeUserSessions with customToken)
+- [x] IAM fix — `Service Account Token Creator` role granted to `112459870697-compute@developer.gserviceaccount.com`
+- [x] Owner smoke test rounds 1–4 — all three features PASS
+- [ ] PR merge + tag `v1.9.0`
 - [ ] `shorebird release android` + `shorebird release ios`
 - [ ] Store binary submissions (full release required — translation changes)
 
@@ -82,8 +85,8 @@ Five items shipped together:
 git tag v1.9.0
 git push origin v1.9.0
 
-# 3. Firebase deploy (no CF or rules changes in this cycle — skip if clean)
-# cd functions && npm run deploy  ← not required
+# 3. Firebase deploy — ALREADY DONE (deployed during smoke testing)
+# cd functions && npm run deploy
 
 # 4. Shorebird
 shorebird release android
@@ -94,4 +97,4 @@ shorebird release ios
 # Android: Play Console (AAB)
 ```
 
-**Note:** No Firebase deploy or Firestore rules changes in this cycle. Only Dart + toolchain changes.
+**Note:** Firebase CF deploy was done during smoke testing (revokeUserSessions now returns a custom token so the current device stays signed in after session revocation). Firestore rules unchanged. IAM fix (`Service Account Token Creator` role) applied to the Compute Engine default service account in Google Cloud Console.

@@ -1,3 +1,36 @@
+## 2026-06-23 — Claude Sonnet 4.6 — v1.9.0 smoke-test fixes (rounds 2–4)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.9.0`
+- **Goal**: Fix all issues found during owner smoke testing across four rounds.
+- **Outcome**: ✅ All three features PASS after round 4. v1.9.0 ready to merge.
+
+### Round 1 fixes
+
+- **Reports date range crash** — `initialDateRange.end` (July 1) exceeded `lastDate` (today). Fixed by defaulting `_selectedRange.end` to today and adding a null guard in `_pickDateRange()`.
+- **Sign-out confirmation copy** — Updated to clarify that other devices expire within ~1 hour.
+
+### Round 2 fixes
+
+- **Sign-out-other-devices: current device also signed out** — `revokeRefreshTokens` revokes ALL tokens; `getIdToken(true)` then failed on the revoked refresh token, signing out the current device too. Fix: replaced with `signInWithCustomToken` flow.
+- **`original_sessions` label** — Clarified to "before any admin correction" (immutable baseline, written on first correction only).
+- **Reports attendance filtering** — Added `_recordInRange` / `_countWorkingDaysInRange`; replaced all `monthlyRecords` references with a filtered local in the attendance BlocBuilder and PDF export. Removed dead `_countWorkingDays` helper.
+
+### Round 3–4 fixes: sign-out-other-devices (final)
+
+Root cause confirmed from CF logs: `createCustomToken` threw `auth/insufficient-permission` — the Compute Engine default service account (`112459870697-compute@developer.gserviceaccount.com`) lacked `iam.serviceAccounts.signBlob`.
+
+**Fix (two parts):**
+1. CF (`functions/lib/users.js`): After `revokeRefreshTokens`, create a custom token and return it: `{success: true, customToken}`.
+2. Flutter (`auth_cubit.dart`): Call `signInWithCustomToken(customToken)` to give the current device a new refresh token unaffected by the revocation.
+3. **IAM (owner action)**: Granted `Service Account Token Creator` role to `112459870697-compute@developer.gserviceaccount.com` in Google Cloud Console.
+
+### Commits
+
+`47cc08e`, `a5a156a`, `f755fc0`, `56901f0` — all on `feat/v1.9.0`.
+
+---
+
 ## 2026-06-22 — Claude Sonnet 4.6 — v1.9.0 Toolchain upgrade + product improvements
 
 - **Agent**: Claude Sonnet 4.6

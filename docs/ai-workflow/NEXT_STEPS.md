@@ -24,8 +24,8 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Recommended Next Steps
 
-1. **Collect tester feedback on v1.8.0** — Shorebird patch cycle or new features depend on tester response; no new commitments until then.
-2. **v1.9.0 release** — currently in-progress on `feat/v1.9.0`; full store binary required (translation changes).
+1. **Merge PR #45 and tag v1.9.0** — all smoke tests pass; ready for merge, tag, Shorebird release, and store submission. Full binary required (translation changes).
+2. **Collect tester feedback on v1.9.0** — new features to validate: sign-out other devices, attendance originalSessions display, reports custom date range + PDF.
 
 ---
 
