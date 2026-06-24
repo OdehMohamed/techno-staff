@@ -17,15 +17,27 @@ import '../../../attendance/data/models/work_schedule_model.dart';
 import '../../../attendance/presentation/cubit/attendance_cubit.dart';
 import '../../../attendance/presentation/cubit/attendance_state.dart';
 
-int _countWorkingDays(WorkScheduleModel schedule, int year, int month) {
-  final daysInMonth = DateTime(year, month + 1, 0).day;
+int _countWorkingDaysInRange(
+  WorkScheduleModel schedule,
+  DateTime start,
+  DateTime end,
+) {
   var count = 0;
-  for (var day = 1; day <= daysInMonth; day++) {
-    final weekday = DateTime(year, month, day).weekday;
-    final daySchedule = schedule.days[weekday.toString()];
+  var current = DateTime(start.year, start.month, start.day);
+  final rangeEnd = DateTime(end.year, end.month, end.day);
+  while (!current.isAfter(rangeEnd)) {
+    final daySchedule = schedule.days[current.weekday.toString()];
     if (daySchedule?.isWorkingDay ?? true) count++;
+    current = current.add(const Duration(days: 1));
   }
   return count;
+}
+
+bool _recordInRange(String recordDate, DateTime start, DateTime end) {
+  // record.date is 'YYYY-MM-DD' — ISO dates sort correctly via compareTo
+  final startStr = DateFormat('yyyy-MM-dd').format(start);
+  final endStr = DateFormat('yyyy-MM-dd').format(end);
+  return recordDate.compareTo(startStr) >= 0 && recordDate.compareTo(endStr) <= 0;
 }
 
 class ReportsScreen extends StatefulWidget {
@@ -37,7 +49,7 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   AppUser? _selectedEmployee;
-  DateTime _selectedMonth = DateTime.now();
+  DateTimeRange? _selectedRange;
 
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
@@ -46,110 +58,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedRange = DateTimeRange(
+      start: DateTime(now.year, now.month, 1),
+      end: DateTime(now.year, now.month, now.day),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportsCubit>().loadEmployees();
     });
   }
 
-  Future<void> _pickMonth() async {
-    final now = DateTime.now();
-    int selectedYear = _selectedMonth.year;
-    int selectedMonth = _selectedMonth.month;
-
-    final result = await showModalBottomSheet<DateTime>(
+  Future<void> _pickDateRange() async {
+    final today = DateTime.now();
+    final lastDate = DateTime(today.year, today.month, today.day);
+    final picked = await showDateRangePicker(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'select_month'.tr(),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    initialValue: selectedYear,
-                    decoration: InputDecoration(labelText: 'year'.tr()),
-                    items: List.generate(5, (index) {
-                      final year = now.year - 2 + index;
-                      return DropdownMenuItem(
-                        value: year,
-                        child: Text(year.toString()),
-                      );
-                    }),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setModalState(() {
-                        selectedYear = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    itemCount: 12,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 2.2,
-                        ),
-                    itemBuilder: (context, index) {
-                      final month = index + 1;
-                      final isSelected = month == selectedMonth;
-
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(context, DateTime(selectedYear, month));
-                        },
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.12)
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            DateFormat.MMM(
-                              context.locale.languageCode,
-                            ).format(DateTime(2024, month)),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      firstDate: DateTime(2020),
+      lastDate: lastDate,
+      initialDateRange: _selectedRange != null &&
+              !_selectedRange!.end.isAfter(lastDate)
+          ? _selectedRange
+          : null,
+      helpText: 'select_date_range'.tr(),
     );
-
-    if (result != null) {
+    if (picked != null) {
       setState(() {
-        _selectedMonth = DateTime(result.year, result.month);
+        _selectedRange = picked;
       });
     }
   }
 
   void _generateReport() {
-    if (_selectedEmployee == null) return;
+    if (_selectedEmployee == null || _selectedRange == null) return;
 
     context.read<ReportsCubit>().generateReport(
       employee: _selectedEmployee!,
-      month: _selectedMonth,
+      startDate: _selectedRange!.start,
+      endDate: _selectedRange!.end,
     );
   }
 
@@ -180,11 +125,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                 if (state.status == ReportsStatus.loaded &&
                     state.selectedEmployee != null &&
-                    state.selectedMonth != null) {
+                    state.selectedStartDate != null) {
                   context.read<AttendanceCubit>().loadMonthlyAttendance(
                     state.selectedEmployee!.id,
-                    state.selectedMonth!.year,
-                    state.selectedMonth!.month,
+                    state.selectedStartDate!.year,
+                    state.selectedStartDate!.month,
                   );
                   context.read<AttendanceCubit>().loadEmployeeSchedule(
                     state.selectedEmployee!.id,
@@ -258,10 +203,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: Text(
-                                  '${'selected_month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
+                                  _selectedRange == null
+                                      ? 'tap_to_select_range'.tr()
+                                      : '${DateFormat.yMMMd(context.locale.languageCode).format(_selectedRange!.start)} – ${DateFormat.yMMMd(context.locale.languageCode).format(_selectedRange!.end)}',
                                 ),
-                                trailing: const Icon(Icons.calendar_month),
-                                onTap: _pickMonth,
+                                subtitle: Text('selected_period'.tr()),
+                                trailing: const Icon(Icons.date_range),
+                                onTap: _pickDateRange,
                               ),
                               const SizedBox(height: AppSizes.md),
                               SizedBox(
@@ -284,8 +232,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           SectionHeader(
                             title:
                                 '${'employee_report'.tr()}: ${state.selectedEmployee!.name}',
-                            subtitle:
-                                '${'month'.tr()}: ${DateFormat.yMMMM(context.locale.languageCode).format(_selectedMonth)}',
+                            subtitle: state.selectedStartDate != null && state.selectedEndDate != null
+                                ? '${DateFormat.yMMMd(context.locale.languageCode).format(state.selectedStartDate!)} – ${DateFormat.yMMMd(context.locale.languageCode).format(state.selectedEndDate!)}'
+                                : '',
                           ),
                           const SizedBox(height: AppSizes.md),
 
@@ -474,9 +423,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       final attState = context
                                           .read<AttendanceCubit>()
                                           .state;
+                                      final records = state.selectedStartDate != null &&
+                                              state.selectedEndDate != null
+                                          ? attState.monthlyRecords
+                                              .where((r) => _recordInRange(
+                                                    r.date,
+                                                    state.selectedStartDate!,
+                                                    state.selectedEndDate!,
+                                                  ))
+                                              .toList()
+                                          : attState.monthlyRecords;
                                       context.read<ReportsCubit>().exportPdf(
-                                        monthlyRecords:
-                                            attState.monthlyRecords,
+                                        monthlyRecords: records,
                                         schedule: attState.editingSchedule,
                                         locale:
                                             context.locale.languageCode,
@@ -557,9 +515,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           const SizedBox(height: AppSizes.xl),
                           SectionHeader(
                             title: 'monthly_attendance'.tr(),
-                            subtitle: DateFormat.yMMMM(
-                              context.locale.languageCode,
-                            ).format(_selectedMonth),
+                            subtitle: state.selectedStartDate != null
+                                ? DateFormat.yMMMM(
+                                    context.locale.languageCode,
+                                  ).format(state.selectedStartDate!)
+                                : '',
                           ),
                           BlocBuilder<AttendanceCubit, AttendanceState>(
                             builder: (context, attendanceState) {
@@ -587,49 +547,61 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 );
                               }
 
-                              if (attendanceState.monthlyRecords.isEmpty) {
+                              // Filter attendance records to the selected date range.
+                              final filteredRecords = state.selectedStartDate != null &&
+                                      state.selectedEndDate != null
+                                  ? attendanceState.monthlyRecords
+                                      .where((r) => _recordInRange(
+                                            r.date,
+                                            state.selectedStartDate!,
+                                            state.selectedEndDate!,
+                                          ))
+                                      .toList()
+                                  : attendanceState.monthlyRecords;
+
+                              if (filteredRecords.isEmpty) {
                                 return const EmptyStateWidget(
                                   icon: Icons.calendar_month_outlined,
                                   titleKey: 'no_attendance_records',
                                 );
                               }
 
-                              final daysPresent = attendanceState.monthlyRecords
+                              final daysPresent = filteredRecords
                                   .where((r) =>
                                       r.status == 'present' ||
                                       r.status == 'manual')
                                   .length;
-                              final daysLate = attendanceState.monthlyRecords
+                              final daysLate = filteredRecords
                                   .where((r) => r.status == 'late')
                                   .length;
-                              final daysAbsent = attendanceState.monthlyRecords
+                              final daysAbsent = filteredRecords
                                   .where((r) => r.status == 'absent')
                                   .length;
-                              final daysOff = attendanceState.monthlyRecords
+                              final daysOff = filteredRecords
                                   .where((r) => r.status == 'off_day')
                                   .length;
-                              final daysOffWork = attendanceState.monthlyRecords
+                              final daysOffWork = filteredRecords
                                   .where((r) => r.status == 'off_day_work')
                                   .length;
-                              final corrections = attendanceState.monthlyRecords
+                              final corrections = filteredRecords
                                   .where((r) => r.isCorrected)
                                   .length;
-                              final totalMinutes = attendanceState.monthlyRecords
-                                  .fold<int>(
-                                    0,
-                                    (sum, r) => sum + r.totalDurationMinutes,
-                                  );
+                              final totalMinutes = filteredRecords.fold<int>(
+                                0,
+                                (sum, r) => sum + r.totalDurationMinutes,
+                              );
 
                               final daysWorked =
                                   daysPresent + daysLate + daysOffWork;
-                              final schedule =
-                                  attendanceState.editingSchedule;
+                              final schedule = attendanceState.editingSchedule;
                               double? attendanceRate;
-                              if (schedule != null) {
-                                final workingDays = _countWorkingDays(
+                              if (schedule != null &&
+                                  state.selectedStartDate != null &&
+                                  state.selectedEndDate != null) {
+                                final workingDays = _countWorkingDaysInRange(
                                   schedule,
-                                  _selectedMonth.year,
-                                  _selectedMonth.month,
+                                  state.selectedStartDate!,
+                                  state.selectedEndDate!,
                                 );
                                 if (workingDays > 0) {
                                   attendanceRate =
@@ -655,15 +627,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     shrinkWrap: true,
                                     physics:
                                         const NeverScrollableScrollPhysics(),
-                                    itemCount:
-                                        attendanceState.monthlyRecords.length,
+                                    itemCount: filteredRecords.length,
                                     separatorBuilder: (_, __) =>
                                         const SizedBox(height: AppSizes.sm),
                                     itemBuilder: (context, index) {
-                                      final record =
-                                          attendanceState.monthlyRecords[index];
                                       return AttendanceRecordCard(
-                                        record: record,
+                                        record: filteredRecords[index],
                                       );
                                     },
                                   ),

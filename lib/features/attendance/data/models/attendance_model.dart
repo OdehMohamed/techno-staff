@@ -11,6 +11,7 @@ class AttendanceModel {
   final int totalDurationMinutes;
   final String status;
   final bool isCorrected;
+  final List<AttendanceSession>? originalSessions;
   final String? notes;
   final String? correctedBy;
   final String? correctedByName;
@@ -27,6 +28,7 @@ class AttendanceModel {
     this.totalDurationMinutes = 0,
     required this.status,
     this.isCorrected = false,
+    this.originalSessions,
     this.notes,
     this.correctedBy,
     this.correctedByName,
@@ -75,6 +77,13 @@ class AttendanceModel {
           ]
         : const <AttendanceSession>[];
 
+    final rawOriginalSessions = data['originalSessions'] as List<dynamic>?;
+    final parsedOriginalSessions = rawOriginalSessions
+        ?.whereType<Map<String, dynamic>>()
+        .where((s) => _toDateTime(s['checkInAt']) != null)
+        .map(AttendanceSession.fromMap)
+        .toList();
+
     return AttendanceModel(
       id: id,
       userId: data['userId'] as String? ?? '',
@@ -85,6 +94,7 @@ class AttendanceModel {
           data['totalDurationMinutes'] as int? ?? fallbackDurationMinutes ?? 0,
       status: mappedStatus,
       isCorrected: data['isCorrected'] as bool? ?? (data['status'] == 'manual'),
+      originalSessions: parsedOriginalSessions,
       notes: data['notes'] as String?,
       correctedBy: data['correctedBy'] as String?,
       correctedByName: data['correctedByName'] as String?,

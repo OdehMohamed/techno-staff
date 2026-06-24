@@ -1,115 +1,100 @@
 # Current Task
 
-## In Progress — v1.8.0 Attachment Workflow Completion + Maintenance
+## ✅ COMPLETE — v1.9.0 Toolchain Upgrade + Product Improvements
 
-**Branch**: `feat/v1.8.0`  
-**Status**: Implementation complete — awaiting version bump, commit, PR, Firebase deploy + Shorebird
+**Branch**: `feat/v1.9.0`  
+**Status**: All 4 smoke-test rounds passed — ready for PR merge, tag, and store release
 
 ---
 
 ## What's being built
 
-Six items shipped together in one cycle:
+Five items shipped together:
 
-1. **Individual attachment deletion** — admin / task-creator / uploader can delete individual attachment photos. Firestore rule expanded; repository + cubit + UI updated.
-2. **Real-time attachment sync** — replaced one-time `.get()` with a Firestore `snapshots()` stream; new/deleted attachments appear instantly without screen refresh.
-3. **Notification auto-expiry** — new `cleanupExpiredNotifications` Cloud Function (weekly cron, Sunday 02:00 Asia/Jerusalem) deletes notifications older than 30 days. Server-side Admin SDK bypass; 500-doc batch deletes.
-4. **Cloud Functions modularization** — split 1999-line `functions/index.js` into 6 focused modules under `functions/lib/`. Zero behavioral change; all 18 exported function names unchanged.
-5. **Android toolchain cleanup** — removed deprecated `android.builtInKotlin=false` and `android.newDsl=false` flags from `android/gradle.properties`. Both were injected by the Flutter Gradle migrator; not needed since the project already uses Kotlin DSL.
-6. **Employee → Tasks shortcut** — `Icons.task_alt_outlined` button on each employee card in `EmployeesScreen` navigates to `TasksScreen` with the employee ID as a route argument; `TasksScreen.initState` reads the argument and pre-filters by assignee.
+1. **Toolchain upgrade** — Gradle 8.14.1, AGP 8.11.1, Kotlin 2.2.20, Flutter 3.44.2 (aligned with Shorebird stable). Verified with debug APK build.
+2. **Sign Out of All Other Devices** — Settings → Account tile triggers confirmation + `revokeUserSessions` CF call. User stays signed in on current device; all other sessions invalidated.
+3. **Attendance original-session audit** — Admin correction sheet shows original (pre-correction) session times when viewing a previously corrected attendance record.
+4. **Reports custom date range** — Month picker replaced with `showDateRangePicker`. Admins can generate task reports for any arbitrary date range.
+5. **Documentation cleanup** — PROJECT_CONTEXT.md and NEXT_STEPS.md updated to reflect v1.8.0 ship and v1.9.0 scope.
 
 ---
 
 ## Architecture decisions
 
-| Decision | Choice |
-|---|---|
-| Attachment stream | `snapshots()` on the `attachments` sub-collection; cubit owns `StreamSubscription`, cancels in `clear()` and `close()` |
-| Post-delete UI update | Stream delivers the removal automatically; no manual list update needed |
-| Delete order | Firestore delete first (throws on permission denied), then `unawaited(deleteStorageFile())` fire-and-forget |
-| Firestore rule for delete | `isAdmin() \|\| relatedTask(taskId).data.assignedBy == request.auth.uid \|\| resource.data.uploadedBy == request.auth.uid` |
-| CF module system | Node.js `require`/`module.exports`; `admin.initializeApp()` once in `index.js` before any `require()` of lib modules |
-| Notification expiry query | Single-field `createdAt < cutoff` — covered by Firestore auto single-field index; no `firestore.indexes.json` entry needed |
-| Tasks shortcut argument passing | `ModalRoute.of(context)?.settings.arguments` read in `initState` `addPostFrameCallback`; no router changes needed |
+| Decision | Rationale |
+|----------|-----------|
+| `signOutOtherDevices()` throws instead of emitting error state | Settings screen owns the loading UX via `_isSigningOutOtherDevices`; emitting cubit states for a one-shot action would force the screen to become a `BlocListener` unnecessarily |
+| Reports: attendance still loads by `startDate.month` | `AttendanceCubit.loadMonthlyAttendance` takes year+month; supporting multi-month ranges requires repository changes beyond v1.9.0 scope. Documented limitation. |
+| PDF service unchanged | `PdfReportService.generateEmployeeMonthlyReport` still takes `month: DateTime`; cubit passes `startDate` as month. PDF title/header shows the start-date month. |
+| `originalSessions` displayed always-expanded (no toggle) | Simplest UX for audit use case; the correction sheet already scrolls |
 
 ---
 
-## Files changed
+## Changed files
 
-**New files**
-- `functions/lib/shared.js` — timezone helpers, i18n, FCM/notification helpers
-- `functions/lib/tasks.js` — `generateRecurringTaskInstances`, `cleanupTaskAttachments`
-- `functions/lib/task-notifications.js` — all 6 task notification functions
-- `functions/lib/attendance.js` — `recordAttendance`, `adminCorrectAttendance`, `adminResetAttendance`, `sendDailyAbsenceMarker`
-- `functions/lib/users.js` — `createEmployeeUser`, `deleteUserAccount`, `revokeUserSessions`
-- `functions/lib/chat.js` — `onNewChatMessage`
-- `functions/lib/notifications.js` — `cleanupExpiredNotifications`
+### Toolchain
+- `android/gradle/wrapper/gradle-wrapper.properties` — Gradle 8.14.1
+- `android/settings.gradle.kts` — AGP 8.11.1, Kotlin 2.2.20
 
-**Modified files**
-- `functions/index.js` — rewritten to ~30-line thin re-export; `admin.initializeApp()` here
-- `firestore.rules` — attachment `allow delete` rule expanded from `if false` to admin / creator / uploader
-- `lib/features/tasks/data/repositories/task_attachments_repository.dart` — `getAttachments()` removed; `watchAttachments()` stream + `deleteAttachment()` added
-- `lib/features/tasks/presentation/cubit/task_attachments_state.dart` — `isDeleting: bool` field added
-- `lib/features/tasks/presentation/cubit/task_attachments_cubit.dart` — rewritten with `StreamSubscription`, `deleteAttachment()`, `clear()` async, `close()` override
-- `lib/features/tasks/presentation/widgets/attachment_tile.dart` — `taskId` + `canDelete` params; `_DeleteButton` overlay with confirmation dialog + snackbar
-- `lib/features/tasks/presentation/widgets/task_attachments_section.dart` — `canDeleteAny` param; per-tile `canDelete` logic; upload/delete gating on `!isDeleting`
-- `lib/features/tasks/presentation/screens/task_details_screen.dart` — `canDeleteAny: canEditOrDelete` on both sections
-- `lib/features/tasks/presentation/screens/edit_task_screen.dart` — `canDeleteAny: canEditTask` on brief section
-- `lib/features/employees/presentation/screens/employees_screen.dart` — `task_alt_outlined` `IconButton` on each employee card
-- `lib/features/tasks/presentation/screens/tasks_screen.dart` — reads `ModalRoute` argument in `initState`; pre-sets `filterAssigneeId`
-- `android/gradle.properties` — removed 2 deprecated flags + their comments
-- `assets/translations/en.json` — 4 new keys: `delete_attachment`, `delete_attachment_confirm`, `attachment_deleted`, `attachment_delete_failed`
-- `assets/translations/ar.json` — 4 new keys (Arabic equivalents)
+### Sign Out of All Other Devices
+- `lib/features/auth/presentation/cubit/auth_cubit.dart` — `signOutOtherDevices()`
+- `lib/features/settings/presentation/screens/settings_screen.dart` — tile + handler
+- `assets/translations/en.json` + `ar.json` — 5 new keys
+
+### Attendance audit visibility
+- `lib/features/attendance/data/models/attendance_model.dart` — `originalSessions` field
+- `lib/features/admin/presentation/screens/admin_attendance_screen.dart` — `_CorrectionSheet` display
+- `assets/translations/en.json` + `ar.json` — 1 new key
+
+### Reports custom date range
+- `lib/features/reports/presentation/cubit/reports_state.dart` — `selectedStartDate` / `selectedEndDate`
+- `lib/features/reports/data/repositories/reports_repository.dart` — `getTasksForEmployee`
+- `lib/features/reports/presentation/cubit/reports_cubit.dart` — `generateReport(startDate, endDate)`
+- `lib/features/reports/presentation/screens/reports_screen.dart` — `DateTimeRange` picker
+- `assets/translations/en.json` + `ar.json` — 3 new keys
+
+### Documentation + release
+- `docs/ai-workflow/PROJECT_CONTEXT.md` — version, CF modularization, FCM path, translation count
+- `docs/ai-workflow/NEXT_STEPS.md` — 6 completed items closed
+- `docs/ai-workflow/SESSION_LOG.md` — v1.9.0 entry added
+- `CHANGELOG.md` — `[1.9.0]` entry
+- `pubspec.yaml` — version `1.9.0+12`
 
 ---
 
 ## Quality gates
 
-- `flutter analyze lib/` — no issues ✅
-- `npm run lint` — clean ✅
-- `flutter test` — pending owner run
+- [x] `dart analyze lib/` — zero errors/warnings in our code
+- [x] `npm run lint` — ESLint clean
+- [x] `flutter build apk --debug` — toolchain upgrade verified
+- [x] `firebase deploy --only functions` — deployed (revokeUserSessions with customToken)
+- [x] IAM fix — `Service Account Token Creator` role granted to `112459870697-compute@developer.gserviceaccount.com`
+- [x] Owner smoke test rounds 1–4 — all three features PASS
+- [ ] PR merge + tag `v1.9.0`
+- [ ] `shorebird release android` + `shorebird release ios`
+- [ ] Store binary submissions (full release required — translation changes)
 
 ---
 
-## Owner smoke-test checklist
+## Release steps (owner)
 
-### Attachment deletion
-1. Admin opens any task details → taps evidence thumbnail → red X overlay visible → tap X → confirm dialog appears → tap Delete → photo disappears in ~300 ms (stream update)
-2. Task creator (non-admin) opens their task → can delete any attachment on that task
-3. Uploader (assignee who uploaded evidence) → red X on their own uploads; no X on photos they didn't upload when they are not the creator
-4. Non-creator / non-admin / non-uploader → no red X visible at all
-5. Admin opens Edit Task → can delete task materials from the brief section
-6. Delete confirmation dialog has Cancel and Delete buttons; Cancel returns without deleting
+```bash
+# 1. Merge PR feat/v1.9.0 → main
 
-### Real-time sync
-7. Admin has task details open on one device; another user uploads evidence → tile appears without screen refresh
+# 2. Tag
+git tag v1.9.0
+git push origin v1.9.0
 
-### Notification auto-expiry
-8. After deploy: verify `cleanupExpiredNotifications` appears in Firebase Functions console (no deploy error)
-9. Optional: check notifications collection — after the next Sunday 02:00 Asia/Jerusalem run, docs older than 30 days are gone
+# 3. Firebase deploy — ALREADY DONE (deployed during smoke testing)
+# cd functions && npm run deploy
 
-### Employee → Tasks shortcut
-10. Admin opens Employees screen → each employee card has a task icon button → tap it → Tasks screen opens with that employee's name pre-filtered in the assignee filter
-11. Clear filters button removes the pre-filter
+# 4. Shorebird
+shorebird release android
+shorebird release ios
 
-### Android build
-12. `flutter build apk --debug` completes without deprecated-flag warnings in Gradle output
+# 5. Store uploads
+# iOS: Transporter (IPA)
+# Android: Play Console (AAB)
+```
 
----
-
-## Pending release steps
-
-1. Bump version: `pubspec.yaml` `1.7.0+10` → `1.8.0+11`
-2. Update `CHANGELOG.md`
-3. Commit + PR `feat/v1.8.0 → main`
-4. `firebase deploy --only functions,firestore:rules`
-5. Shorebird patch eligibility: **No** — attachment delete is a new Firestore listener path + CF deploy required → full binary
-6. Build release binary + store submission
-
----
-
-## Previous release — v1.7.0+10
-
-**Branch**: `feat/task-attachments` → merged to `main` via PR #43  
-**Tag**: `v1.7.0`  
-**Status**: Merged ✅
+**Note:** Firebase CF deploy was done during smoke testing (revokeUserSessions now returns a custom token so the current device stays signed in after session revocation). Firestore rules unchanged. IAM fix (`Service Account Token Creator` role) applied to the Compute Engine default service account in Google Cloud Console.

@@ -20,6 +20,49 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDeleting = false;
+  bool _isSigningOutOtherDevices = false;
+
+  Future<void> _handleSignOutOtherDevices() async {
+    final cubit = context.read<AuthCubit>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('sign_out_other_devices'.tr()),
+        content: Text('sign_out_other_devices_confirm'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('confirm'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (confirmed != true) return;
+
+    setState(() => _isSigningOutOtherDevices = true);
+
+    try {
+      await cubit.signOutOtherDevices();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('sign_out_other_devices_success'.tr())),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('sign_out_other_devices_failed'.tr())),
+      );
+    } finally {
+      if (mounted) setState(() => _isSigningOutOtherDevices = false);
+    }
+  }
 
   Future<void> _persistLanguageCode(String languageCode) async {
     final currentUser = context.read<AuthCubit>().state.user;
@@ -212,6 +255,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () =>
                       Navigator.of(context)
                           .pushNamed(RouteNames.changePassword),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.devices_outlined),
+                  title: Text('sign_out_other_devices'.tr()),
+                  trailing: _isSigningOutOtherDevices
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chevron_right),
+                  enabled: !_isSigningOutOtherDevices,
+                  onTap: _isSigningOutOtherDevices
+                      ? null
+                      : _handleSignOutOtherDevices,
                 ),
                 const Divider(height: 1),
                 ListTile(

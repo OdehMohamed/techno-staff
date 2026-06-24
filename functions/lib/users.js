@@ -159,7 +159,11 @@ exports.revokeUserSessions = onCall(async (request) => {
   }
   try {
     await admin.auth().revokeRefreshTokens(request.auth.uid);
-    return {success: true};
+    // Create a fresh custom token AFTER revocation so the calling device can
+    // re-authenticate with a new refresh token that is not covered by the
+    // revocation. All other devices' revoked refresh tokens remain invalid.
+    const customToken = await admin.auth().createCustomToken(request.auth.uid);
+    return {success: true, customToken};
   } catch (error) {
     console.error("revokeUserSessions failed", error);
     throw new HttpsError("internal", "Failed to revoke sessions");

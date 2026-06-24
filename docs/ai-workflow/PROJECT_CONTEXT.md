@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-06-17
+> Last updated: 2026-06-22
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.6.0+9 merged to `main` and tagged (2026-06-17) — GitHub release created at https://github.com/OdehMohamed/techno-staff/releases/tag/v1.6.0. Next: `cd functions && npm run deploy` → `shorebird release ios` → `shorebird release android` → store binary uploads (IPA via Transporter, AAB via Play Console).
+Current status: closed testing (Google Play Closed Testing, TestFlight). v1.8.0+11 merged to `main` and fully released (Firebase deploy, Shorebird Android + iOS, store submissions). v1.9.0+12 in progress on `feat/v1.9.0` (toolchain upgrade + 3 product features + docs).
 
 ## 2. Tech Stack
 
@@ -51,7 +51,7 @@ Current status: closed testing (Google Play Closed Testing, TestFlight). v1.6.0+
 - `flutter_lints` `^5.0.0` for the Flutter client.
 - ESLint (Google config) for `functions/` — runs as Firebase `predeploy`.
 - Release artifacts: root `CHANGELOG.md` and `docs/release-checklist.md`.
-- Translation parity enforced: `365 365 []` as of Chat Phase 2 on `feat/chat-phase-2` (8 new keys: send_message, task_discussion, task_discussion_error, broadcast_channel, broadcast_channel_hint, admin_only_can_post, select_all).
+- Translation parity enforced: 392 EN/AR keys as of v1.9.0 (9 new keys this cycle: confirm, sign_out_other_devices × 4, original_sessions, select_date_range, selected_period, tap_to_select_range).
 
 ## 3. Architecture
 
@@ -120,7 +120,7 @@ Field-name constants live in `lib/core/constants/firebase_paths.dart`. String li
 
 ## 6. Cloud Functions
 
-Single file: `functions/index.js` (Node 22, ~1,978 lines, 15 exports). Consider splitting by domain when the next CF addition lands.
+Modular: `functions/index.js` is a thin re-export (~30 lines); logic lives in 7 domain modules under `functions/lib/` (shared.js, tasks.js, task-notifications.js, attendance.js, users.js, chat.js, notifications.js). Node 22 runtime, 15 exports total.
 
 | Function                           | Trigger                              | Purpose                                                                             |
 | ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -154,7 +154,7 @@ All Asia/Jerusalem date math uses `ymdInJerusalem` / `jerusalemMidnightAsUTC` / 
 - `FirebaseMessaging.onMessageOpenedApp`
 - `FirebaseMessaging.getInitialMessage`
 
-All four deep-link to `RouteNames.taskDetails` using the FCM payload's `taskId`. The FCM token is written to `users/{uid}.fcmToken` inside `AuthCubit._setupFCM` after a successful sign-in / auth check. (FCM token isolation to a dedicated `fcm_tokens` collection is planned for the next release cycle.)
+All four deep-link to `RouteNames.taskDetails` using the FCM payload's `taskId`. The FCM token is written to `fcm_tokens/{uid}.token` (isolated collection, not `users/{uid}.fcmToken`) inside `AuthCubit._setupFCM` after a successful sign-in / auth check.
 
 ## 8. Theming, Constants, Shared Widgets
 
@@ -185,7 +185,7 @@ See `docs/release-checklist.md` for the complete patch-eligibility checklist.
 
 ## 11. Version & Branching
 
-- **App version**: `1.5.0+8` in `pubspec.yaml` (next store release will be bumped to `1.6.0+9` before Shorebird release on `feat/chat-phase-2`). FlutterFire upgrade (firebase-ios-sdk 12.14.0) on `main`; Chat Phase 2 feature work in progress on `feat/chat-phase-2`.
+- **App version**: `1.9.0+12` (in progress on `feat/v1.9.0`); last released `1.8.0+11` on `main`.
 - **Production branch**: `main`.
 - **Feature branches**: `feat/<short-name>` or `fix/<short-name>`.
 - **Chore / docs branches**: `chore/<short-name>`.

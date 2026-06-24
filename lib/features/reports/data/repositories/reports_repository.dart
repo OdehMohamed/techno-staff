@@ -20,18 +20,16 @@ class ReportsRepository {
         .toList();
   }
 
-  Future<List<TaskModel>> getTasksForEmployeeByMonth({
+  Future<List<TaskModel>> getTasksForEmployee({
     required String employeeId,
-    required DateTime month,
+    required DateTime startDate,
+    required DateTime endDate,
   }) async {
-    final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 1);
-
     final snapshot = await _firestore
         .collection(FirebasePaths.tasks)
         .where(FirebasePaths.assignedTo, isEqualTo: employeeId)
-        .where('dueDate', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('dueDate', isLessThan: Timestamp.fromDate(end))
+        .where('dueDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('dueDate', isLessThan: Timestamp.fromDate(endDate))
         .get(const GetOptions(source: Source.server));
 
     return snapshot.docs

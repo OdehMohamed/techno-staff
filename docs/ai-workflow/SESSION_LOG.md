@@ -1,3 +1,74 @@
+## 2026-06-23 — Claude Sonnet 4.6 — v1.9.0 smoke-test fixes (rounds 2–4)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.9.0`
+- **Goal**: Fix all issues found during owner smoke testing across four rounds.
+- **Outcome**: ✅ All three features PASS after round 4. v1.9.0 ready to merge.
+
+### Round 1 fixes
+
+- **Reports date range crash** — `initialDateRange.end` (July 1) exceeded `lastDate` (today). Fixed by defaulting `_selectedRange.end` to today and adding a null guard in `_pickDateRange()`.
+- **Sign-out confirmation copy** — Updated to clarify that other devices expire within ~1 hour.
+
+### Round 2 fixes
+
+- **Sign-out-other-devices: current device also signed out** — `revokeRefreshTokens` revokes ALL tokens; `getIdToken(true)` then failed on the revoked refresh token, signing out the current device too. Fix: replaced with `signInWithCustomToken` flow.
+- **`original_sessions` label** — Clarified to "before any admin correction" (immutable baseline, written on first correction only).
+- **Reports attendance filtering** — Added `_recordInRange` / `_countWorkingDaysInRange`; replaced all `monthlyRecords` references with a filtered local in the attendance BlocBuilder and PDF export. Removed dead `_countWorkingDays` helper.
+
+### Round 3–4 fixes: sign-out-other-devices (final)
+
+Root cause confirmed from CF logs: `createCustomToken` threw `auth/insufficient-permission` — the Compute Engine default service account (`112459870697-compute@developer.gserviceaccount.com`) lacked `iam.serviceAccounts.signBlob`.
+
+**Fix (two parts):**
+1. CF (`functions/lib/users.js`): After `revokeRefreshTokens`, create a custom token and return it: `{success: true, customToken}`.
+2. Flutter (`auth_cubit.dart`): Call `signInWithCustomToken(customToken)` to give the current device a new refresh token unaffected by the revocation.
+3. **IAM (owner action)**: Granted `Service Account Token Creator` role to `112459870697-compute@developer.gserviceaccount.com` in Google Cloud Console.
+
+### Commits
+
+`47cc08e`, `a5a156a`, `f755fc0`, `56901f0` — all on `feat/v1.9.0`.
+
+---
+
+## 2026-06-22 — Claude Sonnet 4.6 — v1.9.0 Toolchain upgrade + product improvements
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v1.9.0`
+- **Goal**: Toolchain upgrade (Gradle/AGP/Kotlin/Flutter), Sign Out of All Other Devices, attendance audit visibility, reports custom date range, documentation cleanup.
+- **Outcome**: ✅ All items implemented. `dart analyze lib/` clean. `npm run lint` clean. 9 translation keys added.
+
+### Work done
+
+**Toolchain upgrade**
+- Gradle wrapper: 8.12 → 8.14.1 (`gradle-wrapper.properties`)
+- AGP: 8.9.1 → 8.11.1; Kotlin: 2.1.0 → 2.2.20 (`settings.gradle.kts`)
+- Flutter: `flutter upgrade` to 3.44.2 (aligns with Shorebird stable); `flutter pub get` resolved cleanly
+- Debug APK build confirmed clean
+
+**Sign Out of All Other Devices**
+- `auth_cubit.dart` — added `signOutOtherDevices()` (calls `revokeUserSessions` CF, rethrows on error)
+- `settings_screen.dart` — new tile between Change Password and Delete Account; `_isSigningOutOtherDevices` spinner; confirmation dialog
+- 5 new translation keys (EN + AR): `confirm`, `sign_out_other_devices`, `sign_out_other_devices_confirm`, `sign_out_other_devices_success`, `sign_out_other_devices_failed`
+
+**Attendance audit visibility**
+- `attendance_model.dart` — added `originalSessions: List<AttendanceSession>?` field + parsing in `fromMap`
+- `admin_attendance_screen.dart` — `_CorrectionSheet` now shows read-only original sessions section (muted, LTR time arrows) when `isCorrected == true && originalSessions != null`
+- 1 new translation key: `original_sessions`
+
+**Reports custom date range**
+- `reports_state.dart` — replaced `selectedMonth: DateTime?` with `selectedStartDate`/`selectedEndDate`
+- `reports_repository.dart` — `getTasksForEmployee(startDate, endDate)` replaces `getTasksForEmployeeByMonth`
+- `reports_cubit.dart` — `generateReport(employee, startDate, endDate)`; `exportPdf` uses `startDate` as PDF month
+- `reports_screen.dart` — `_selectedRange: DateTimeRange?` initialized to current month; `_pickDateRange()` uses `showDateRangePicker`; BlocListener/subtitle/working-days all migrated to `selectedStartDate`
+- 3 new translation keys: `select_date_range`, `selected_period`, `tap_to_select_range`
+
+**Documentation cleanup**
+- `PROJECT_CONTEXT.md` — updated version, status, CF modularization, FCM token path, translation count
+- `NEXT_STEPS.md` — marked 6 completed items as closed; added Chat Phase 3 as new idea
+
+---
+
 ## 2026-06-19 — Claude Sonnet 4.6 — v1.8.0 Attachment workflow completion + maintenance
 
 - **Agent**: Claude Sonnet 4.6

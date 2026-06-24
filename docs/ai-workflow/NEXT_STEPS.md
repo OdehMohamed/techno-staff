@@ -1,6 +1,6 @@
 # Next Steps
 
-> Last updated: 2026-06-17
+> Last updated: 2026-06-22
 > This file captures forward-looking ideas — things we might want to do next but have not yet committed to. When we commit to an item, promote it into `BACKLOG.md` with a priority.
 
 Sections are intentionally left empty. Add ideas as they come up in discussions or during implementation; do not speculate. One-liners are fine; expand only when we are close to acting on an idea.
@@ -24,12 +24,21 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Recommended Next Steps
 
-1. **Owner action: upload v1.5.0+8 store binaries** — iOS: upload `build/ios/ipa/*.ipa` via Transporter or `xcrun altool`. Android: upload `build/app/outputs/bundle/release/app-release.aab` via Play Console. No Firebase deploy required for this release (no CF/rules/indexes changes).
-2. **Chat Phase 2** — three sub-items in order: (a) Employees quick-action (S), (b) task-linked conversations (M, design round first), (c) group member management (M, design round first). See Features section below.
+1. **Merge PR #45 and tag v1.9.0** — all smoke tests pass; ready for merge, tag, Shorebird release, and store submission. Full binary required (translation changes).
+2. **Collect tester feedback on v1.9.0** — new features to validate: sign-out other devices, attendance originalSessions display, reports custom date range + PDF.
 
 ---
 
 ## Infrastructure / Platform
+
+### Third-party plugin build warnings (tracked, not blocking)
+
+- **Category**: Engineering
+- **Why now**: Surfaced during v1.9.0 build smoke test.
+- **Android — KGP API warnings**: `cloud_functions`, `firebase_storage`, `image_picker_android`, `local_auth_android`, `package_info_plus`, `shared_preferences_android` use deprecated Kotlin Gradle Plugin APIs. Flutter warns these may become build failures in a future Flutter version. No action possible on our side — upstream plugins must migrate. Monitor FlutterFire / plugin changelogs and upgrade when fixes are released.
+- **iOS — `printing` / SPM**: The `printing` package does not support Swift Package Manager yet. No impact on builds today; will matter if we ever drop CocoaPods. Track upstream: `pub.dev/packages/printing`.
+- **iOS — FirebaseAuth deprecated application API**: `FIRApp.configure()` / deprecated `UIApplication` hook in the FirebaseAuth plugin. This is a Firebase iOS SDK issue, not ours. Will resolve when FlutterFire updates its underlying Firebase iOS SDK dependency.
+- **Open questions**: None blocking. Revisit when a Flutter upgrade causes an actual build failure.
 
 ### ✅ FlutterFire upgrade → Shorebird iOS — CLOSED (2026-06-17)
 
@@ -43,65 +52,48 @@ Result: **NOT supported.** Shorebird explicitly excludes `assets/translations/*.
 
 **Implication for all future work:** Any PR that adds or changes translation keys is a full binary store release, never a Shorebird patch. This includes Chat Phase 2, which will add ~10–15 new EN/AR keys — Chat Phase 2 requires a store binary regardless of Dart patch eligibility.
 
-### Android Gradle / AGP / Kotlin version deprecation warnings
+### ✅ Android Gradle / AGP / Kotlin upgrade — CLOSED (2026-06-22, v1.9.0)
 
-- **Category**: Engineering / Release
-- **Why now**: `shorebird release android` for v1.5.0+8 printed deprecation warnings: Gradle 8.12.0 → needs 8.14.0+; AGP 8.9.1 → needs 8.11.1+; Kotlin 2.1.0 → needs 2.2.20+. These are warnings now but will become errors in a future Flutter version.
-- **Sketch**: Update `android/gradle/wrapper/gradle-wrapper.properties` (Gradle), `android/settings.gradle` AGP plugin version, and KGP version. Flutter docs: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin
-- **Open questions**: Whether Chat Phase 2 is a good opportunity to bundle this (both require a full binary release anyway). No urgency — current builds succeed.
+Upgraded: Gradle 8.12 → 8.14.1, AGP 8.9.1 → 8.11.1, Kotlin 2.1.0 → 2.2.20. APK build confirmed clean.
 
-### Local Flutter version alignment with Shorebird
+### ✅ Local Flutter version alignment with Shorebird — CLOSED (2026-06-22, v1.9.0)
 
-- **Category**: Engineering / Release
-- **Why now**: Local Flutter is 3.35.7; Shorebird bundles 3.44.2. The version gap means SPM resolution behaves differently between local dev builds and Shorebird builds. After FlutterFire upgrade (which aligned Firebase to 12.14.0), local CocoaPods builds and Shorebird SPM builds now target the same Firebase SDK version, so the practical risk is lower.
-- **Sketch**: Upgrade local Flutter to match Shorebird's bundled version after the next milestone.
-- **Open questions**: Whether upgrading local Flutter also changes CocoaPods resolution for non-Shorebird builds. Test carefully.
+Flutter upgraded to 3.44.2 (matches Shorebird stable).
 
 ---
 
 ## Features
 
-### Chat Phase 2 — task thread + Employees quick-action + group member management
+### ✅ Chat Phase 2 — task thread + Employees quick-action + group member management — CLOSED (v1.8.0)
+
+All three sub-items shipped: Employees DM quick-action, task-linked thread (creator + assignee), admin broadcast channels.
+
+### Chat Phase 3 — group member management (add/remove after creation)
 
 - **Category**: Feature
-- **Why now**: Chat Phase 1 shipped in v1.4.0. Phase 2 scope from the architecture doc:
-  - **Employees quick-action**: message icon on employee cards → opens/creates DM. Low complexity. Highest daily utility.
-  - **Task-thread entry**: "Chat about this task" action on task details → opens conversation with task context. Moderate complexity.
-  - **Group member management**: add/remove members after group creation. Moderate complexity, requires rules update.
-- **Sketch**: Implement in order: Employees quick-action first, task-thread second, member management third.
-- **Open questions**: (a) What tester feedback from v1.4.0 reveals about Phase 2 priority. (b) Whether task-thread links to a new dedicated task-scoped conversation or to an existing DM with context pre-filled.
+- **Why now**: Deferred from Phase 2; requires rules change for non-creator participants to add/remove members.
+- **Sketch**: Settings gear in ConversationScreen → manage members sheet → add by user search / remove with confirm.
+- **Open questions**: Tester feedback on whether this is actually needed.
 
-### "Sign out of all other devices" — Settings action
+### ✅ "Sign out of all other devices" — CLOSED (2026-06-22, v1.9.0)
 
-- **Category**: Security / UX
-- **Why now**: The automatic cross-device session invalidation (password change → `revokeUserSessions` → `authStateChanges` listener) is architecturally correct but practically non-deterministic — Firebase Auth ID-token refresh cadence is uncontrolled. A user-triggered explicit revocation is the deterministic alternative.
-- **Sketch**: Settings → Account tile "Sign out of all other devices" → confirmation dialog → calls existing `revokeUserSessions` callable → Crashlytics on failure. No new Cloud Function.
-- **Open questions**: Whether to surface "Other sessions will sign out within ~1h" as confirmation copy. Whether to add the same wording to the password-change success state.
+Settings → Account tile → confirmation → `revokeUserSessions` callable. No new CF.
 
-### Attendance — surface `originalSessions` in admin correction UI
+### ✅ Attendance — surface `originalSessions` in admin correction UI — CLOSED (2026-06-22, v1.9.0)
 
-- **Category**: UI/UX
-- **Why now**: `originalSessions` is preserved server-side on first correction (the audit baseline) but there is no UI to view it. Admin sees only the corrected state.
-- **Sketch**: A "View original sessions" toggle or expand row within the correction sheet. No data model change — the field is already on the attendance document.
-- **Open questions**: Whether testers actually need this, or whether the audit trail in `attendance_logs` is sufficient for the use case.
+`originalSessions` parsed in `AttendanceModel.fromMap`; read-only display added to `_CorrectionSheet` when `isCorrected == true`.
 
-### Admin PDF — custom date-range export
+### ✅ Reports — custom date-range export — CLOSED (2026-06-22, v1.9.0)
 
-- **Category**: UI/UX
-- **Why now**: Current PDF reports are calendar-month scoped. Pay periods or review cycles may not align.
-- **Sketch**: Replace the month picker with a date-range picker. Data is already queryable by date range in the repository.
-- **Open questions**: Whether this is a real friction point from tester feedback, or speculative.
+Month picker replaced with `showDateRangePicker`. State/cubit/repository use `startDate`/`endDate`.
 
 ---
 
 ## Engineering
 
-### functions/index.js modularization
+### ✅ functions/index.js modularization — CLOSED (v1.8.0)
 
-- **Category**: Engineering
-- **Why now**: File is now ~1,978 lines with 15 exported functions. Still manageable but the next meaningful addition is a good trigger to split by domain.
-- **Sketch**: Split into `functions/tasks.js`, `functions/attendance.js`, `functions/chat.js`, `functions/notifications.js`, `functions/utils.js` with a thin `functions/index.js` re-exporting everything. Do this as the first step of the next Cloud Function change, not as a standalone refactor.
-- **Open questions**: Whether Firebase's Node 22 runtime has any quirks with multi-file CommonJS modules that require testing.
+Split into 7 modules under `functions/lib/`; `index.js` is now a thin re-export.
 
 ### Offline write queue user expectation
 
@@ -114,9 +106,7 @@ Result: **NOT supported.** Shorebird explicitly excludes `assets/translations/*.
 
 ## Security
 
-### Manual "Sign out of all other devices" Settings action
-
-(See Features section above — same item, listed under Security because the motivation is account security.)
+_Empty._
 
 ---
 
