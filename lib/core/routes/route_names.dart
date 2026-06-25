@@ -28,4 +28,5 @@ class RouteNames {
   static const String chatList = '/chat';
   static const String conversation = '/conversation';
   static const String newGroup = '/new-group';
+  static const String groupSettings = '/group-settings';
 }

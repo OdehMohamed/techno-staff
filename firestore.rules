@@ -172,13 +172,23 @@ service cloud.firestore {
           'lastMessage', 'lastMessageAt', 'unreadCounts', 'memberLastRead'
         ]);
       }
+      function onlyMembershipFields() {
+        // Allow creator/admin to add or remove members on group conversations only.
+        // participantIds must remain non-empty to guard against accidental wipe-out.
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'participantIds', 'participantNames', 'lastMessage', 'lastMessageAt'
+        ]) && resource.data.type == 'group'
+           && request.resource.data.participantIds.size() >= 1;
+      }
 
       allow read:   if isParticipant();
       allow create: if signedIn() && willBeParticipant()
                        && request.resource.data.participantIds.size() >= 2
                        && request.resource.data.createdBy == request.auth.uid;
       allow update: if (isParticipant() && onlyAllowedConvFields())
-                       || (isAdmin() && isParticipant());
+                       || (isAdmin() && isParticipant())
+                       || (isParticipant() && onlyMembershipFields()
+                           && (isAdmin() || resource.data.createdBy == request.auth.uid));
       allow delete: if isAdmin();
 
       match /messages/{messageId} {

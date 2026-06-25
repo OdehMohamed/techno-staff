@@ -38,11 +38,20 @@ class EmployeesCubit extends Cubit<EmployeesState> {
     required String userId,
     required bool isActive,
   }) async {
-    await _employeesRepository.updateEmployeeStatus(
-      userId: userId,
-      isActive: isActive,
-    );
+    try {
+      await _employeesRepository.updateEmployeeStatus(
+        userId: userId,
+        isActive: isActive,
+      );
+      await fetchEmployees();
+    } catch (_) {
+      emit(
+        state.copyWith(toggleError: 'failed_to_update_employee_status'),
+      );
+    }
+  }
 
-    await fetchEmployees();
+  void clearToggleError() {
+    emit(state.copyWith(clearToggleError: true));
   }
 }

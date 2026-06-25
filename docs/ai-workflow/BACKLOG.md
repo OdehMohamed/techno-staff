@@ -242,6 +242,40 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
 ---
 
+### v1.10.0 — Reports + Admin UX + Chat Phase 3
+
+#### 21. Reports multi-month attendance — `feat/reports-chat-admin-improvements`
+
+- **Priority**: Should-fix (data correctness)
+- **Status**: In progress
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.10.0
+- **Added**: 2026-06-25
+- **Description**: When the user selects a date range spanning multiple calendar months in the Reports screen, `loadMonthlyAttendance(userId, year, month)` only loaded the start month, silently dropping records from subsequent months. Fixed by adding `fetchAttendanceRange(userId, start, end)` to `AttendanceRepository` (single date-string range query) and `loadAttendanceRange(userId, start, end)` to `AttendanceCubit`. The `ReportsScreen` BlocListener switches to the new method. PDF export header updated from "Month YYYY" to the full date range. New translation key: `date_range_label` × 2 locales.
+- **Acceptance criteria**: Selecting June 1 – July 31 shows attendance records from both months. PDF export header shows both dates. Working-days count is accurate across the full range. `flutter analyze` clean.
+
+#### 22. Employee deactivation confirmation — `feat/reports-chat-admin-improvements`
+
+- **Priority**: Should-fix (UX safety)
+- **Status**: In progress
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.10.0
+- **Added**: 2026-06-25
+- **Description**: The `isActive` switch in the Employees screen fired `toggleEmployeeStatus` immediately on tap with no confirmation. Deactivating an employee locks them out immediately. A confirmation `AlertDialog` is now shown before deactivation. Activation remains immediate (recoverable action). `EmployeesCubit` toggle errors are surfaced as a `ScaffoldMessenger` snackbar. New translation keys: `deactivate_employee` (dialog title), `deactivate_employee_confirm` (dialog body) × 2 locales.
+- **Acceptance criteria**: Tapping switch to deactivate shows confirmation dialog. Confirming deactivates. Cancelling leaves switch unchanged. Tapping switch to activate still acts immediately. Errors appear as a snackbar. `flutter analyze` clean.
+
+#### 23. Chat Phase 3 — group member management — `feat/reports-chat-admin-improvements`
+
+- **Priority**: Should-fix (feature completion)
+- **Status**: In progress
+- **Owner**: Claude Sonnet 4.6 (implementing agent)
+- **Target release**: 1.10.0
+- **Added**: 2026-06-25
+- **Description**: Group conversations have no way to add or remove members after creation. A gear icon appears in the `ConversationScreen` AppBar for group conversations when the current user is admin or creator. Tapping it opens `GroupSettingsScreen` showing the current member list with remove buttons, and an "Add Members" flow that filters out existing members. System messages are written to the conversation on add/remove (same path as normal messages). Firestore rules expanded to allow creator/admin to update `participantIds` and `participantNames` on a conversation doc. **The exact Firestore rules diff is shown for approval before any `firestore.rules` file edit.**
+- **Acceptance criteria**: Admin/creator can add members from the user list (filtered to active employees). Admin/creator can remove any member except themselves. System messages appear in the chat timeline on both events. Non-admin/non-creator users do not see the gear icon. `flutter analyze` clean. Rules diff approved by owner.
+
+---
+
 ### v1.8.0 — Attachment Workflow Completion + Maintenance
 
 #### 20. v1.8.0 — `feat/v1.8.0`

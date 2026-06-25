@@ -1,21 +1,21 @@
 # Current Task
 
-## ✅ COMPLETE — v1.9.0 Toolchain Upgrade + Product Improvements
+## In Progress — v1.10.0 Reports + Chat + Admin UX Improvements
 
-**Branch**: `feat/v1.9.0`  
-**Status**: All 4 smoke-test rounds passed — ready for PR merge, tag, and store release
+**Branch**: `feat/reports-chat-admin-improvements`  
+**Status**: Implementation in progress
 
 ---
 
 ## What's being built
 
-Five items shipped together:
+Three items in one release cycle:
 
-1. **Toolchain upgrade** — Gradle 8.14.1, AGP 8.11.1, Kotlin 2.2.20, Flutter 3.44.2 (aligned with Shorebird stable). Verified with debug APK build.
-2. **Sign Out of All Other Devices** — Settings → Account tile triggers confirmation + `revokeUserSessions` CF call. User stays signed in on current device; all other sessions invalidated.
-3. **Attendance original-session audit** — Admin correction sheet shows original (pre-correction) session times when viewing a previously corrected attendance record.
-4. **Reports custom date range** — Month picker replaced with `showDateRangePicker`. Admins can generate task reports for any arbitrary date range.
-5. **Documentation cleanup** — PROJECT_CONTEXT.md and NEXT_STEPS.md updated to reflect v1.8.0 ship and v1.9.0 scope.
+1. **Reports multi-month attendance** — `AttendanceCubit.loadMonthlyAttendance` is extended to support arbitrary date ranges. Selecting June 15 – July 20 now correctly loads attendance from both months. PDF export reflects the full range. The v1.9.0 single-month limitation is removed.
+
+2. **Employee deactivation confirmation** — The `isActive` switch in the Employees screen fires immediately on tap with no confirmation. Deactivation now requires a confirmation dialog ("Deactivate [Name]? They will lose app access immediately."). Activation remains immediate. EmployeesCubit errors are surfaced as snackbars.
+
+3. **Chat Phase 3 — group member management** — A new `GroupSettingsScreen` (gear icon in group `ConversationScreen` AppBar, visible to admin/creator only) lets admins add or remove members from existing group conversations. Firestore rules require targeted expansion; the exact diff is shown for approval before any `firestore.rules` edit.
 
 ---
 
@@ -23,78 +23,77 @@ Five items shipped together:
 
 | Decision | Rationale |
 |----------|-----------|
-| `signOutOtherDevices()` throws instead of emitting error state | Settings screen owns the loading UX via `_isSigningOutOtherDevices`; emitting cubit states for a one-shot action would force the screen to become a `BlocListener` unnecessarily |
-| Reports: attendance still loads by `startDate.month` | `AttendanceCubit.loadMonthlyAttendance` takes year+month; supporting multi-month ranges requires repository changes beyond v1.9.0 scope. Documented limitation. |
-| PDF service unchanged | `PdfReportService.generateEmployeeMonthlyReport` still takes `month: DateTime`; cubit passes `startDate` as month. PDF title/header shows the start-date month. |
-| `originalSessions` displayed always-expanded (no toggle) | Simplest UX for audit use case; the correction sheet already scrolls |
+| `loadAttendanceRange(userId, start, end)` as new cubit method (not replacing `loadMonthlyAttendance`) | `loadMonthlyAttendance` is called from `AdminAttendanceScreen` and `EmployeeMonthlyAttendanceScreen` for non-report purposes; replacing it would change behavior at those call sites. The reports screen switches to the new method only. |
+| Single Firestore query for multi-month range | The `date` field is `"YYYY-MM-DD"` — ISO dates sort lexicographically. A single `where date >= start && date <= end` query covers any range without multiple round-trips. |
+| Attendance state reuses `monthlyRecords` field name | Avoids a naming migration across every consumer of `AttendanceState`; the semantic is "records for the current loaded period" regardless of how many months. |
+| PDF report header shows full date range | `PdfReportService` signature extended to accept `startDate`/`endDate`; header updated from "Month YYYY" to "DD MMM YYYY – DD MMM YYYY". |
+| Employee deactivation confirmation only (not activation) | Accidentally activating someone is recoverable; accidentally locking someone out mid-shift is not. Activation remains a one-tap action. |
+| Group settings accessible to admin OR original creator | Restricts member management to trusted users; creator maintains rights over their own group even if not an admin. |
+| System message on member add/remove | `onNewChatMessage` CF already skips FCM for system messages; new system text keys follow the existing `"added to group"` / `"removed from group"` pattern. Firestore write happens client-side (same path as new message create). |
 
 ---
 
-## Changed files
+## Implementation order
 
-### Toolchain
-- `android/gradle/wrapper/gradle-wrapper.properties` — Gradle 8.14.1
-- `android/settings.gradle.kts` — AGP 8.11.1, Kotlin 2.2.20
+1. Employee deactivation confirmation (smallest, standalone) ← start here
+2. Reports multi-month attendance + PDF (medium, isolated to reports feature)
+3. Chat Phase 3 group member management (largest; requires Firestore rules review before merge)
 
-### Sign Out of All Other Devices
-- `lib/features/auth/presentation/cubit/auth_cubit.dart` — `signOutOtherDevices()`
-- `lib/features/settings/presentation/screens/settings_screen.dart` — tile + handler
-- `assets/translations/en.json` + `ar.json` — 5 new keys
+---
 
-### Attendance audit visibility
-- `lib/features/attendance/data/models/attendance_model.dart` — `originalSessions` field
-- `lib/features/admin/presentation/screens/admin_attendance_screen.dart` — `_CorrectionSheet` display
-- `assets/translations/en.json` + `ar.json` — 1 new key
+## Files to change
 
-### Reports custom date range
-- `lib/features/reports/presentation/cubit/reports_state.dart` — `selectedStartDate` / `selectedEndDate`
-- `lib/features/reports/data/repositories/reports_repository.dart` — `getTasksForEmployee`
-- `lib/features/reports/presentation/cubit/reports_cubit.dart` — `generateReport(startDate, endDate)`
-- `lib/features/reports/presentation/screens/reports_screen.dart` — `DateTimeRange` picker
-- `assets/translations/en.json` + `ar.json` — 3 new keys
+### Item 1 — Employee deactivation confirmation
+- `lib/features/employees/presentation/screens/employees_screen.dart` — wrap switch in dialog for `value == false`
+- `assets/translations/en.json` + `ar.json` — `deactivate_employee_confirm` body key (reuse existing `confirm`/`cancel`/`deactivate` if present)
 
-### Documentation + release
-- `docs/ai-workflow/PROJECT_CONTEXT.md` — version, CF modularization, FCM path, translation count
-- `docs/ai-workflow/NEXT_STEPS.md` — 6 completed items closed
-- `docs/ai-workflow/SESSION_LOG.md` — v1.9.0 entry added
-- `CHANGELOG.md` — `[1.9.0]` entry
-- `pubspec.yaml` — version `1.9.0+12`
+### Item 2 — Reports multi-month attendance
+- `lib/features/attendance/data/repositories/attendance_repository.dart` — `getAttendanceRange(userId, start, end)`
+- `lib/features/attendance/presentation/cubit/attendance_cubit.dart` — `loadAttendanceRange(userId, start, end)`
+- `lib/features/attendance/presentation/cubit/attendance_state.dart` — no change (reuses `monthlyRecords` + `monthlyStatus` fields)
+- `lib/features/reports/presentation/screens/reports_screen.dart` — BlocListener switches to `loadAttendanceRange`; multi-month hint label
+- `lib/core/services/pdf_report_service.dart` — extend signature; update header
+- `lib/features/reports/presentation/cubit/reports_cubit.dart` — pass range to PDF service
+- `assets/translations/en.json` + `ar.json` — 1 key for multi-month hint (optional; confirm during implementation)
+
+### Item 3 — Chat Phase 3 group member management
+- `lib/features/chat/data/repositories/chat_repository.dart` — `addMember`, `removeMember`
+- `lib/features/chat/presentation/cubit/chat_list_cubit.dart` — `addMember`, `removeMember` wrappers
+- `lib/features/chat/presentation/cubit/chat_list_state.dart` — error state for member operations (if needed)
+- `lib/features/chat/presentation/screens/group_settings_screen.dart` — new screen
+- `lib/features/chat/presentation/screens/conversation_screen.dart` — gear icon in AppBar
+- `lib/core/routes/route_names.dart` — `groupSettings` constant
+- `lib/core/routes/app_router.dart` — new route
+- `firestore.rules` — ⚠️ **SHOW DIFF FOR APPROVAL BEFORE EDITING**
+- `assets/translations/en.json` + `ar.json` — ~6 new keys
 
 ---
 
 ## Quality gates
 
-- [x] `dart analyze lib/` — zero errors/warnings in our code
-- [x] `npm run lint` — ESLint clean
-- [x] `flutter build apk --debug` — toolchain upgrade verified
-- [x] `firebase deploy --only functions` — deployed (revokeUserSessions with customToken)
-- [x] IAM fix — `Service Account Token Creator` role granted to `112459870697-compute@developer.gserviceaccount.com`
-- [x] Owner smoke test rounds 1–4 — all three features PASS
-- [ ] PR merge + tag `v1.9.0`
-- [ ] `shorebird release android` + `shorebird release ios`
-- [ ] Store binary submissions (full release required — translation changes)
+- [x] `flutter analyze lib/` — zero errors/warnings
+- [x] `npm run lint` — ESLint clean (functions not touched in v1.10.0)
+- [x] Translation parity (401 EN == 401 AR)
+- [ ] Owner smoke test: all three items
+- [x] Firestore rules diff approved by owner (2026-06-25)
 
 ---
 
 ## Release steps (owner)
 
 ```bash
-# 1. Merge PR feat/v1.9.0 → main
+# 1. Merge PR feat/reports-chat-admin-improvements → main
 
 # 2. Tag
-git tag v1.9.0
-git push origin v1.9.0
+git tag v1.10.0
+git push origin v1.10.0
 
-# 3. Firebase deploy — ALREADY DONE (deployed during smoke testing)
-# cd functions && npm run deploy
+# 3. Firebase deploy (Firestore rules changed)
+firebase deploy --only firestore:rules
 
 # 4. Shorebird
 shorebird release android
 shorebird release ios
 
-# 5. Store uploads
-# iOS: Transporter (IPA)
-# Android: Play Console (AAB)
+# 5. Store uploads (full binary — translation changes)
 ```
-
-**Note:** Firebase CF deploy was done during smoke testing (revokeUserSessions now returns a custom token so the current device stays signed in after session revocation). Firestore rules unchanged. IAM fix (`Service Account Token Creator` role) applied to the Compute Engine default service account in Google Cloud Console.

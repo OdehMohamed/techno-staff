@@ -107,6 +107,27 @@ class AttendanceRepository {
         .toList();
   }
 
+  Future<List<AttendanceModel>> fetchAttendanceRange(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final startStr = DateFormat('yyyy-MM-dd').format(start);
+    final endStr = DateFormat('yyyy-MM-dd').format(end);
+
+    final snapshot = await _firestore
+        .collection('attendance')
+        .where('userId', isEqualTo: userId)
+        .where('date', isGreaterThanOrEqualTo: startStr)
+        .where('date', isLessThanOrEqualTo: endStr)
+        .orderBy('date', descending: false)
+        .get(const GetOptions(source: Source.server));
+
+    return snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   Future<void> adminResetDay({
     required String userId,
     required String date,

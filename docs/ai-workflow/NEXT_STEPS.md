@@ -24,8 +24,10 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Recommended Next Steps
 
-1. **Merge PR #45 and tag v1.9.0** — all smoke tests pass; ready for merge, tag, Shorebird release, and store submission. Full binary required (translation changes).
-2. **Collect tester feedback on v1.9.0** — new features to validate: sign-out other devices, attendance originalSessions display, reports custom date range + PDF.
+1. **Complete v1.10.0 implementation** — three items in progress on `feat/reports-chat-admin-improvements`: multi-month attendance reports, employee deactivation confirmation, Chat Phase 3 group member management.
+2. **Review Firestore rules diff for Chat Phase 3** — rules change must be approved before `firestore.rules` is edited; diff will be presented inline before any edit.
+3. **Owner smoke test** — after implementation, owner validates all three items on real device.
+4. **Full binary store release** — new translation keys mean Shorebird patch is ineligible; full binary required for both platforms. Deploy `firebase deploy --only firestore:rules` post-merge.
 
 ---
 
@@ -68,12 +70,9 @@ Flutter upgraded to 3.44.2 (matches Shorebird stable).
 
 All three sub-items shipped: Employees DM quick-action, task-linked thread (creator + assignee), admin broadcast channels.
 
-### Chat Phase 3 — group member management (add/remove after creation)
+### ✅ Chat Phase 3 — group member management — CLOSED (v1.10.0)
 
-- **Category**: Feature
-- **Why now**: Deferred from Phase 2; requires rules change for non-creator participants to add/remove members.
-- **Sketch**: Settings gear in ConversationScreen → manage members sheet → add by user search / remove with confirm.
-- **Open questions**: Tester feedback on whether this is actually needed.
+Implementation underway on `feat/reports-chat-admin-improvements`. Gear icon → `GroupSettingsScreen` → add/remove members. Firestore rules diff requires owner approval before merge.
 
 ### ✅ "Sign out of all other devices" — CLOSED (2026-06-22, v1.9.0)
 

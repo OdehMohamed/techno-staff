@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-06-25
+
+### Added
+
+- **Reports multi-month attendance** — selecting a date range that spans multiple calendar months now correctly loads attendance records from every month in the range (previously only the start month was loaded, silently dropping subsequent months). Working-days count and PDF export both reflect the full range. The PDF header now shows "D MMM YYYY – D MMM YYYY" instead of just the month name.
+- **Employee deactivation confirmation** — tapping the active/inactive switch to deactivate an employee now shows a confirmation dialog before the action fires. Activation remains immediate. Toggle errors are surfaced as a snackbar.
+- **Chat — group member management** — group conversations now have a gear icon in the AppBar (visible to admins and the group creator). Tapping it opens a Group Settings screen where members can be added from the active user list or removed individually. System messages appear in the conversation timeline on add/remove.
+
+### Technical
+
+- Firestore rules: `conversations/{conversationId}` now allows the group creator or any admin to update `participantIds`, `participantNames`, `lastMessage`, and `lastMessageAt` on `type == 'group'` conversations, with a `participantIds.size() >= 1` guard. DMs and task threads are unaffected.
+
 ## [1.9.0] - 2026-06-22
 
 ### Added

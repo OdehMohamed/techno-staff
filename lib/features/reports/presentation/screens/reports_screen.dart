@@ -125,11 +125,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                 if (state.status == ReportsStatus.loaded &&
                     state.selectedEmployee != null &&
-                    state.selectedStartDate != null) {
-                  context.read<AttendanceCubit>().loadMonthlyAttendance(
+                    state.selectedStartDate != null &&
+                    state.selectedEndDate != null) {
+                  context.read<AttendanceCubit>().loadAttendanceRange(
                     state.selectedEmployee!.id,
-                    state.selectedStartDate!.year,
-                    state.selectedStartDate!.month,
+                    state.selectedStartDate!,
+                    state.selectedEndDate!,
                   );
                   context.read<AttendanceCubit>().loadEmployeeSchedule(
                     state.selectedEmployee!.id,
