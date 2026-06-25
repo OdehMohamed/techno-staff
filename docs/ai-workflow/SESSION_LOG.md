@@ -1,3 +1,49 @@
+## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 2: Customer & Debt Management
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 2 of 7 — Customer and Debt management layer (models, repositories, cubits, admin screens, collector home).
+- **Outcome**: ✅ All PR 2 items complete. `flutter analyze` clean, zero errors.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `assets/translations/en.json` + `ar.json` | +6 missing keys (`failed_to_save_customer`, `failed_to_save_debt`, `phone_required`, `amount_required`, `collector_required`, `settlement_notes`) |
+| `lib/features/collections/data/models/customer_model.dart` | **NEW** — CustomerModel with `toCreateMap`/`toUpdateMap`/`copyWith` |
+| `lib/features/collections/data/models/debt_model.dart` | **NEW** — DebtModel; agorot-integer amounts; `formatAmountIls`/`parseAmountIls` static helpers |
+| `lib/features/collections/data/repositories/customers_repository.dart` | **NEW** — `getAll`, `create`, `update`, `getCollectors` |
+| `lib/features/collections/data/repositories/debts_repository.dart` | **NEW** — `getByCustomer`, `getByCollector`, `create`, `update`, `updateStatus` |
+| `lib/features/collections/presentation/cubit/customers_state.dart` | **NEW** — `CollectionsStatus` enum + `CustomersState` |
+| `lib/features/collections/presentation/cubit/customers_cubit.dart` | **NEW** — `loadCustomers`, `createCustomer`, `updateCustomer`, `clearFormStatus` |
+| `lib/features/collections/presentation/cubit/debts_state.dart` | **NEW** — `DebtsState` (shared by admin and collector cubits) |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | **NEW** — `loadCustomerDebts`, `createDebt`, `updateDebt`, `updateDebtStatus`, `clearFormStatus` |
+| `lib/features/collections/presentation/cubit/collector_debts_cubit.dart` | **NEW** — `loadCollectorDebts` only |
+| `lib/features/collections/presentation/widgets/debt_status_badge.dart` | **NEW** — status-colored badge using `debt_status_*` keys |
+| `lib/features/collections/presentation/screens/admin_customer_list_screen.dart` | **NEW** — list with FAB, account-status chip |
+| `lib/features/collections/presentation/screens/admin_customer_form_screen.dart` | **NEW** — add/edit form with collector dropdown |
+| `lib/features/collections/presentation/screens/admin_customer_detail_screen.dart` | **NEW** — info card + debt list + Add Debt FAB |
+| `lib/features/collections/presentation/screens/admin_debt_form_screen.dart` | **NEW** — amount in ILS → agorot, date picker, collector picker |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | **NEW** — shared admin/collector; admin popup menu (cancel/write-off/settle/dispute) |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Updated stub → real debt list with urgency-sorted BlocBuilder |
+| `lib/core/routes/route_names.dart` | +4 routes: `addCustomer`, `editCustomer`, `addDebt`, `editDebt` |
+| `lib/core/routes/app_router.dart` | Wire all new screens; `editDebt` reconstructs minimal CustomerModel from DebtModel |
+| `lib/shared/widgets/app_drawer.dart` | Add Collections (wallet) tile for admin |
+| `lib/main.dart` | Instantiate `CustomersRepository` + `DebtsRepository`; add 3 BlocProviders |
+
+### Key decisions
+
+- Two separate debt cubits (`DebtsAdminCubit`, `CollectorDebtsCubit`) avoid state collision — Flutter BLoC resolves by concrete type.
+- `DebtModel.formatAmountIls` / `parseAmountIls` are static; never call on instance.
+- `editDebt` route reconstructs a minimal `CustomerModel` from debt fields (only name needed for display in edit form).
+- Client never writes `paidAmount`/`remainingBalance` — CF-maintained after payment recording (PR 3).
+
+### Next session
+
+PR 3: Core Financial — Payment Recording and Cash Handover (Cloud Functions unit tests required).
+
+---
+
 ## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 1: Collections Foundation
 
 - **Agent**: Claude Sonnet 4.6

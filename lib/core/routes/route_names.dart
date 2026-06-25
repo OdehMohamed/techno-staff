@@ -33,8 +33,12 @@ class RouteNames {
   // Collections subsystem (v2.0.0)
   static const String collectorHome = '/collector-home';
   static const String customerList = '/customers';
+  static const String addCustomer = '/add-customer';
+  static const String editCustomer = '/edit-customer';
   static const String customerDetail = '/customer-detail';
   static const String debtList = '/debts';
+  static const String addDebt = '/add-debt';
+  static const String editDebt = '/edit-debt';
   static const String debtDetail = '/debt-detail';
   static const String recordPayment = '/record-payment';
   static const String paymentDetail = '/payment-detail';

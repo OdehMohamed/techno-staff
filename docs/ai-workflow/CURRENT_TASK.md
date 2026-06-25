@@ -3,7 +3,7 @@
 ## In Progress — v2.0.0 Collections Subsystem
 
 **Branch**: `feat/v2-collections`  
-**Status**: 🔄 PR 1 of 7 complete — foundation merged into branch
+**Status**: 🔄 PR 2 of 7 complete — customer & debt management merged into branch
 
 ---
 
@@ -20,7 +20,7 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | PR | Scope | Status |
 |----|-------|--------|
 | 1 | Schema foundation, role support, routing/shell, translations, Firestore rules foundation, indexes, stub screens | ✅ DONE |
-| 2 | Customer and Debt Management (Admin) | ⏳ Next |
+| 2 | Customer and Debt Management (Admin) | ✅ DONE |
 | 3 | Core Financial — Payment Recording and Handover (highest risk; CF unit tests required) | ⏳ Pending |
 | 4 | Installment Plans | ⏳ Pending |
 | 5 | Visit Logs, PTP, Automation Crons | ⏳ Pending |

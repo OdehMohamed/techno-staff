@@ -43,6 +43,11 @@ import 'features/tasks/data/repositories/templates_repository.dart';
 import 'features/tasks/presentation/cubit/task_attachments_cubit.dart';
 import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'features/tasks/presentation/cubit/templates_cubit.dart';
+import 'features/collections/data/repositories/customers_repository.dart';
+import 'features/collections/data/repositories/debts_repository.dart';
+import 'features/collections/presentation/cubit/customers_cubit.dart';
+import 'features/collections/presentation/cubit/debts_admin_cubit.dart';
+import 'features/collections/presentation/cubit/collector_debts_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
@@ -178,6 +183,8 @@ Future<void> main() async {
     FirebaseFirestore.instance,
     FirebaseStorage.instance,
   );
+  final customersRepository = CustomersRepository();
+  final debtsRepository = DebtsRepository();
 
   runApp(
     EasyLocalization(
@@ -245,6 +252,15 @@ Future<void> main() async {
           // Pre-created instance — shared with the FCM onMessage suppression
           // logic above so no BuildContext is needed in the listener.
           BlocProvider.value(value: conversationCubit),
+          BlocProvider(
+            create: (_) => CustomersCubit(customersRepository: customersRepository),
+          ),
+          BlocProvider(
+            create: (_) => DebtsAdminCubit(debtsRepository: debtsRepository),
+          ),
+          BlocProvider(
+            create: (_) => CollectorDebtsCubit(debtsRepository: debtsRepository),
+          ),
         ],
         child: const TechnoStaffApp(),
       ),

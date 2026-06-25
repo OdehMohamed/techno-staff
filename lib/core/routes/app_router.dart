@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:techno_staff/app/collector_app.dart';
+import 'package:techno_staff/features/collections/data/models/customer_model.dart';
+import 'package:techno_staff/features/collections/data/models/debt_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_form_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_list_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_debt_form_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/debt_detail_screen.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/conversation_screen.dart';
@@ -218,9 +225,74 @@ class AppRouter {
         );
 
       case RouteNames.customerList:
+        return MaterialPageRoute(
+          builder: (_) => const AdminCustomerListScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.addCustomer:
+        return MaterialPageRoute(
+          builder: (_) => const AdminCustomerFormScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.editCustomer:
+        return MaterialPageRoute(
+          builder: (_) => AdminCustomerFormScreen(
+            customer: settings.arguments as CustomerModel,
+          ),
+          settings: settings,
+        );
+
       case RouteNames.customerDetail:
-      case RouteNames.debtList:
+        return MaterialPageRoute(
+          builder: (_) => AdminCustomerDetailScreen(
+            customer: settings.arguments as CustomerModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.addDebt:
+        final addArgs = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => AdminDebtFormScreen(
+            customer: addArgs['customer'] as CustomerModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.editDebt:
+        final editArgs = settings.arguments as Map<String, dynamic>;
+        final editDebt = editArgs['debt'] as DebtModel;
+        final minimalCustomer = CustomerModel(
+          id: editDebt.customerId,
+          name: editDebt.customerName,
+          phone: '',
+          assignedCollectorId: editDebt.assignedCollectorId,
+          assignedCollectorName: editDebt.assignedCollectorName,
+          accountStatus: 'good_standing',
+          createdBy: '',
+          createdByName: '',
+          createdAt: editDebt.createdAt,
+          isActive: true,
+        );
+        return MaterialPageRoute(
+          builder: (_) => AdminDebtFormScreen(
+            customer: minimalCustomer,
+            debt: editDebt,
+          ),
+          settings: settings,
+        );
+
       case RouteNames.debtDetail:
+        return MaterialPageRoute(
+          builder: (_) => DebtDetailScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.debtList:
       case RouteNames.recordPayment:
       case RouteNames.paymentDetail:
       case RouteNames.handoverList:

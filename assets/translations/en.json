@@ -465,6 +465,10 @@
   "cancel_payment": "Cancel Payment",
   "cancellation_reason": "Cancellation Reason",
   "cancellation_reason_required": "Cancellation reason is required",
+  "phone_required": "Phone is required",
+  "amount_required": "Amount is required",
+  "collector_required": "Please select a collector",
+  "settlement_notes": "Settlement Notes",
   "payment_overpayment_error": "Payment amount exceeds remaining balance",
 
   "cash_on_hand": "Cash on Hand",
@@ -540,7 +544,9 @@
   "no_visits_found": "No visits logged",
 
   "failed_to_load_customers": "Failed to load customers",
+  "failed_to_save_customer": "Failed to save customer",
   "failed_to_load_debts": "Failed to load debts",
+  "failed_to_save_debt": "Failed to save debt",
   "failed_to_record_payment": "Failed to record payment",
   "failed_to_load_payments": "Failed to load payments",
   "failed_to_initiate_handover": "Failed to initiate handover",

@@ -149,6 +149,15 @@ class AppDrawer extends StatelessWidget {
               ),
             if (user?.role == 'admin')
               ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: Text('customers'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, RouteNames.customerList);
+                },
+              ),
+            if (user?.role == 'admin')
+              ListTile(
                 leading: const Icon(Icons.bar_chart_outlined),
                 title: Text('reports'.tr()),
                 onTap: () {

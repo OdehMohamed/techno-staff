@@ -465,6 +465,10 @@
   "cancel_payment": "إلغاء الدفعة",
   "cancellation_reason": "سبب الإلغاء",
   "cancellation_reason_required": "يجب إدخال سبب الإلغاء",
+  "phone_required": "رقم الهاتف مطلوب",
+  "amount_required": "المبلغ مطلوب",
+  "collector_required": "يرجى اختيار المحصِّل",
+  "settlement_notes": "ملاحظات التسوية",
   "payment_overpayment_error": "مبلغ الدفعة يتجاوز الرصيد المتبقي",
 
   "cash_on_hand": "النقد لديّ",
@@ -540,7 +544,9 @@
   "no_visits_found": "لا توجد زيارات مسجَّلة",
 
   "failed_to_load_customers": "فشل تحميل العملاء",
+  "failed_to_save_customer": "فشل حفظ بيانات العميل",
   "failed_to_load_debts": "فشل تحميل الديون",
+  "failed_to_save_debt": "فشل حفظ الدَّين",
   "failed_to_record_payment": "فشل تسجيل الدفعة",
   "failed_to_load_payments": "فشل تحميل المدفوعات",
   "failed_to_initiate_handover": "فشل بدء تسليم النقد",
