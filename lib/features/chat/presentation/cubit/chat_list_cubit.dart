@@ -89,6 +89,34 @@ class ChatListCubit extends Cubit<ChatListState> {
     assigneeName: assigneeName,
   );
 
+  Future<void> addGroupMember({
+    required String conversationId,
+    required String actorUid,
+    required String actorName,
+    required String newMemberUid,
+    required String newMemberName,
+  }) => _repository.addGroupMember(
+    conversationId: conversationId,
+    actorUid: actorUid,
+    actorName: actorName,
+    newMemberUid: newMemberUid,
+    newMemberName: newMemberName,
+  );
+
+  Future<void> removeGroupMember({
+    required String conversationId,
+    required String actorUid,
+    required String actorName,
+    required String memberUid,
+    required String memberName,
+  }) => _repository.removeGroupMember(
+    conversationId: conversationId,
+    actorUid: actorUid,
+    actorName: actorName,
+    memberUid: memberUid,
+    memberName: memberName,
+  );
+
   void stopListening() {
     _subscription?.cancel();
     _subscription = null;

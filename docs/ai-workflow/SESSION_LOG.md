@@ -1,3 +1,40 @@
+## 2026-06-25 — Claude Sonnet 4.6 — v1.10.0 implementation
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/reports-chat-admin-improvements`
+- **Goal**: Implement all three approved v1.10.0 items.
+- **Outcome**: ✅ All three items implemented. `flutter analyze` clean. 401/401 translation parity.
+
+### Items delivered
+
+**Item 1 — Reports multi-month attendance**
+- `AttendanceRepository.fetchAttendanceRange(userId, start, end)` — single Firestore query using ISO date string range (lexicographic ordering). Replaces month-scoped `fetchMonthlyAttendance` in the reports path.
+- `AttendanceCubit.loadAttendanceRange(userId, start, end)` — new method; stores results in existing `monthlyRecords` field so all downstream consumers (stat cards, table, rate bar) work unchanged.
+- `ReportsScreen` BlocListener switched from `loadMonthlyAttendance` to `loadAttendanceRange`.
+- `PdfReportService.generateEmployeeMonthlyReport` renamed to accept `startDate`/`endDate`; header now shows `"D MMM YYYY – D MMM YYYY"`; `_countWorkingDays` replaced with range-aware `_countWorkingDaysInRange`.
+- `ReportsCubit.exportPdf` passes both dates; filename uses `YYYYMMDD_YYYYMMDD` range tag.
+
+**Item 2 — Employee deactivation confirmation**
+- `EmployeesState` gains `toggleError` field + `clearToggleError` flag.
+- `EmployeesCubit.toggleEmployeeStatus` wrapped in try/catch; emits `toggleError: 'failed_to_update_employee_status'` on failure.
+- `EmployeesCubit.clearToggleError()` added.
+- `EmployeesScreen` Switch `onChanged` async; deactivation (`value == false`) awaits `_confirmDeactivate` before calling cubit. Activation still immediate.
+- `BlocBuilder` upgraded to `BlocConsumer`; toggle errors shown as snackbar.
+- 3 new EN/AR keys: `failed_to_update_employee_status`, `deactivate_employee`, `deactivate_employee_confirm`.
+
+**Item 3 — Chat Phase 3 group member management**
+- `ChatRepository.addGroupMember` and `removeGroupMember` — write system message first (actor is participant, so create rule passes), then update conversation membership. Uses `FieldValue.arrayUnion`/`arrayRemove` and dotted-path `FieldValue.delete()` for map key removal.
+- `ChatListCubit.addGroupMember` and `removeGroupMember` — thin pass-through wrappers.
+- `GroupSettingsScreen` — new screen; lists current members, "Add Members" first-row action (for canManage), remove button per non-self member. Overlay spinner during update. Add-members via `_AddMembersSheet` (DraggableScrollableSheet, filters out existing participants).
+- `ConversationScreen` AppBar — `showSettings` flag for `type == 'group'` conversations when user is admin or creator; gear icon navigates to `groupSettings` route.
+- Route: `RouteNames.groupSettings = '/group-settings'` + `AppRouter` case.
+- `firestore.rules` — new `onlyMembershipFields()` function; third `allow update` condition for creator/admin on group conversations. Diff approved by owner.
+- 6 new EN/AR keys: `group_settings`, `remove_member`, `remove_from_group_confirm`, `no_users_to_add`, `member_add_failed`, `member_remove_failed`.
+
+### Version bump
+
+`1.9.0+12` → `1.10.0+13`. Full binary release required (translation changes).
+
 ## 2026-06-23 — Claude Sonnet 4.6 — v1.9.0 smoke-test fixes (rounds 2–4)
 
 - **Agent**: Claude Sonnet 4.6

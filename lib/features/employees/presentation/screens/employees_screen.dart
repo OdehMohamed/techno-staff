@@ -33,6 +33,29 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     context.read<EmployeesCubit>().fetchEmployees();
   }
 
+  Future<bool> _confirmDeactivate(String employeeName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('deactivate_employee'.tr()),
+        content: Text(
+          'deactivate_employee_confirm'.tr(namedArgs: {'name': employeeName}),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('cancel'.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('confirm'.tr()),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _openDm(
     String employeeId,
     String employeeName,
@@ -100,7 +123,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
-            child: BlocBuilder<EmployeesCubit, EmployeesState>(
+            child: BlocConsumer<EmployeesCubit, EmployeesState>(
+              listenWhen: (prev, curr) => curr.toggleError != null,
+              listener: (context, state) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      (state.toggleError ?? 'unknown_error').tr(),
+                    ),
+                  ),
+                );
+                context.read<EmployeesCubit>().clearToggleError();
+              },
               builder: (context, state) {
                 if (state.status == EmployeesStatus.loading &&
                     state.employees.isEmpty) {
@@ -230,7 +264,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                       children: [
                                         Switch(
                                           value: employee.isActive,
-                                          onChanged: (value) {
+                                          onChanged: (value) async {
+                                            if (!value) {
+                                              final ok =
+                                                  await _confirmDeactivate(
+                                                employee.name,
+                                              );
+                                              if (!ok) return;
+                                            }
+                                            if (!context.mounted) return;
                                             context
                                                 .read<EmployeesCubit>()
                                                 .toggleEmployeeStatus(

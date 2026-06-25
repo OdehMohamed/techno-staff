@@ -31,7 +31,7 @@ class _L {
 
   // Brand name is fixed — never translated
   String get appName => 'Techno Staff';
-  String get reportTitle => ar ? 'التقرير الشهري للموظف' : 'Employee Monthly Report';
+  String get reportTitle => ar ? 'تقرير الموظف' : 'Employee Report';
   String get employee => ar ? 'الموظف' : 'Employee';
   String get email => ar ? 'البريد الإلكتروني' : 'Email';
   String get period => ar ? 'الفترة' : 'Period';
@@ -249,7 +249,8 @@ String _buildNarrative({
 class PdfReportService {
   Future<File> generateEmployeeMonthlyReport({
     required AppUser employee,
-    required DateTime month,
+    required DateTime startDate,
+    required DateTime endDate,
     required List<TaskModel> tasks,
     required List<AttendanceModel> monthlyRecords,
     required WorkScheduleModel? schedule,
@@ -271,8 +272,12 @@ class PdfReportService {
     );
 
     final now = DateTime.now();
-    final monthLabel =
-        DateFormat(isAr ? 'MMMM yyyy' : 'MMMM yyyy', locale).format(month);
+    final dateFmt = DateFormat('d MMM yyyy', locale);
+    final monthLabel = startDate.year == endDate.year &&
+            startDate.month == endDate.month &&
+            startDate.day == endDate.day
+        ? dateFmt.format(startDate)
+        : '${dateFmt.format(startDate)} – ${dateFmt.format(endDate)}';
     final generatedLabel = DateFormat('d MMMM yyyy  HH:mm', locale).format(now);
 
     // ── Attendance metrics ────────────────────────────────────────────────────
@@ -291,7 +296,7 @@ class PdfReportService {
 
     double? attendanceRate;
     if (schedule != null) {
-      final workingDays = _countWorkingDays(schedule, month.year, month.month);
+      final workingDays = _countWorkingDaysInRange(schedule, startDate, endDate);
       if (workingDays > 0) {
         attendanceRate = (daysWorked / workingDays * 100).clamp(0.0, 100.0);
       }
@@ -520,9 +525,11 @@ class PdfReportService {
     );
 
     final directory = await getTemporaryDirectory();
+    final rangeTag =
+        '${DateFormat('yyyyMMdd').format(startDate)}_${DateFormat('yyyyMMdd').format(endDate)}';
     final file = File(
       '${directory.path}/report_${employee.name.replaceAll(' ', '_')}'
-      '_${DateFormat('yyyy_MM').format(month)}.pdf',
+      '_$rangeTag.pdf',
     );
     await file.writeAsBytes(await pdf.save());
     return file;
@@ -1222,13 +1229,18 @@ pw.Widget _sectionTitle(String text, pw.Font boldFont) {
 pw.Widget _divider() =>
     pw.Divider(color: _kDivider, thickness: 0.8);
 
-int _countWorkingDays(WorkScheduleModel schedule, int year, int month) {
-  final daysInMonth = DateTime(year, month + 1, 0).day;
+int _countWorkingDaysInRange(
+  WorkScheduleModel schedule,
+  DateTime start,
+  DateTime end,
+) {
   var count = 0;
-  for (var day = 1; day <= daysInMonth; day++) {
-    final weekday = DateTime(year, month, day).weekday;
-    final daySchedule = schedule.days[weekday.toString()];
+  var current = DateTime(start.year, start.month, start.day);
+  final rangeEnd = DateTime(end.year, end.month, end.day);
+  while (!current.isAfter(rangeEnd)) {
+    final daySchedule = schedule.days[current.weekday.toString()];
     if (daySchedule?.isWorkingDay ?? true) count++;
+    current = current.add(const Duration(days: 1));
   }
   return count;
 }

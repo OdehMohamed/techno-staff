@@ -90,9 +90,10 @@ class ReportsCubit extends Cubit<ReportsState> {
   }) async {
     final employee = state.selectedEmployee;
     final startDate = state.selectedStartDate;
+    final endDate = state.selectedEndDate;
     final tasks = state.tasks;
 
-    if (employee == null || startDate == null) {
+    if (employee == null || startDate == null || endDate == null) {
       emit(
         state.copyWith(
           status: ReportsStatus.error,
@@ -107,17 +108,21 @@ class ReportsCubit extends Cubit<ReportsState> {
     try {
       final file = await _pdfReportService.generateEmployeeMonthlyReport(
         employee: employee,
-        month: startDate,
+        startDate: startDate,
+        endDate: endDate,
         tasks: tasks,
         monthlyRecords: monthlyRecords,
         schedule: schedule,
         locale: locale,
       );
 
+      final startTag =
+          '${startDate.year}${startDate.month.toString().padLeft(2, '0')}${startDate.day.toString().padLeft(2, '0')}';
+      final endTag =
+          '${endDate.year}${endDate.month.toString().padLeft(2, '0')}${endDate.day.toString().padLeft(2, '0')}';
       await Printing.sharePdf(
         bytes: await file.readAsBytes(),
-        filename:
-            'report_${employee.name}_${startDate.year}_${startDate.month.toString().padLeft(2, '0')}.pdf',
+        filename: 'report_${employee.name}_${startTag}_$endTag.pdf',
       );
 
       emit(state.copyWith(status: ReportsStatus.pdfExported, clearError: true));

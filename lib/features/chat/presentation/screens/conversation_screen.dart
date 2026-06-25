@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../cubit/conversation_cubit.dart';
 import '../cubit/conversation_state.dart';
@@ -129,6 +130,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final isGroup = conv?.isGroup == true || conv?.isTaskThread == true;
     final memberCount = conv?.participantIds.length ?? 0;
 
+    final currentUser = context.read<AuthCubit>().state.user;
+    final isAdmin = currentUser?.role == 'admin';
+    final isCreator = conv?.createdBy == uid;
+    final showSettings = conv?.isGroup == true && (isAdmin || isCreator);
+
     return AppBar(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,6 +161,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
         ],
       ),
+      actions: [
+        if (showSettings)
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'group_settings'.tr(),
+            onPressed: () =>
+                Navigator.pushNamed(context, RouteNames.groupSettings),
+          ),
+      ],
     );
   }
 

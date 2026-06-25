@@ -208,6 +208,39 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     }
   }
 
+  Future<void> loadAttendanceRange(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    emit(
+      state.copyWith(
+        monthlyStatus: AttendanceLoadStatus.loading,
+        clearMonthlyError: true,
+      ),
+    );
+    try {
+      final records = await _attendanceRepository.fetchAttendanceRange(
+        userId,
+        start,
+        end,
+      );
+      emit(
+        state.copyWith(
+          monthlyStatus: AttendanceLoadStatus.loaded,
+          monthlyRecords: records,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          monthlyStatus: AttendanceLoadStatus.error,
+          monthlyError: 'network_error',
+        ),
+      );
+    }
+  }
+
   Future<void> adminCorrect({
     required String userId,
     required String date,

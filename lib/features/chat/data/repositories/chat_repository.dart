@@ -356,6 +356,98 @@ class ChatRepository {
     });
   }
 
+  // ─── Group member management ─────────────────────────────────────────────
+
+  Future<void> addGroupMember({
+    required String conversationId,
+    required String actorUid,
+    required String actorName,
+    required String newMemberUid,
+    required String newMemberName,
+  }) async {
+    final convRef = _firestore
+        .collection(FirebasePaths.conversations)
+        .doc(conversationId);
+    final systemText = '$newMemberName was added to the group';
+
+    // System message first — actorUid IS a participant, so the create rule
+    // passes. The onNewChatMessage CF fires, increments unreadCounts, and
+    // sends FCM to current participants (the new member isn't listed yet).
+    await convRef.collection(FirebasePaths.messages).add({
+      'senderId': actorUid,
+      'senderName': actorName,
+      'text': systemText,
+      'type': 'system',
+      'sentAt': FieldValue.serverTimestamp(),
+      'deletedAt': null,
+      'deletedBy': null,
+      'attachment': null,
+      'reactions': null,
+      'replyTo': null,
+      'mentions': [],
+      'editedAt': null,
+    });
+
+    // Update membership — rules allow creator/admin to change participantIds,
+    // participantNames, lastMessage, lastMessageAt on group conversations.
+    await convRef.update({
+      'participantIds': FieldValue.arrayUnion([newMemberUid]),
+      'participantNames.$newMemberUid': newMemberName,
+      'lastMessage': {
+        'text': systemText,
+        'senderId': actorUid,
+        'senderName': actorName,
+        'sentAt': FieldValue.serverTimestamp(),
+      },
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> removeGroupMember({
+    required String conversationId,
+    required String actorUid,
+    required String actorName,
+    required String memberUid,
+    required String memberName,
+  }) async {
+    final convRef = _firestore
+        .collection(FirebasePaths.conversations)
+        .doc(conversationId);
+    final systemText = '$memberName was removed from the group';
+
+    // System message first — memberUid is still a participant when the message
+    // is created, so inConversation() passes. The CF notifies them one last time.
+    await convRef.collection(FirebasePaths.messages).add({
+      'senderId': actorUid,
+      'senderName': actorName,
+      'text': systemText,
+      'type': 'system',
+      'sentAt': FieldValue.serverTimestamp(),
+      'deletedAt': null,
+      'deletedBy': null,
+      'attachment': null,
+      'reactions': null,
+      'replyTo': null,
+      'mentions': [],
+      'editedAt': null,
+    });
+
+    // Remove from participation. After this write the removed member's
+    // streamConversations() query (arrayContains uid) will no longer return
+    // this document, so the group disappears from their list.
+    await convRef.update({
+      'participantIds': FieldValue.arrayRemove([memberUid]),
+      'participantNames.$memberUid': FieldValue.delete(),
+      'lastMessage': {
+        'text': systemText,
+        'senderId': actorUid,
+        'senderName': actorName,
+        'sentAt': FieldValue.serverTimestamp(),
+      },
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // ─── Message management ──────────────────────────────────────────────────
 
   /// Soft-deletes a message. Only the sender is permitted by Firestore rules.
