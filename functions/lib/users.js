@@ -13,10 +13,10 @@ exports.createEmployeeUser = onCall(async (request) => {
       throw new HttpsError("invalid-argument", "Missing required fields");
     }
 
-    if (!["admin", "employee"].includes(role)) {
+    if (!["admin", "employee", "collector"].includes(role)) {
       throw new HttpsError(
           "invalid-argument",
-          "role must be 'admin' or 'employee'",
+          "role must be 'admin', 'employee', or 'collector'",
       );
     }
 
@@ -49,13 +49,18 @@ exports.createEmployeeUser = onCall(async (request) => {
       displayName: name,
     });
 
-    await db.collection("users").doc(userRecord.uid).set({
+    const userDoc = {
       email,
       name,
       role,
       isActive: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+    if (role === "collector") {
+      userDoc.cashOnHand = 0;
+      userDoc.maxCashOnHand = null;
+    }
+    await db.collection("users").doc(userRecord.uid).set(userDoc);
 
     return {
       success: true,

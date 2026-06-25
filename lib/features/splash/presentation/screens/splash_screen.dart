@@ -53,6 +53,8 @@ class _SplashScreenState extends State<SplashScreen> {
         if (state.status == AuthStatus.authenticated && state.user != null) {
           if (state.user!.role == 'admin') {
             Navigator.pushReplacementNamed(context, RouteNames.adminDashboard);
+          } else if (state.user!.role == 'collector') {
+            Navigator.pushReplacementNamed(context, RouteNames.collectorHome);
           } else {
             Navigator.pushReplacementNamed(context, RouteNames.employeeHome);
           }

@@ -29,4 +29,19 @@ class RouteNames {
   static const String conversation = '/conversation';
   static const String newGroup = '/new-group';
   static const String groupSettings = '/group-settings';
+
+  // Collections subsystem (v2.0.0)
+  static const String collectorHome = '/collector-home';
+  static const String customerList = '/customers';
+  static const String customerDetail = '/customer-detail';
+  static const String debtList = '/debts';
+  static const String debtDetail = '/debt-detail';
+  static const String recordPayment = '/record-payment';
+  static const String paymentDetail = '/payment-detail';
+  static const String handoverList = '/handovers';
+  static const String handoverInit = '/handover-init';
+  static const String handoverVerification = '/handover-verification';
+  static const String visitLog = '/visit-log';
+  static const String installmentPlanDetail = '/installment-plan';
+  static const String collectionsSettings = '/collections-settings';
 }

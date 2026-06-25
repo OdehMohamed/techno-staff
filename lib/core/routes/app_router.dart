@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/app/collector_app.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/conversation_screen.dart';
@@ -206,6 +207,33 @@ class AppRouter {
       case RouteNames.groupSettings:
         return MaterialPageRoute(
           builder: (_) => const GroupSettingsScreen(),
+          settings: settings,
+        );
+
+      // Collections subsystem (v2.0.0)
+      case RouteNames.collectorHome:
+        return MaterialPageRoute(
+          builder: (_) => const CollectorApp(),
+          settings: settings,
+        );
+
+      case RouteNames.customerList:
+      case RouteNames.customerDetail:
+      case RouteNames.debtList:
+      case RouteNames.debtDetail:
+      case RouteNames.recordPayment:
+      case RouteNames.paymentDetail:
+      case RouteNames.handoverList:
+      case RouteNames.handoverInit:
+      case RouteNames.handoverVerification:
+      case RouteNames.visitLog:
+      case RouteNames.installmentPlanDetail:
+      case RouteNames.collectionsSettings:
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text(settings.name ?? '')),
+            body: const Center(child: Text('Coming soon')),
+          ),
           settings: settings,
         );
 

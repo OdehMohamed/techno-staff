@@ -1,3 +1,42 @@
+## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 1: Collections Foundation
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Implement PR 1 of the 7-PR v2.0.0 Collections subsystem — schema, role, routing/shell, translations, Firestore rules foundation, indexes, and stub screens.
+- **Outcome**: ✅ All PR 1 items complete. `flutter analyze` clean, `npm run lint` clean, translation parity 531/531.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `functions/lib/users.js` | Accept `collector` role; initialize `cashOnHand: 0`, `maxCashOnHand: null` |
+| `lib/core/constants/firebase_paths.dart` | 10 new collection path constants |
+| `assets/translations/en.json` | 130 new keys (531 total) |
+| `assets/translations/ar.json` | 130 new keys (531 total) |
+| `firestore.indexes.json` | +13 indexes (customers ×2, debts ×3, payments ×3, handovers ×2, visits ×2, installment_plans ×1) |
+| `firestore.rules` | `isCollector()` function; rules for customers, debts, installment_plans (+sub-collection), payments, handovers, visits, collection_logs |
+| `lib/core/routes/route_names.dart` | 13 new collector route constants |
+| `lib/core/routes/app_router.dart` | `collectorHome` → `CollectorApp`; 12 stub routes |
+| `lib/features/splash/…/splash_screen.dart` | `collector` role → `RouteNames.collectorHome` |
+| `lib/app/collector_app.dart` | **NEW** — 3-tab bottom-nav shell (Collections / Attendance / Settings) |
+| `lib/features/collections/…/collector_home_screen.dart` | **NEW** — stub home screen |
+| `pubspec.yaml` | `1.10.0+13` → `2.0.0+14` |
+
+### Key decisions confirmed
+
+- All amounts: integers in agorot (no floats)
+- `collector` = new role value; gets `cashOnHand: 0` and `maxCashOnHand: null` in user doc
+- Translation keys for the full subsystem committed in PR 1 so subsequent PRs are Dart-only (Shorebird-patchable after v2.0.0 ships)
+- Firestore rules: collectors see ONLY their explicitly assigned data; employees have zero access
+- `onPaymentCreated` CF (PR 3) must be atomic, idempotent, and unit-tested before production use
+- No release until all 7 PRs are merged and smoke-tested
+
+### Next session
+
+PR 2: Customer and Debt Management (Admin) — `CustomerModel`, `DebtModel`, `CustomersRepository`, `DebtsRepository`, admin CRUD screens, collector assignment.
+
+---
+
 ## 2026-06-25 — Claude Sonnet 4.6 — v1.10.0 implementation
 
 - **Agent**: Claude Sonnet 4.6

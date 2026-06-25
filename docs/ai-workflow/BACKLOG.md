@@ -242,6 +242,75 @@ _All v1.1 features are complete. v1.1.0 shipped 2026-05-14._
 
 ---
 
+### v2.0.0 — Collections Subsystem
+
+> Full financial field-collection subsystem. See `docs/features/collections_design.md` for complete design. 7 PRs on `feat/v2-collections`; no release until all merged and smoke-tested.
+
+#### PR 1 — Schema, role, routing, translations, rules foundation
+
+- **Priority**: Should-fix (foundation)
+- **Status**: Done — 2026-06-25
+- **Owner**: Claude Sonnet 4.6
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: `collector` role in CF + routing; 10 new firebase_paths constants; 130 new EN/AR translation keys (full subsystem upfront); 13 new Firestore indexes; `isCollector()` function + 7 collection rules; 13 new route names; `CollectorApp` 3-tab shell; `CollectorHomeScreen` stub; version bump to `2.0.0+14`. Quality gates: `flutter analyze` clean, `npm run lint` clean, translation parity 531/531.
+
+#### PR 2 — Customer and Debt Management (Admin)
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: `CustomerModel`, `DebtModel`, `InstallmentPlanModel`, `InstallmentModel` data models; `CustomersRepository`, `DebtsRepository`; `CustomersCubit` + `DebtsAdminCubit`; admin screens for customer CRUD and debt CRUD; assign collector dropdown.
+
+#### PR 3 — Core Financial (Payment Recording + Handover) — CF-first, highest risk
+
+- **Priority**: Blocker (core financial logic)
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: `onPaymentCreated` CF (atomic, idempotent, Firestore transaction, receipt counter, FIFO installment allocation, max-cash-on-hand check, balance update). `RecordPaymentScreen` (collector). Handover flow. Unit tests required before production use.
+
+#### PR 4 — Installment Plans
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: Installment plan creation and management (admin), installment list (collector), `onInstallmentPlanCreated` CF that generates individual installment documents.
+
+#### PR 5 — Visit Logs, PTP, Automation Crons
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: Visit log + PTP recording (collector); `checkBrokenPtps` daily cron; `sendCollectionDigest` daily notification cron; `sendStaleHandoverAlert` cron.
+
+#### PR 6 — PDF Receipts, Reports, Admin Dashboard
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: PDF receipt generation; aging report; reconciliation report; admin collections overview dashboard; collector performance data accumulation.
+
+#### PR 7 — Collector Experience Polish + Settings
+
+- **Priority**: Should-fix
+- **Status**: Open
+- **Owner**: unassigned
+- **Target release**: 2.0.0+14
+- **Added**: 2026-06-25
+- **Description**: Collector home with live debt summary; cash-on-hand widget; collection settings screen (max cash, notification prefs); full E2E smoke test; Firestore rules review for deployment.
+
+---
+
 ### v1.10.0 — Reports + Admin UX + Chat Phase 3
 
 #### 21. Reports multi-month attendance — `feat/reports-chat-admin-improvements`
