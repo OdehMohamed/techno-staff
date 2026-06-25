@@ -44,7 +44,7 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | `lib/core/routes/route_names.dart` | 13 new collector route constants |
 | `lib/core/routes/app_router.dart` | `collectorHome` → `CollectorApp`; 12 stub routes |
 | `lib/features/splash/…/splash_screen.dart` | `collector` role → `RouteNames.collectorHome` |
-| `lib/app/collector_app.dart` | **NEW** — 3-tab shell (Collections / Attendance / Settings) |
+| `lib/app/collector_app.dart` | **NEW** — 2-tab shell (Collections / Settings); no Attendance |
 | `lib/features/collections/…/collector_home_screen.dart` | **NEW** — stub home screen |
 | `pubspec.yaml` | `1.10.0+13` → `2.0.0+14` |
 
@@ -72,7 +72,7 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | Decision | Rationale |
 |----------|-----------|
 | All amounts in agorot (integers) | No floating-point errors for financial data |
-| `collector` as new role value | Separate shell, scoped data access, attendance still works |
+| `collector` as new role value | Separate shell, scoped data access; **no attendance** — collectors are field agents, not shift employees |
 | `onPaymentCreated` CF handles balance math | Client never writes `paidAmount` or `remainingBalance` |
 | FIFO installment allocation | CF applies payments to oldest unpaid installment first |
 | `config/counters` for receipt numbers | Atomic Firestore transaction; CF resets per calendar year |

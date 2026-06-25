@@ -619,10 +619,10 @@ function isCollector() {
   return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'collector';
 }
 
-// Update existing isEmployee() to include collectors (for attendance access):
+// isEmployee() is defined for employees only — collectors do NOT have attendance access:
 function isEmployee() {
   return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-         in ['employee', 'collector'];
+         == 'employee';
 }
 ```
 
@@ -744,7 +744,7 @@ match /config/collection_settings {
 
 ### Existing rules that change
 
-- `isEmployee()` function: update to `role in ['employee', 'collector']` so collectors retain attendance access.
+- `isEmployee()` function: `role == 'employee'` only. Collectors do NOT have attendance access — they are not shift employees. The attendance rule gates on `isEmployee()`, explicitly excluding collectors.
 - `users/{uid}` self-update mask: must NOT include `cashOnHand` or `maxCashOnHand` — CF only.
 - Admin writes to `users/{uid}` must be allowed for `maxCashOnHand` field.
 
@@ -1300,7 +1300,7 @@ All PRs target the single long-running branch `feat/v2-collections`. Nothing is 
 - `lib/core/routes/app_router.dart` — stub route cases (return placeholder screens)
 - `lib/features/collections/` — new feature directory with empty subdirectory structure
 - `lib/features/auth/presentation/cubit/auth_cubit.dart` — handle `collector` role → route to CollectorApp
-- `lib/app/app.dart` — add `CollectorApp` shell (bottom nav: Collections | Attendance | Profile)
+- `lib/app/collector_app.dart` — add `CollectorApp` shell (bottom nav: Collections | Settings)
 - `assets/translations/en.json` + `ar.json` — ALL ~70 new translation keys (complete set for the entire subsystem)
 - `pubspec.yaml` — version `2.0.0+14`
 
@@ -1309,7 +1309,6 @@ All PRs target the single long-running branch `feat/v2-collections`. Nothing is 
 **Smoke test gate**:
 - [ ] Admin creates a collector user via the existing employee creation flow (role: collector)
 - [ ] Collector signs in → routed to `CollectorApp` shell (placeholder screens)
-- [ ] Collector can check in and out (attendance still works)
 - [ ] Collector cannot navigate to admin or employee screens
 - [ ] Employee cannot see any collections UI element
 

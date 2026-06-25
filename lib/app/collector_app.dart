@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:techno_staff/features/attendance/presentation/screens/attendance_screen.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
 import 'package:techno_staff/features/collections/presentation/screens/collector_home_screen.dart';
@@ -35,7 +34,6 @@ class _CollectorAppState extends State<CollectorApp> {
         index: _tabIndex,
         children: const [
           CollectorHomeScreen(),
-          AttendanceScreen(),
           SettingsScreen(),
         ],
       ),
@@ -47,11 +45,6 @@ class _CollectorAppState extends State<CollectorApp> {
             icon: const Icon(Icons.account_balance_wallet_outlined),
             activeIcon: const Icon(Icons.account_balance_wallet),
             label: 'collections'.tr(),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.access_time_outlined),
-            activeIcon: const Icon(Icons.access_time),
-            label: 'attendance'.tr(),
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings_outlined),

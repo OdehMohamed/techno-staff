@@ -30,6 +30,12 @@ service cloud.firestore {
         currentUserData().role == 'collector';
     }
 
+    function isEmployee() {
+      return signedIn() &&
+        exists(currentUserPath()) &&
+        currentUserData().role == 'employee';
+    }
+
     function isCurrentUser(userId) {
       return signedIn() && request.auth.uid == userId;
     }
@@ -142,7 +148,7 @@ service cloud.firestore {
     }
 
     match /attendance/{docId} {
-      allow read: if isAdmin() || resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isEmployee() && resource.data.userId == request.auth.uid);
       allow write: if false;
     }
 
