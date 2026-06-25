@@ -24,10 +24,9 @@ When an idea graduates to real work, move it to `BACKLOG.md` and remove it from 
 
 ## Recommended Next Steps
 
-1. **Complete v1.10.0 implementation** — three items in progress on `feat/reports-chat-admin-improvements`: multi-month attendance reports, employee deactivation confirmation, Chat Phase 3 group member management.
-2. **Review Firestore rules diff for Chat Phase 3** — rules change must be approved before `firestore.rules` is edited; diff will be presented inline before any edit.
-3. **Owner smoke test** — after implementation, owner validates all three items on real device.
-4. **Full binary store release** — new translation keys mean Shorebird patch is ineligible; full binary required for both platforms. Deploy `firebase deploy --only firestore:rules` post-merge.
+1. **Store release for v1.10.0** — Firestore rules already deployed. Run `shorebird release android` + `shorebird release ios`, upload binaries to Google Play and App Store Connect. Full binary required (translation changes).
+2. **Collect tester feedback on v1.10.0** — new features to validate in production: multi-month reports, deactivation dialog, group member management.
+3. **Plan v1.11.0** — after tester feedback; no committed scope yet.
 
 ---
 

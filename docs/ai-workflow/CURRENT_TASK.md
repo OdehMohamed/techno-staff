@@ -2,8 +2,8 @@
 
 ## In Progress — v1.10.0 Reports + Chat + Admin UX Improvements
 
-**Branch**: `feat/reports-chat-admin-improvements`  
-**Status**: Implementation in progress
+**Branch**: `feat/reports-chat-admin-improvements` (merged → `main`, PR #46)  
+**Status**: ✅ COMPLETE — v1.10.0 released 2026-06-25
 
 ---
 
@@ -74,7 +74,7 @@ Three items in one release cycle:
 - [x] `flutter analyze lib/` — zero errors/warnings
 - [x] `npm run lint` — ESLint clean (functions not touched in v1.10.0)
 - [x] Translation parity (401 EN == 401 AR)
-- [ ] Owner smoke test: all three items
+- [x] Owner smoke test: all three items — PASS 2026-06-25
 - [x] Firestore rules diff approved by owner (2026-06-25)
 
 ---
