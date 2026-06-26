@@ -72,17 +72,29 @@ class _AdminCustomerFormScreenState extends State<AdminCustomerFormScreen> {
     final cubit = context.read<CustomersCubit>();
 
     if (_isEditing) {
+      final phone2Val = _phone2Ctrl.text.trim();
+      final addressVal = _addressCtrl.text.trim();
+      final guarantorVal = _guarantorCtrl.text.trim();
+      final guarantorPhoneVal = _guarantorPhoneCtrl.text.trim();
+      final externalRefVal = _externalRefCtrl.text.trim();
+      final notesVal = _notesCtrl.text.trim();
       final updated = widget.customer!.copyWith(
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
-        phone2: _phone2Ctrl.text.trim().isEmpty ? null : _phone2Ctrl.text.trim(),
-        address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+        phone2: phone2Val.isEmpty ? null : phone2Val,
+        clearPhone2: phone2Val.isEmpty,
+        address: addressVal.isEmpty ? null : addressVal,
+        clearAddress: addressVal.isEmpty,
         assignedCollectorId: _selectedCollectorId!,
         assignedCollectorName: _selectedCollectorName!,
-        guarantor: _guarantorCtrl.text.trim().isEmpty ? null : _guarantorCtrl.text.trim(),
-        guarantorPhone: _guarantorPhoneCtrl.text.trim().isEmpty ? null : _guarantorPhoneCtrl.text.trim(),
-        externalReference: _externalRefCtrl.text.trim().isEmpty ? null : _externalRefCtrl.text.trim(),
-        notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        guarantor: guarantorVal.isEmpty ? null : guarantorVal,
+        clearGuarantor: guarantorVal.isEmpty,
+        guarantorPhone: guarantorPhoneVal.isEmpty ? null : guarantorPhoneVal,
+        clearGuarantorPhone: guarantorPhoneVal.isEmpty,
+        externalReference: externalRefVal.isEmpty ? null : externalRefVal,
+        clearExternalReference: externalRefVal.isEmpty,
+        notes: notesVal.isEmpty ? null : notesVal,
+        clearNotes: notesVal.isEmpty,
       );
       cubit.updateCustomer(updated);
     } else {

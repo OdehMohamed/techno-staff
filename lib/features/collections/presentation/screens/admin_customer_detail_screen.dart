@@ -33,18 +33,21 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
   }
 
   Future<void> _openEdit() async {
-    final cubit = context.read<CustomersCubit>();
-    final result = await Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       RouteNames.editCustomer,
       arguments: _customer,
     );
-    if (!mounted) return;
-    if (result == true) {
-      final updated = cubit.state.customers
-          .where((c) => c.id == _customer.id)
-          .firstOrNull;
-      if (updated != null) setState(() => _customer = updated);
+    // The form triggers CustomersCubit.loadCustomers(silent:true).
+    // _syncFromCubit() fires via BlocListener when that reload completes.
+  }
+
+  void _syncFromCubit(CustomersState state) {
+    final updated = state.customers
+        .where((c) => c.id == _customer.id)
+        .firstOrNull;
+    if (updated != null && updated != _customer) {
+      setState(() => _customer = updated);
     }
   }
 
@@ -76,7 +79,11 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
         icon: const Icon(Icons.add),
         label: Text('add_debt'.tr()),
       ),
-      body: SingleChildScrollView(
+      body: BlocListener<CustomersCubit, CustomersState>(
+        listenWhen: (prev, curr) =>
+            prev.status != curr.status && curr.status == CollectionsStatus.loaded,
+        listener: (_, state) => _syncFromCubit(state),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md).copyWith(bottom: 96),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,6 +185,7 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
