@@ -100,12 +100,19 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: 'employee',
                     decoration: InputDecoration(labelText: 'role'.tr()),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'employee',
-                        child: Text('employee'),
+                        child: Text('employee'.tr()),
                       ),
-                      DropdownMenuItem(value: 'admin', child: Text('admin')),
+                      DropdownMenuItem(
+                        value: 'collector',
+                        child: Text('collector_role'.tr()),
+                      ),
+                      DropdownMenuItem(
+                        value: 'admin',
+                        child: Text('admin'.tr()),
+                      ),
                     ],
                     onChanged: (value) {
                       _roleController.text = value ?? 'employee';
