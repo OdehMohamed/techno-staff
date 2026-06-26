@@ -81,7 +81,7 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
       ),
       body: BlocListener<CustomersCubit, CustomersState>(
         listenWhen: (prev, curr) =>
-            prev.status != curr.status && curr.status == CollectionsStatus.loaded,
+            curr.status == CollectionsStatus.loaded && prev.customers != curr.customers,
         listener: (_, state) => _syncFromCubit(state),
         child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md).copyWith(bottom: 96),

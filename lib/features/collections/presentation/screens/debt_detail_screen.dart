@@ -1,154 +1,177 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../data/models/debt_model.dart';
+import '../cubit/collector_debts_cubit.dart';
+import '../cubit/customers_state.dart';
 import '../cubit/debts_admin_cubit.dart';
 import '../cubit/debts_state.dart';
 import '../widgets/debt_status_badge.dart';
 
-class DebtDetailScreen extends StatelessWidget {
+class DebtDetailScreen extends StatefulWidget {
   final DebtModel debt;
 
   const DebtDetailScreen({super.key, required this.debt});
 
   @override
-  Widget build(BuildContext context) {
-    final role = context.read<AuthCubit>().state.user?.role ?? '';
-    final isAdmin = role == 'admin';
+  State<DebtDetailScreen> createState() => _DebtDetailScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('debt_details'.tr()),
-        actions: [
-          if (isAdmin && !debt.isCancelled && debt.status != 'settled')
-            _AdminActionsMenu(debt: debt),
-          if (isAdmin && debt.status != 'settled' && !debt.isCancelled)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'edit_debt'.tr(),
-              onPressed: () => Navigator.pushNamed(
-                context,
-                RouteNames.editDebt,
-                arguments: {'debt': debt},
-              ),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSizes.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+class _DebtDetailScreenState extends State<DebtDetailScreen> {
+  late DebtModel _debt;
+
+  @override
+  void initState() {
+    super.initState();
+    _debt = widget.debt;
+  }
+
+  void _syncFromDebts(List<DebtModel> debts) {
+    final updated = debts.where((d) => d.id == _debt.id).firstOrNull;
+    if (updated != null && updated != _debt) {
+      setState(() => _debt = updated);
+    }
+  }
+
+  bool get _isTerminal =>
+      _debt.isCancelled ||
+      _debt.status == 'settled' ||
+      _debt.status == 'written_off';
+
+  @override
+  Widget build(BuildContext context) {
+    final isAdmin = context.read<AuthCubit>().state.user?.role == 'admin';
+
+    return BlocListener<DebtsAdminCubit, DebtsState>(
+      listenWhen: (prev, curr) =>
+          curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
+      listener: (_, state) => _syncFromDebts(state.debts),
+      child: BlocListener<CollectorDebtsCubit, DebtsState>(
+        listenWhen: (prev, curr) =>
+            curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
+        listener: (_, state) => _syncFromDebts(state.debts),
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text('debt_details'.tr()),
+            actions: [
+              if (isAdmin && !_isTerminal)
+                _AdminActionsMenu(debt: _debt),
+              if (isAdmin && !_isTerminal)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'edit_debt'.tr(),
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    RouteNames.editDebt,
+                    arguments: {'debt': _debt},
+                  ),
+                ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSizes.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        DebtModel.formatAmountIls(debt.originalAmount),
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            DebtModel.formatAmountIls(_debt.originalAmount),
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          DebtStatusBadge(status: _debt.status),
+                        ],
                       ),
-                      DebtStatusBadge(status: debt.status),
+                      const Divider(height: AppSizes.lg),
+                      _InfoRow('customer_details'.tr(), _debt.customerName),
+                      _InfoRow('collector_role'.tr(), _debt.assignedCollectorName),
+                      _InfoRow('original_amount'.tr(), DebtModel.formatAmountIls(_debt.originalAmount)),
+                      _InfoRow('paid_amount'.tr(), DebtModel.formatAmountIls(_debt.paidAmount)),
+                      _InfoRow('remaining_balance'.tr(), DebtModel.formatAmountIls(_debt.remainingBalance)),
+                      if (_debt.dueDate != null)
+                        _InfoRow('due_date'.tr(), DateFormat.yMMMd().format(_debt.dueDate!)),
+                      if (_debt.description != null)
+                        _InfoRow('description'.tr(), _debt.description!),
+                      if (_debt.notes != null)
+                        _InfoRow('notes'.tr(), _debt.notes!),
+                      _InfoRow(
+                        'created_by'.tr(),
+                        '${_debt.createdByName} · ${DateFormat.yMMMd().format(_debt.createdAt)}',
+                      ),
                     ],
                   ),
-                  const Divider(height: AppSizes.lg),
-                  _InfoRow('customer_details'.tr(), debt.customerName),
-                  _InfoRow('collector_role'.tr(), debt.assignedCollectorName),
-                  _InfoRow(
-                    'original_amount'.tr(),
-                    DebtModel.formatAmountIls(debt.originalAmount),
-                  ),
-                  _InfoRow(
-                    'paid_amount'.tr(),
-                    DebtModel.formatAmountIls(debt.paidAmount),
-                  ),
-                  _InfoRow(
-                    'remaining_balance'.tr(),
-                    DebtModel.formatAmountIls(debt.remainingBalance),
-                  ),
-                  if (debt.dueDate != null)
-                    _InfoRow('due_date'.tr(), DateFormat.yMMMd().format(debt.dueDate!)),
-                  if (debt.description != null)
-                    _InfoRow('description'.tr(), debt.description!),
-                  if (debt.notes != null)
-                    _InfoRow('notes'.tr(), debt.notes!),
-                  _InfoRow(
-                    'created_by'.tr(),
-                    '${debt.createdByName} · ${DateFormat.yMMMd().format(debt.createdAt)}',
+                ),
+                if (_debt.isCancelled) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('cancel_debt'.tr(), style: Theme.of(context).textTheme.titleSmall),
+                        if (_debt.cancellationReason != null)
+                          _InfoRow('cancellation_reason'.tr(), _debt.cancellationReason!),
+                        if (_debt.cancelledAt != null)
+                          _InfoRow('date'.tr(), DateFormat.yMMMd().format(_debt.cancelledAt!)),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            ),
-            if (debt.isCancelled) ...[
-              const SizedBox(height: AppSizes.md),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('cancel_debt'.tr(), style: Theme.of(context).textTheme.titleSmall),
-                    if (debt.cancellationReason != null)
-                      _InfoRow('cancellation_reason'.tr(), debt.cancellationReason!),
-                    if (debt.cancelledAt != null)
-                      _InfoRow('date'.tr(), DateFormat.yMMMd().format(debt.cancelledAt!)),
-                  ],
-                ),
-              ),
-            ],
-            if (debt.status == 'written_off' && debt.writeOffReason != null) ...[
-              const SizedBox(height: AppSizes.md),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('write_off_debt'.tr(), style: Theme.of(context).textTheme.titleSmall),
-                    _InfoRow('write_off_reason'.tr(), debt.writeOffReason!),
-                  ],
-                ),
-              ),
-            ],
-            if (debt.status == 'settled' && debt.settlementAmount != null) ...[
-              const SizedBox(height: AppSizes.md),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('settle_for_less'.tr(), style: Theme.of(context).textTheme.titleSmall),
-                    _InfoRow(
-                      'settlement_amount'.tr(),
-                      DebtModel.formatAmountIls(debt.settlementAmount!),
-                    ),
-                    if (debt.settlementNotes != null)
-                      _InfoRow('settlement_notes'.tr(), debt.settlementNotes!),
-                  ],
-                ),
-              ),
-            ],
-            if (!isAdmin && debt.status != 'settled' && !debt.isCancelled) ...[
-              const SizedBox(height: AppSizes.lg),
-              BlocBuilder<DebtsAdminCubit, DebtsState>(
-                builder: (_, __) => SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.payments_outlined),
-                    label: Text('record_payment'.tr()),
-                    onPressed: () => Navigator.pushNamed(
-                      context,
-                      RouteNames.recordPayment,
-                      arguments: debt,
+                if (_debt.status == 'written_off' && _debt.writeOffReason != null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('write_off_debt'.tr(), style: Theme.of(context).textTheme.titleSmall),
+                        _InfoRow('write_off_reason'.tr(), _debt.writeOffReason!),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            ],
-          ],
+                ],
+                if (_debt.status == 'settled' && _debt.settlementAmount != null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('settle_for_less'.tr(), style: Theme.of(context).textTheme.titleSmall),
+                        _InfoRow('settlement_amount'.tr(), DebtModel.formatAmountIls(_debt.settlementAmount!)),
+                        if (_debt.settlementNotes != null)
+                          _InfoRow('settlement_notes'.tr(), _debt.settlementNotes!),
+                      ],
+                    ),
+                  ),
+                ],
+                if (!isAdmin && !_isTerminal) ...[
+                  const SizedBox(height: AppSizes.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.payments_outlined),
+                      label: Text('record_payment'.tr()),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        RouteNames.recordPayment,
+                        arguments: _debt,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -164,9 +187,8 @@ class _AdminActionsMenu extends StatelessWidget {
     BuildContext context,
     String titleKey,
     String hintKey,
-    void Function(String reason) onConfirm, {
-    bool required = true,
-  }) async {
+    void Function(String reason) onConfirm,
+  ) async {
     final ctrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -185,7 +207,7 @@ class _AdminActionsMenu extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              if (required && ctrl.text.trim().isEmpty) return;
+              if (ctrl.text.trim().isEmpty) return;
               Navigator.pop(ctx, true);
             },
             child: Text('confirm'.tr()),
@@ -199,48 +221,67 @@ class _AdminActionsMenu extends StatelessWidget {
   Future<void> _showSettleDialog(BuildContext context) async {
     final amountCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
+    String? amountError;
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('settle_for_less'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: amountCtrl,
-              decoration: InputDecoration(
-                labelText: 'settlement_amount'.tr(),
-                prefixText: '₪ ',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('settle_for_less'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountCtrl,
+                decoration: InputDecoration(
+                  labelText: 'settlement_amount'.tr(),
+                  prefixText: '₪ ',
+                  errorText: amountError,
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                autofocus: true,
+                onChanged: (_) {
+                  if (amountError != null) setDialogState(() => amountError = null);
+                },
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
+              const SizedBox(height: AppSizes.sm),
+              TextField(
+                controller: notesCtrl,
+                decoration: InputDecoration(labelText: 'settlement_notes'.tr()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('cancel'.tr()),
             ),
-            const SizedBox(height: AppSizes.sm),
-            TextField(
-              controller: notesCtrl,
-              decoration: InputDecoration(labelText: 'settlement_notes'.tr()),
+            FilledButton(
+              onPressed: () {
+                final agorot = DebtModel.parseAmountIls(amountCtrl.text);
+                if (agorot <= 0 || agorot > debt.remainingBalance) {
+                  setDialogState(() => amountError = 'amount_required'.tr());
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: Text('confirm'.tr()),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('confirm'.tr()),
-          ),
-        ],
       ),
     );
+
     if (confirmed == true && context.mounted) {
       final agorot = DebtModel.parseAmountIls(amountCtrl.text);
       context.read<DebtsAdminCubit>().updateDebtStatus(
         debt.id,
         debt.customerId,
         'settled',
-        settlementAmount: agorot > 0 ? agorot : null,
+        settlementAmount: agorot,
         settlementNotes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
       );
     }
@@ -258,10 +299,7 @@ class _AdminActionsMenu extends StatelessWidget {
               'cancel_debt',
               'cancellation_reason',
               (reason) => context.read<DebtsAdminCubit>().updateDebtStatus(
-                debt.id,
-                debt.customerId,
-                'cancelled',
-                reason: reason,
+                debt.id, debt.customerId, 'cancelled', reason: reason,
               ),
             );
           case 'write_off':
@@ -270,19 +308,14 @@ class _AdminActionsMenu extends StatelessWidget {
               'write_off_debt',
               'write_off_reason',
               (reason) => context.read<DebtsAdminCubit>().updateDebtStatus(
-                debt.id,
-                debt.customerId,
-                'written_off',
-                reason: reason,
+                debt.id, debt.customerId, 'written_off', reason: reason,
               ),
             );
           case 'settle':
             await _showSettleDialog(context);
           case 'dispute':
             context.read<DebtsAdminCubit>().updateDebtStatus(
-              debt.id,
-              debt.customerId,
-              'disputed',
+              debt.id, debt.customerId, 'disputed',
             );
         }
       },
