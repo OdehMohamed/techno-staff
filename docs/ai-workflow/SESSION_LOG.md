@@ -1,3 +1,50 @@
+## 2026-06-27 — Claude Sonnet 4.6 — v2.0.0 PR 3: Payment Recording & Cash Handover
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 3 of 7 — Core financial layer: payment recording, receipt numbering, cash handover flow.
+- **Outcome**: ✅ All PR 3 items complete. `flutter analyze` clean, 27 Jest CF unit tests passing.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/payment_model.dart` | **NEW** — agorot-integer amounts; `toCreateMap` writes `receiptNumber: ''`; `isCancelable`, `isReceiptPending`, `isVerified` getters |
+| `lib/features/collections/data/models/handover_model.dart` | **NEW** — `toVerifyMap` computes `hasDiscrepancy`/`discrepancyAmount`; `isPending`/`isVerified`/`hasDiscrepancy` getters |
+| `lib/features/collections/data/repositories/payments_repository.dart` | **NEW** — client-generated doc ID for offline idempotency; `getByDebt` (client-sort); `getCollectorPending`; `create`; `cancel` |
+| `lib/features/collections/data/repositories/handovers_repository.dart` | **NEW** — `getByCollector`, `getAll`, `create`, `verify` |
+| `lib/features/collections/presentation/cubit/payments_state.dart` | **NEW** — `cashOnHand` preserved across `loadDebtPayments` calls |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | **NEW** — `loadDebtPayments`, `loadCollectorPendingPayments`, `createPayment`, `cancelPayment` |
+| `lib/features/collections/presentation/cubit/handover_state.dart` | **NEW** |
+| `lib/features/collections/presentation/cubit/handover_cubit.dart` | **NEW** — `loadCollectorHandovers`, `loadAllHandovers`, `initiateHandover`, `verifyHandover` |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | **NEW** — amount formatter, overpayment guard, method dropdown, date+time pickers |
+| `lib/features/collections/presentation/screens/payment_detail_screen.dart` | **NEW** — receipt display, admin cancel with verified-handover guard; `withValues(alpha:)` throughout |
+| `lib/features/collections/presentation/screens/handover_init_screen.dart` | **NEW** — multi-select pending payments, claimed amount sum, Set<String> checkbox state |
+| `lib/features/collections/presentation/screens/handover_verification_screen.dart` | **NEW** — actual amount vs claimed, discrepancy notes required when amounts differ |
+| `lib/features/collections/presentation/screens/handover_list_screen.dart` | **NEW** — role-aware: admin loads all, collector loads own |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Payment history section + Record Payment CTA; `_DebtPaymentRow` widget; async-gap-safe navigation |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand banner + Hand Over Cash button; async-gap-safe `.then()` pattern |
+| `functions/lib/collections/payment-triggers.js` | **NEW** — `onPaymentCreated` (idempotency guard, TX: receipt numbering + balance update + cashOnHand), `onPaymentCancelled` (verified-handover block, balance reversal); 5 pure helpers exported for Jest |
+| `functions/lib/collections/handover-triggers.js` | **NEW** — `onHandoverCreated` (admin FCM + in-app), `onHandoverUpdated` (batch payment→verified, cashOnHand decrement, collector notification) |
+| `functions/__tests__/collections/payment-triggers.test.js` | **NEW** — 27 Jest unit tests for pure CF helpers |
+| `functions/index.js` | Export `onPaymentCreated`, `onPaymentCancelled`, `onHandoverCreated`, `onHandoverUpdated` |
+| `functions/package.json` | Add `jest ^29.0.0` devDependency; add `"test": "jest"` script |
+| `lib/core/routes/app_router.dart` | Wire `recordPayment`, `paymentDetail`, `handoverList`, `handoverInit`, `handoverVerification` routes |
+| `lib/main.dart` | Add `PaymentsRepository`, `HandoversRepository`, `PaymentsCubit`, `HandoverCubit` providers |
+| `lib/shared/widgets/app_drawer.dart` | Add Handovers tile for admin |
+| `assets/translations/en.json` + `ar.json` | +12 missing keys: `payment_status_*`, `verified_by`, `cancel_payment_warn_verified`, `no_pending_payments`, `select_at_least_one_payment`, `deselect_all`, `discrepancy_notes_required/hint` |
+
+### Key decisions
+
+- `cashOnHand` in `PaymentsState` is computed as sum of `pending_handover` payments — avoids requiring a real-time listener on the user doc.
+- CF `onPaymentCreated` double-checked idempotency: outside the TX (early exit) and inside the TX (guard against concurrent calls).
+- Firestore TX read-before-write: all `tx.get()` calls for payment/debt/counter/collector/customer precede any `tx.update()`.
+- `onPaymentCancelled` reverts `isCancelled: false` if the payment is in a verified handover — prevents retroactive balance corruption.
+- `onHandoverUpdated` uses a `WriteBatch` (not TX) for the payment status updates because it only writes, never conditionally reads.
+- Pure CF helpers (`recalculateDebtStatus`, `formatReceiptNumber`, etc.) are named functions added to `module.exports` for Jest testing without a Firestore emulator.
+
+---
+
 ## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 2: Customer & Debt Management
 
 - **Agent**: Claude Sonnet 4.6
