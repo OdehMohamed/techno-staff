@@ -6,7 +6,14 @@ import 'package:techno_staff/features/collections/presentation/screens/admin_cus
 import 'package:techno_staff/features/collections/presentation/screens/admin_customer_form_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/admin_customer_list_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/admin_debt_form_screen.dart';
+import 'package:techno_staff/features/collections/data/models/handover_model.dart';
+import 'package:techno_staff/features/collections/data/models/payment_model.dart';
 import 'package:techno_staff/features/collections/presentation/screens/debt_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_init_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_list_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_verification_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/payment_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/record_payment_screen.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/conversation_screen.dart';
@@ -292,12 +299,43 @@ class AppRouter {
           settings: settings,
         );
 
-      case RouteNames.debtList:
       case RouteNames.recordPayment:
+        return MaterialPageRoute(
+          builder: (_) => RecordPaymentScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
       case RouteNames.paymentDetail:
+        return MaterialPageRoute(
+          builder: (_) => PaymentDetailScreen(
+            payment: settings.arguments as PaymentModel,
+          ),
+          settings: settings,
+        );
+
       case RouteNames.handoverList:
+        return MaterialPageRoute(
+          builder: (_) => const HandoverListScreen(),
+          settings: settings,
+        );
+
       case RouteNames.handoverInit:
+        return MaterialPageRoute(
+          builder: (_) => const HandoverInitScreen(),
+          settings: settings,
+        );
+
       case RouteNames.handoverVerification:
+        return MaterialPageRoute(
+          builder: (_) => HandoverVerificationScreen(
+            handover: settings.arguments as HandoverModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.debtList:
       case RouteNames.visitLog:
       case RouteNames.installmentPlanDetail:
       case RouteNames.collectionsSettings:

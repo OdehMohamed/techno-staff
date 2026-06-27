@@ -45,9 +45,13 @@ import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'features/tasks/presentation/cubit/templates_cubit.dart';
 import 'features/collections/data/repositories/customers_repository.dart';
 import 'features/collections/data/repositories/debts_repository.dart';
+import 'features/collections/data/repositories/payments_repository.dart';
+import 'features/collections/data/repositories/handovers_repository.dart';
 import 'features/collections/presentation/cubit/customers_cubit.dart';
 import 'features/collections/presentation/cubit/debts_admin_cubit.dart';
 import 'features/collections/presentation/cubit/collector_debts_cubit.dart';
+import 'features/collections/presentation/cubit/payments_cubit.dart';
+import 'features/collections/presentation/cubit/handover_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
@@ -185,6 +189,8 @@ Future<void> main() async {
   );
   final customersRepository = CustomersRepository();
   final debtsRepository = DebtsRepository();
+  final paymentsRepository = PaymentsRepository();
+  final handoversRepository = HandoversRepository();
 
   runApp(
     EasyLocalization(
@@ -260,6 +266,12 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => CollectorDebtsCubit(debtsRepository: debtsRepository),
+          ),
+          BlocProvider(
+            create: (_) => PaymentsCubit(paymentsRepository),
+          ),
+          BlocProvider(
+            create: (_) => HandoverCubit(handoversRepository),
           ),
         ],
         child: const TechnoStaffApp(),

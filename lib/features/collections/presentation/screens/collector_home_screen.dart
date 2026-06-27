@@ -10,6 +10,8 @@ import '../../data/models/debt_model.dart';
 import '../cubit/collector_debts_cubit.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/debts_state.dart';
+import '../cubit/payments_cubit.dart';
+import '../cubit/payments_state.dart';
 import '../widgets/debt_status_badge.dart';
 
 class CollectorHomeScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
     final userId = context.read<AuthCubit>().state.user?.id;
     if (userId != null) {
       context.read<CollectorDebtsCubit>().loadCollectorDebts(userId);
+      context.read<PaymentsCubit>().loadCollectorPendingPayments(userId);
     }
   }
 
@@ -36,7 +39,55 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
         title: Text('my_debts'.tr()),
         automaticallyImplyLeading: false,
       ),
-      body: BlocBuilder<CollectorDebtsCubit, DebtsState>(
+      body: Column(
+        children: [
+          // Cash on hand banner
+          BlocBuilder<PaymentsCubit, PaymentsState>(
+            builder: (context, payState) {
+              if (payState.cashOnHand <= 0) return const SizedBox.shrink();
+              return Material(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.md,
+                    vertical: AppSizes.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined),
+                      const SizedBox(width: AppSizes.sm),
+                      Expanded(
+                        child: Text(
+                          '${'cash_on_hand'.tr()}: ${DebtModel.formatAmountIls(payState.cashOnHand)}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () {
+                          final paymentsCubit =
+                              context.read<PaymentsCubit>();
+                          final userId =
+                              context.read<AuthCubit>().state.user?.id;
+                          Navigator.pushNamed(
+                            context,
+                            RouteNames.handoverInit,
+                          ).then((_) {
+                            if (userId != null) {
+                              paymentsCubit
+                                  .loadCollectorPendingPayments(userId);
+                            }
+                          });
+                        },
+                        child: Text('hand_over_cash'.tr()),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          Expanded(
+            child: BlocBuilder<CollectorDebtsCubit, DebtsState>(
         builder: (context, state) {
           if (state.status == CollectionsStatus.loading) {
             return const Center(child: CircularProgressIndicator());
@@ -126,13 +177,19 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
           );
         },
       ),
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _refresh() async {
     final userId = context.read<AuthCubit>().state.user?.id;
     if (userId != null) {
-      await context.read<CollectorDebtsCubit>().loadCollectorDebts(userId);
+      await Future.wait([
+        context.read<CollectorDebtsCubit>().loadCollectorDebts(userId),
+        context.read<PaymentsCubit>().loadCollectorPendingPayments(userId),
+      ]);
     }
   }
 

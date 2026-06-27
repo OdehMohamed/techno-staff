@@ -6,11 +6,15 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../data/models/debt_model.dart';
+import '../../data/models/payment_model.dart';
 import '../cubit/collector_debts_cubit.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/debts_admin_cubit.dart';
 import '../cubit/debts_state.dart';
+import '../cubit/payments_cubit.dart';
+import '../cubit/payments_state.dart';
 import '../widgets/debt_status_badge.dart';
 
 class DebtDetailScreen extends StatefulWidget {
@@ -29,6 +33,27 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   void initState() {
     super.initState();
     _debt = widget.debt;
+    context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
+  }
+
+  Future<void> _openPaymentDetail(PaymentModel p) async {
+    final v = await Navigator.pushNamed(
+      context,
+      RouteNames.paymentDetail,
+      arguments: p,
+    );
+    if (!mounted) return;
+    if (v == true) context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
+  }
+
+  Future<void> _openRecordPayment() async {
+    final v = await Navigator.pushNamed(
+      context,
+      RouteNames.recordPayment,
+      arguments: _debt,
+    );
+    if (!mounted) return;
+    if (v == true) context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
   }
 
   void _syncFromDebts(List<DebtModel> debts) {
@@ -154,6 +179,44 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     ),
                   ),
                 ],
+                // Payment history
+                const SizedBox(height: AppSizes.md),
+                Text('payments'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSizes.sm),
+                BlocBuilder<PaymentsCubit, PaymentsState>(
+                  builder: (context, payState) {
+                    if (payState.status == CollectionsStatus.loading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(AppSizes.md),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (payState.payments.isEmpty) {
+                      return const EmptyStateWidget(
+                        icon: Icons.receipt_long_outlined,
+                        titleKey: 'no_payments_found',
+                      );
+                    }
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: payState.payments.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSizes.sm),
+                      itemBuilder: (context, i) {
+                        final p = payState.payments[i];
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _openPaymentDetail(p),
+                          child: AppCard(
+                            child: _DebtPaymentRow(payment: p),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
                 if (!isAdmin && !_isTerminal) ...[
                   const SizedBox(height: AppSizes.lg),
                   SizedBox(
@@ -161,11 +224,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     child: FilledButton.icon(
                       icon: const Icon(Icons.payments_outlined),
                       label: Text('record_payment'.tr()),
-                      onPressed: () => Navigator.pushNamed(
-                        context,
-                        RouteNames.recordPayment,
-                        arguments: _debt,
-                      ),
+                      onPressed: _openRecordPayment,
                     ),
                   ),
                 ],
@@ -324,6 +383,53 @@ class _AdminActionsMenu extends StatelessWidget {
         PopupMenuItem(value: 'dispute', child: Text('dispute_debt'.tr())),
         PopupMenuItem(value: 'write_off', child: Text('write_off_debt'.tr())),
         PopupMenuItem(value: 'cancel', child: Text('cancel_debt'.tr())),
+      ],
+    );
+  }
+}
+
+class _DebtPaymentRow extends StatelessWidget {
+  final PaymentModel payment;
+
+  const _DebtPaymentRow({required this.payment});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DebtModel.formatAmountIls(payment.amount),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${DateFormat('dd/MM/yyyy').format(payment.collectedAt)}  ·  ${'payment_method_${payment.paymentMethod}'.tr()}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (payment.receiptNumber.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  payment.receiptNumber,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (payment.isCancelled)
+          Icon(Icons.cancel_outlined,
+              size: 16, color: Theme.of(context).colorScheme.error)
+        else if (payment.isReceiptPending)
+          const Icon(Icons.hourglass_empty_outlined, size: 16),
       ],
     );
   }

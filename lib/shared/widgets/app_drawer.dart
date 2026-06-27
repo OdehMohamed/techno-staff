@@ -158,6 +158,15 @@ class AppDrawer extends StatelessWidget {
               ),
             if (user?.role == 'admin')
               ListTile(
+                leading: const Icon(Icons.swap_horiz_outlined),
+                title: Text('handovers'.tr()),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, RouteNames.handoverList);
+                },
+              ),
+            if (user?.role == 'admin')
+              ListTile(
                 leading: const Icon(Icons.bar_chart_outlined),
                 title: Text('reports'.tr()),
                 onTap: () {
