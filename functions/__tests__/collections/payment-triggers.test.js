@@ -1,3 +1,4 @@
+/* eslint-env jest */
 // Unit tests for pure helper functions in payment-triggers.js.
 // No Firestore emulator required — helpers are side-effect-free.
 
@@ -12,8 +13,8 @@ const {
 // ─── recalculateDebtStatus ────────────────────────────────────────────────────
 
 describe("recalculateDebtStatus", () => {
-  const futureDate = {toDate: () => new Date(Date.now() + 86400_000 * 30)};
-  const pastDate = {toDate: () => new Date(Date.now() - 86400_000)};
+  const futureDate = {toDate: () => new Date(Date.now() + 86400000 * 30)};
+  const pastDate = {toDate: () => new Date(Date.now() - 86400000)};
 
   test("settled when remainingBalance is 0", () => {
     expect(recalculateDebtStatus(5000, 0, futureDate)).toBe("settled");

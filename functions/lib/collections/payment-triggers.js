@@ -4,17 +4,11 @@
 
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/firestore");
 const admin = require("firebase-admin");
-const {createInAppNotification, getFcmTokensBatch, sendFCMNotification} = require("../shared");
+const {createInAppNotification} = require("../shared");
 
 // ─── Pure helpers (exported for unit testing) ─────────────────────────────────
 
-/**
- * Recompute debt status from current financial state.
- * @param {number} paidAmount  agorot
- * @param {number} remainingBalance  agorot
- * @param {import("firebase-admin").firestore.Timestamp|null} dueDate
- * @return {string}
- */
+// Recompute debt status from current financial state. dueDate is a Firestore Timestamp or null.
 function recalculateDebtStatus(paidAmount, remainingBalance, dueDate) {
   if (remainingBalance === 0) return "settled";
   const now = new Date();
@@ -57,13 +51,7 @@ function formatAgorot(agorot) {
   return `₪${(agorot / 100).toFixed(2)}`;
 }
 
-/**
- * Validate a payment against the current debt state.
- * @param {number} paymentAmount  agorot
- * @param {number} remainingBalance  agorot
- * @param {string} debtStatus
- * @return {{valid: boolean, reason: string|null}}
- */
+// Returns {valid, reason} — reason is null when valid, a string key when invalid.
 function validatePaymentAgainstDebt(paymentAmount, remainingBalance, debtStatus) {
   const terminalStatuses = ["settled", "cancelled", "written_off"];
   if (terminalStatuses.includes(debtStatus)) {
@@ -122,7 +110,7 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
       }
 
       // Build receipt number
-      let counters = counterSnap.exists ? counterSnap.data() : {};
+      const counters = counterSnap.exists ? counterSnap.data() : {};
       let receipts = counters.receipts || {year: 0, lastNumber: 0, prefix: "RCPT"};
       const currentYear = currentYearJerusalem();
       if (receipts.year !== currentYear) {
