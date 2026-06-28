@@ -1,3 +1,45 @@
+## 2026-06-28 (session 3) — Claude Sonnet 4.6 — v2.0.0 PR 5: Visit Logs, PTP, Admin Debt Actions, Automation Crons
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 5 of 7 — Visit logs, PTP tracking, admin debt actions (dispute/write-off/settle), 4 automation crons.
+- **Outcome**: ✅ All PR 5 items complete. `flutter analyze` clean, `npm run lint` clean. Committed `c480e77`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/visit_model.dart` | **NEW** — `PtpData` (amount, promisedDate, status helpers) + `VisitModel` (contactType, outcome, paymentId, promiseToPay, notes); `toCreateMap` uses `serverTimestamp()` |
+| `lib/features/collections/data/repositories/visits_repository.dart` | **NEW** — `create`, `getByDebt(forCollectorId?)`, `getByCustomer`; `Source.server` on all reads |
+| `lib/features/collections/presentation/cubit/visit_state.dart` | **NEW** — separate `formStatus`/`formError` alongside `status`/`visits`/`error` |
+| `lib/features/collections/presentation/cubit/visit_cubit.dart` | **NEW** — `loadDebtVisits`, `loadCustomerVisits`, `createVisit`, `clearFormStatus`; clears `visits: []` on loading/error |
+| `lib/features/collections/presentation/screens/log_visit_screen.dart` | **NEW** — contactType dropdown, 7 outcomes, visitedAt date picker, conditional PTP fields, notes; pops with `true` on success |
+| `lib/features/collections/presentation/screens/collections_settings_screen.dart` | **NEW** — `staleCashWarningDays` setting; direct Firestore read/write (no cubit); default 3 |
+| `lib/features/collections/data/models/debt_model.dart` | Added `daysPastDue`, `agingBucket`, `lastOverdueEscalationAt` (CF-maintained) |
+| `lib/features/collections/data/repositories/debts_repository.dart` | Added `markDisputed`, `writeOff`, `settleForLess` with embedded sub-objects |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | Added `markDisputed`, `writeOff`, `settleForLess` methods |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Visit history section + `_VisitRow`; Log Visit button for all roles; admin actions upgraded to use embedded objects + read user from `AuthCubit` |
+| `lib/features/collections/presentation/screens/admin_customer_detail_screen.dart` | Visit summary section + `_VisitSummaryRow`; `initState` loads customer visits |
+| `lib/core/routes/route_names.dart` | Added `logVisit = '/log-visit'` |
+| `lib/core/routes/app_router.dart` | Wired `logVisit` → `LogVisitScreen`, `collectionsSettings` → `CollectionsSettingsScreen` |
+| `lib/main.dart` | Added `VisitsRepository` + `VisitCubit` to `MultiBlocProvider` |
+| `functions/lib/collections/visit-triggers.js` | **NEW** — `onVisitCreated`: updates `customer.lastContactAt`, writes `visit.logged` + `ptp.created` logs |
+| `functions/lib/collections/debt-triggers.js` | **NEW** — `onDebtStatusChanged`: maps status transitions to `collection_log` entries; no `?.` (Google ESLint) |
+| `functions/lib/collections/schedulers.js` | **NEW** — 4 crons: `updateDebtAgingBuckets` (08:00), `checkBrokenPtps` (08:30), `sendOverdueDebtEscalations` (10:00), `sendStaleCashWarnings` (11:00) |
+| `functions/lib/collections/payment-triggers.js` | PTP "kept" marking after valid payment: marks pending PTPs as `kept` if payment arrived on or before `promisedDate` |
+| `functions/index.js` | Export 6 new CF symbols |
+| `assets/translations/en.json` + `ar.json` | +8 keys: `outcome_wrong_contact`, `dispute_reason`, `broken_ptps`, `stale_cash_warning_days`, `collection_settings`, `days`, `delinquent`, `visit_date` (568/568 parity) |
+
+### Key decisions
+
+- `?.` optional chaining rejected by project's Google ESLint config — all CF files use explicit `&&` guards.
+- `catch (_) {}` (empty block) rejected by `no-empty` rule — replaced with `console.error(...)`.
+- Visits are immutable after create (Firestore rule `allow update: if false`) — only CF can mark PTP status.
+- `CollectionsSettingsScreen` is a direct-Firestore exception: single config value, no cubit needed.
+- `ternary ?/:` operators must be at end of line per `operator-linebreak` ESLint rule.
+
+---
+
 ## 2026-06-28 (session 2) — Claude Sonnet 4.6 — v2.0.0 PR 4: Installment Plans
 
 - **Agent**: Claude Sonnet 4.6

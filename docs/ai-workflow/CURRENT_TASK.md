@@ -23,11 +23,11 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | 2 | Customer and Debt Management (Admin) | ✅ DONE |
 | 3 | Core Financial — Payment Recording and Handover (highest risk; CF unit tests required) | ✅ DONE |
 | 4 | Installment Plans | ✅ DONE |
-| 5 | Visit Logs, PTP, Automation Crons | 🔄 In Progress |
+| 5 | Visit Logs, PTP, Automation Crons | ✅ DONE |
 | 6 | PDF Receipts, Reports, Admin Dashboard | ⏳ Pending |
 | 7 | Collector Experience Polish and Settings | ⏳ Pending |
 
-**Status**: 🔄 PR 5 of 7 in progress — visit logs, PTP, automation crons  
+**Status**: 🔄 PR 6 of 7 pending — PDF Receipts, Reports, Admin Dashboard  
 **Policy**: No release until all 7 PRs are merged and smoke-tested.
 
 ---
