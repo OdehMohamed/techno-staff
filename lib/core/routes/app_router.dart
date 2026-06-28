@@ -7,7 +7,10 @@ import 'package:techno_staff/features/collections/presentation/screens/admin_cus
 import 'package:techno_staff/features/collections/presentation/screens/admin_customer_list_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/admin_debt_form_screen.dart';
 import 'package:techno_staff/features/collections/data/models/handover_model.dart';
+import 'package:techno_staff/features/collections/data/models/installment_plan_model.dart';
 import 'package:techno_staff/features/collections/data/models/payment_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/installment_plan_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/installment_plan_form_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/debt_detail_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/handover_init_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/handover_list_screen.dart';
@@ -335,9 +338,24 @@ class AppRouter {
           settings: settings,
         );
 
+      case RouteNames.installmentPlanDetail:
+        return MaterialPageRoute(
+          builder: (_) => InstallmentPlanDetailScreen(
+            plan: settings.arguments as InstallmentPlanModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.createInstallmentPlan:
+        return MaterialPageRoute(
+          builder: (_) => InstallmentPlanFormScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
       case RouteNames.debtList:
       case RouteNames.visitLog:
-      case RouteNames.installmentPlanDetail:
       case RouteNames.collectionsSettings:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

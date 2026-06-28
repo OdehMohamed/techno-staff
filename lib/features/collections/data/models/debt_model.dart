@@ -23,6 +23,10 @@ class DebtModel {
   final String? writeOffReason;
   final int? settlementAmount; // agorot
   final String? settlementNotes;
+  // Installment plan (CF-maintained after plan creation)
+  final bool hasInstallmentPlan;
+  final String? installmentPlanId;
+  final DateTime? nextInstallmentDueDate;
 
   const DebtModel({
     required this.id,
@@ -46,6 +50,9 @@ class DebtModel {
     this.writeOffReason,
     this.settlementAmount,
     this.settlementNotes,
+    this.hasInstallmentPlan = false,
+    this.installmentPlanId,
+    this.nextInstallmentDueDate,
   });
 
   static String formatAmountIls(int agorot) {
@@ -82,6 +89,9 @@ class DebtModel {
       writeOffReason: map['writeOffReason'] as String?,
       settlementAmount: (map['settlementAmount'] as num?)?.toInt(),
       settlementNotes: map['settlementNotes'] as String?,
+      hasInstallmentPlan: map['hasInstallmentPlan'] as bool? ?? false,
+      installmentPlanId: map['installmentPlanId'] as String?,
+      nextInstallmentDueDate: (map['nextInstallmentDueDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -138,6 +148,10 @@ class DebtModel {
     String? writeOffReason,
     int? settlementAmount,
     String? settlementNotes,
+    bool? hasInstallmentPlan,
+    String? installmentPlanId,
+    bool clearInstallmentPlanId = false,
+    DateTime? nextInstallmentDueDate,
   }) {
     return DebtModel(
       id: id ?? this.id,
@@ -161,6 +175,9 @@ class DebtModel {
       writeOffReason: writeOffReason ?? this.writeOffReason,
       settlementAmount: settlementAmount ?? this.settlementAmount,
       settlementNotes: settlementNotes ?? this.settlementNotes,
+      hasInstallmentPlan: hasInstallmentPlan ?? this.hasInstallmentPlan,
+      installmentPlanId: clearInstallmentPlanId ? null : (installmentPlanId ?? this.installmentPlanId),
+      nextInstallmentDueDate: nextInstallmentDueDate ?? this.nextInstallmentDueDate,
     );
   }
 }

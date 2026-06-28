@@ -9,6 +9,7 @@ const chat = require("./lib/chat");
 const notifications = require("./lib/notifications");
 const paymentTriggers = require("./lib/collections/payment-triggers");
 const handoverTriggers = require("./lib/collections/handover-triggers");
+const installmentTriggers = require("./lib/collections/installment-triggers");
 
 exports.generateRecurringTaskInstances = tasks.generateRecurringTaskInstances;
 exports.cleanupTaskAttachments = tasks.cleanupTaskAttachments;
@@ -37,3 +38,6 @@ exports.onPaymentCreated = paymentTriggers.onPaymentCreated;
 exports.onPaymentCancelled = paymentTriggers.onPaymentCancelled;
 exports.onHandoverCreated = handoverTriggers.onHandoverCreated;
 exports.onHandoverUpdated = handoverTriggers.onHandoverUpdated;
+
+exports.onInstallmentPlanCreated = installmentTriggers.onInstallmentPlanCreated;
+exports.sendInstallmentDueReminders = installmentTriggers.sendInstallmentDueReminders;

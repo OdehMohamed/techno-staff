@@ -7,6 +7,8 @@ import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/models/payment_model.dart';
 import '../cubit/customers_state.dart';
+import '../cubit/installment_cubit.dart';
+import '../cubit/installment_state.dart';
 import '../cubit/payments_cubit.dart';
 import '../cubit/payments_state.dart';
 
@@ -147,7 +149,49 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSizes.md),
+                      if (widget.debt.hasInstallmentPlan &&
+                          widget.debt.nextInstallmentDueDate != null)
+                        BlocBuilder<InstallmentCubit, InstallmentState>(
+                          builder: (context, instState) {
+                            final scheme = Theme.of(context).colorScheme;
+                            final dateStr = DateFormat('dd/MM/yyyy')
+                                .format(widget.debt.nextInstallmentDueDate!);
+                            final amountStr = instState.plan != null
+                                ? DebtModel.formatAmountIls(
+                                    instState.plan!.installmentAmount)
+                                : '';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: AppSizes.md),
+                              child: Card(
+                                color: scheme.secondaryContainer,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(AppSizes.sm),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_outlined,
+                                          color: scheme.onSecondaryContainer,
+                                          size: 20),
+                                      const SizedBox(width: AppSizes.sm),
+                                      Expanded(
+                                        child: Text(
+                                          amountStr.isNotEmpty
+                                              ? '${'next_installment'.tr()}: $amountStr · $dateStr'
+                                              : '${'next_installment'.tr()}: $dateStr',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                  color: scheme
+                                                      .onSecondaryContainer),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       // Amount
                       TextFormField(
                         controller: _amountCtrl,

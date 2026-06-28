@@ -5,6 +5,7 @@
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/firestore");
 const admin = require("firebase-admin");
 const {createInAppNotification} = require("../shared");
+const {applyPaymentToInstallments} = require("./installment-triggers");
 
 // ─── Pure helpers (exported for unit testing) ─────────────────────────────────
 
@@ -75,6 +76,7 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
   const db = admin.firestore();
   let receiptNumber = "";
   let paymentData;
+  let installmentPlanId = null; // captured inside tx for post-tx FIFO allocation
 
   try {
     await db.runTransaction(async (tx) => {
@@ -91,6 +93,7 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
       const debtSnap = await tx.get(debtRef);
       if (!debtSnap.exists) throw new Error(`Debt ${paymentData.debtId} not found`);
       const debt = debtSnap.data();
+      installmentPlanId = debt.installmentPlanId || null;
 
       const counterRef = db.collection("config").doc("counters");
       const counterSnap = await tx.get(counterRef);
@@ -149,6 +152,21 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
 
   // Abort best-effort steps if transaction marked payment invalid
   if (!receiptNumber || receiptNumber === "INVALID") return;
+
+  // FIFO installment allocation (best-effort; debt balance already updated)
+  if (installmentPlanId && paymentData) {
+    try {
+      await applyPaymentToInstallments(
+          db,
+          installmentPlanId,
+          paymentId,
+          paymentData.amount,
+          paymentData.debtId,
+      );
+    } catch (err) {
+      console.error("onPaymentCreated: installment allocation failed:", err);
+    }
+  }
 
   // Write collection_log
   try {

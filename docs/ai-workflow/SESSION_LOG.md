@@ -1,3 +1,75 @@
+## 2026-06-28 (session 2) — Claude Sonnet 4.6 — v2.0.0 PR 4: Installment Plans
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 4 of 7 — Installment plan creation, FIFO payment allocation, schedule view.
+- **Outcome**: ✅ All PR 4 items complete. `flutter analyze` clean, ESLint clean.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/installment_plan_model.dart` | **NEW** — `toCreateMap`; frequency: weekly/biweekly/monthly |
+| `lib/features/collections/data/models/installment_model.dart` | **NEW** — status helpers (`isPaid`, `isPartial`, `isOverdue`, `isPending`); `paymentIds` list |
+| `lib/features/collections/data/models/debt_model.dart` | Added `hasInstallmentPlan`, `installmentPlanId`, `nextInstallmentDueDate` (CF-maintained) |
+| `lib/features/collections/data/repositories/installments_repository.dart` | **NEW** — `createPlan`, `getPlanForDebt`, `getInstallments` (sub-collection, sorted by number) |
+| `lib/features/collections/presentation/cubit/installment_state.dart` | **NEW** — `plan`, `installments`, `formStatus`, `formError`; separate form status for non-disruptive save UX |
+| `lib/features/collections/presentation/cubit/installment_cubit.dart` | **NEW** — `loadPlanForDebt`, `createPlan`, `clearFormStatus` |
+| `lib/features/collections/presentation/screens/installment_plan_form_screen.dart` | **NEW** — n installments + auto-fill amount + frequency dropdown (`initialValue:`) + date picker; admin-only |
+| `lib/features/collections/presentation/screens/installment_plan_detail_screen.dart` | **NEW** — plan summary card + installment schedule list; `withValues(alpha:)` status badges; skips re-load if plan already in cubit |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Installment plan section: summary card + "View Schedule" / "Create Plan" buttons; `initState` triggers `loadPlanForDebt` |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | Next-installment hint card (date + amount from `InstallmentCubit`) shown when plan exists |
+| `lib/core/routes/route_names.dart` | Added `createInstallmentPlan = '/installment-plan/create'` |
+| `lib/core/routes/app_router.dart` | Wire `installmentPlanDetail` + `createInstallmentPlan` routes; remove from "Coming soon" stub |
+| `lib/main.dart` | Add `InstallmentsRepository`, `InstallmentCubit` to `MultiBlocProvider` |
+| `functions/lib/collections/installment-triggers.js` | **NEW** — `onInstallmentPlanCreated` (batch sub-docs + debt stamp); `applyPaymentToInstallments` (FIFO exported helper); `sendInstallmentDueReminders` (cron 09:00 Jerusalem, collection group query) |
+| `functions/lib/collections/payment-triggers.js` | After TX: call `applyPaymentToInstallments` if `debt.installmentPlanId` is set |
+| `functions/index.js` | Export `onInstallmentPlanCreated`, `sendInstallmentDueReminders` |
+| `assets/translations/en.json` + `ar.json` | +11 keys: `create_installment_plan`, `no_installment_plan`, `view_installment_schedule`, `installment_schedule`, `next_installment`, `installment_status_*` (4 variants), `failed_to_load_installments`, `failed_to_create_plan` |
+
+### Key decisions
+
+- `applyPaymentToInstallments` is a separate named export from `installment-triggers.js` (not inlined in `payment-triggers.js`) to keep it unit-testable and avoid circular dependency issues.
+- Installment sub-docs denormalize `collectorId` (fetched from debt in the trigger) so `sendInstallmentDueReminders` can use a collection group query without extra lookups.
+- `onInstallmentPlanCreated` uses a `WriteBatch` (not TX) because sub-doc creation is idempotent write-only — no conditional reads required.
+- `RecordPaymentScreen` reads `InstallmentCubit.state.plan` (already loaded by `DebtDetailScreen.initState`) — no extra load call needed.
+- `DropdownButtonFormField` uses `initialValue:` (not deprecated `value:`) per Flutter v3.33.0+.
+
+---
+
+## 2026-06-28 — Claude Sonnet 4.6 — v2.0.0 PR 3 smoke-test fixes + PR 4 start
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Close out PR 3 with bug fixes from smoke test; begin PR 4 (Installment Plans).
+
+### PR 3 smoke-test outcome
+
+Owner completed all 15 tests — PASS. Three observations:
+1. **Pre-emptive overpayment warning** (UX) — the amount field showed the validation error string as a hint before any input. Removed; remaining-balance helper text already conveys the max.
+2. **Cash-on-hand banner contrast** (UI) — fixed by applying `onPrimaryContainer` to icon + text in the banner.
+3. **Negative cashOnHand on discrepancy** (accounting edge case) — when admin verifies an actualAmount > claimedAmount the CF decrements cashOnHand by actualAmount, pushing it negative. Deferred to DECISIONS_LOG pending owner accounting decision. Fix is `Math.min(claimed, actual)` in `handover-triggers.js` once decided.
+
+### Bug fixed in this session (from prior context)
+
+**Payment history cross-contamination** (blocking): all debt detail screens showed the same payment list because:
+- `getByDebt(debtId)` without a `collectorId` filter is rejected by Firestore security rules for collectors (rule requires `collectorId == uid` on collection queries).
+- `loadDebtPayments` preserved stale `state.payments` on error; BlocBuilder had no error branch.
+- Fix: `PaymentsRepository.getByDebt(forCollectorId?)` adds the filter for collectors; `loadDebtPayments` clears `payments: []` on both loading and error emits; `DebtDetailScreen` captures `_forCollectorId` in `initState` and passes it to all three call sites; BlocBuilder error branch added.
+
+### Files changed this session
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/repositories/payments_repository.dart` | `getByDebt` accepts `forCollectorId?`; adds `where('collectorId')` for collectors |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | `loadDebtPayments` clears `payments: []` on loading + error; forwards `forCollectorId` |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | `_forCollectorId` field; pass to all 3 `loadDebtPayments` calls; capture cubit before await; BlocBuilder error branch |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | Remove confusing pre-emptive overpayment warning text |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand banner: apply `onPrimaryContainer` to icon + text |
+| `docs/ai-workflow/DECISIONS_LOG.md` | Handover discrepancy cashOnHand edge case documented |
+
+---
+
 ## 2026-06-27 — Claude Sonnet 4.6 — v2.0.0 PR 3: Payment Recording & Cash Handover
 
 - **Agent**: Claude Sonnet 4.6

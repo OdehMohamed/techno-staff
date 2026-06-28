@@ -13,6 +13,8 @@ import '../cubit/collector_debts_cubit.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/debts_admin_cubit.dart';
 import '../cubit/debts_state.dart';
+import '../cubit/installment_cubit.dart';
+import '../cubit/installment_state.dart';
 import '../cubit/payments_cubit.dart';
 import '../cubit/payments_state.dart';
 import '../widgets/debt_status_badge.dart';
@@ -41,6 +43,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     context
         .read<PaymentsCubit>()
         .loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
+    context.read<InstallmentCubit>().loadPlanForDebt(_debt.id);
   }
 
   Future<void> _openPaymentDetail(PaymentModel p) async {
@@ -230,6 +233,94 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                         );
                       },
                     );
+                  },
+                ),
+                // Installment plan section
+                const SizedBox(height: AppSizes.md),
+                Text('installment_plan'.tr(),
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSizes.sm),
+                BlocBuilder<InstallmentCubit, InstallmentState>(
+                  builder: (context, instState) {
+                    if (instState.status == CollectionsStatus.loading) {
+                      return const Padding(
+                        padding: EdgeInsets.all(AppSizes.md),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (instState.plan != null) {
+                      final plan = instState.plan!;
+                      return AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${plan.totalInstallments}× ${DebtModel.formatAmountIls(plan.installmentAmount)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall,
+                                      ),
+                                      Text(
+                                        'frequency_${plan.frequency}'.tr(),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                      if (_debt.nextInstallmentDueDate !=
+                                          null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${'next_installment_due'.tr()}: ${DateFormat('dd/MM/yyyy').format(_debt.nextInstallmentDueDate!)}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pushNamed(
+                                    context,
+                                    RouteNames.installmentPlanDetail,
+                                    arguments: plan,
+                                  ),
+                                  child:
+                                      Text('view_installment_schedule'.tr()),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    // No plan — admin can create one if debt is not terminal
+                    if (isAdmin && !_isTerminal) {
+                      return OutlinedButton.icon(
+                        icon: const Icon(Icons.add_outlined),
+                        label: Text('create_installment_plan'.tr()),
+                        onPressed: () async {
+                          final instCubit =
+                              context.read<InstallmentCubit>();
+                          final v = await Navigator.pushNamed(
+                            context,
+                            RouteNames.createInstallmentPlan,
+                            arguments: _debt,
+                          );
+                          if (v == true && mounted) {
+                            instCubit.loadPlanForDebt(_debt.id);
+                          }
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
                 if (!isAdmin && !_isTerminal) ...[
