@@ -46,6 +46,7 @@ class RouteNames {
   static const String handoverInit = '/handover-init';
   static const String handoverVerification = '/handover-verification';
   static const String visitLog = '/visit-log';
+  static const String logVisit = '/log-visit';
   static const String installmentPlanDetail = '/installment-plan';
   static const String createInstallmentPlan = '/installment-plan/create';
   static const String collectionsSettings = '/collections-settings';

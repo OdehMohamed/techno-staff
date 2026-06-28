@@ -79,6 +79,73 @@ class DebtsAdminCubit extends Cubit<DebtsState> {
     }
   }
 
+  Future<void> markDisputed(
+    String debtId,
+    String customerId, {
+    required String reason,
+    required String adminId,
+    required String adminName,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.markDisputed(debtId,
+          reason: reason, adminId: adminId, adminName: adminName);
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+      loadCustomerDebts(customerId);
+    } catch (_) {
+      emit(state.copyWith(
+          formStatus: CollectionsStatus.error, formError: 'failed_to_save_debt'));
+    }
+  }
+
+  Future<void> writeOff(
+    String debtId,
+    String customerId, {
+    required String reason,
+    required int remainingBalance,
+    required String adminId,
+    required String adminName,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.writeOff(debtId,
+          reason: reason,
+          remainingBalance: remainingBalance,
+          adminId: adminId,
+          adminName: adminName);
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+      loadCustomerDebts(customerId);
+    } catch (_) {
+      emit(state.copyWith(
+          formStatus: CollectionsStatus.error, formError: 'failed_to_save_debt'));
+    }
+  }
+
+  Future<void> settleForLess(
+    String debtId,
+    String customerId, {
+    required int settledAmount,
+    required int originalBalance,
+    required String reason,
+    required String adminId,
+    required String adminName,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.settleForLess(debtId,
+          settledAmount: settledAmount,
+          originalBalance: originalBalance,
+          reason: reason,
+          adminId: adminId,
+          adminName: adminName);
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+      loadCustomerDebts(customerId);
+    } catch (_) {
+      emit(state.copyWith(
+          formStatus: CollectionsStatus.error, formError: 'failed_to_save_debt'));
+    }
+  }
+
   void clearFormStatus() {
     emit(state.copyWith(formStatus: CollectionsStatus.initial, clearFormError: true));
   }

@@ -153,6 +153,41 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
   // Abort best-effort steps if transaction marked payment invalid
   if (!receiptNumber || receiptNumber === "INVALID") return;
 
+  // Mark any open PTPs as 'kept' if payment arrived on or before promisedDate
+  try {
+    const visitSnap = await db.collection("visits")
+        .where("debtId", "==", paymentData.debtId)
+        .where("promiseToPay.status", "==", "pending")
+        .get();
+    const ptpBatch = db.batch();
+    let ptpUpdated = false;
+    for (const doc of visitSnap.docs) {
+      const ptp = doc.data().promiseToPay;
+      const collectedAt = payment.collectedAt ?
+          payment.collectedAt.toDate() :
+          new Date();
+      if (ptp && collectedAt <= ptp.promisedDate.toDate()) {
+        ptpBatch.update(doc.ref, {"promiseToPay.status": "kept"});
+        ptpBatch.set(db.collection("collection_logs").doc(), {
+          entityType: "visit",
+          entityId: doc.id,
+          action: "ptp.kept",
+          actorId: "system",
+          actorName: "system",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          customerId: paymentData.customerId || null,
+          debtId: paymentData.debtId,
+          collectorId: paymentData.collectorId || null,
+          amount: ptp.amount || null,
+        });
+        ptpUpdated = true;
+      }
+    }
+    if (ptpUpdated) await ptpBatch.commit();
+  } catch (err) {
+    console.error("onPaymentCreated: PTP kept marking failed:", err);
+  }
+
   // FIFO installment allocation (best-effort; debt balance already updated)
   if (installmentPlanId && paymentData) {
     try {

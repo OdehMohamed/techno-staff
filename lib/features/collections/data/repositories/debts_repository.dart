@@ -74,4 +74,70 @@ class DebtsRepository {
     }
     await _firestore.collection(FirebasePaths.debts).doc(debtId).update(data);
   }
+
+  Future<void> markDisputed(
+    String debtId, {
+    required String reason,
+    required String adminId,
+    required String adminName,
+  }) async {
+    await _firestore.collection(FirebasePaths.debts).doc(debtId).update({
+      'status': 'disputed',
+      'dispute': {
+        'reason': reason,
+        'raisedBy': adminId,
+        'raisedByName': adminName,
+        'raisedAt': FieldValue.serverTimestamp(),
+        'resolution': null,
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> writeOff(
+    String debtId, {
+    required String reason,
+    required int remainingBalance,
+    required String adminId,
+    required String adminName,
+  }) async {
+    await _firestore.collection(FirebasePaths.debts).doc(debtId).update({
+      'status': 'written_off',
+      'remainingBalance': 0,
+      'writeOff': {
+        'amount': remainingBalance,
+        'reason': reason,
+        'authorizedBy': adminId,
+        'authorizedByName': adminName,
+        'at': FieldValue.serverTimestamp(),
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> settleForLess(
+    String debtId, {
+    required int settledAmount,
+    required int originalBalance,
+    required String reason,
+    required String adminId,
+    required String adminName,
+  }) async {
+    await _firestore.collection(FirebasePaths.debts).doc(debtId).update({
+      'status': 'settled',
+      'remainingBalance': 0,
+      'settlementAmount': settledAmount,
+      'settlementNotes': reason,
+      'settlement': {
+        'originalBalance': originalBalance,
+        'settledAmount': settledAmount,
+        'forgivenAmount': originalBalance - settledAmount,
+        'reason': reason,
+        'authorizedBy': adminId,
+        'authorizedByName': adminName,
+        'at': FieldValue.serverTimestamp(),
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }

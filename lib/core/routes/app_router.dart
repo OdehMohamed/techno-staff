@@ -9,8 +9,10 @@ import 'package:techno_staff/features/collections/presentation/screens/admin_deb
 import 'package:techno_staff/features/collections/data/models/handover_model.dart';
 import 'package:techno_staff/features/collections/data/models/installment_plan_model.dart';
 import 'package:techno_staff/features/collections/data/models/payment_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/collections_settings_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/installment_plan_detail_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/installment_plan_form_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/log_visit_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/debt_detail_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/handover_init_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/handover_list_screen.dart';
@@ -354,9 +356,22 @@ class AppRouter {
           settings: settings,
         );
 
+      case RouteNames.logVisit:
+        return MaterialPageRoute(
+          builder: (_) => LogVisitScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.collectionsSettings:
+        return MaterialPageRoute(
+          builder: (_) => const CollectionsSettingsScreen(),
+          settings: settings,
+        );
+
       case RouteNames.debtList:
       case RouteNames.visitLog:
-      case RouteNames.collectionsSettings:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             appBar: AppBar(title: Text(settings.name ?? '')),

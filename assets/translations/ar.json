@@ -356,7 +356,6 @@
   "search_conversations": "البحث في المحادثات",
   "you": "أنت",
   "message_deleted": "تم حذف الرسالة",
-  "yesterday": "أمس",
   "new_conversation": "محادثة جديدة",
   "direct_message": "رسالة مباشرة",
   "start_one_on_one_chat": "ابدأ محادثة فردية",
@@ -407,12 +406,10 @@
   "delete_attachment_confirm": "سيتم حذف هذه الصورة بشكل دائم.",
   "attachment_deleted": "تم حذف الصورة",
   "attachment_delete_failed": "فشل حذف الصورة",
-
   "collector_role": "محصِّل",
   "collections": "التحصيل",
   "collections_subtitle": "إدارة التحصيل الميداني",
   "my_debts": "ديوني",
-
   "customers": "العملاء",
   "add_customer": "إضافة عميل",
   "edit_customer": "تعديل العميل",
@@ -423,7 +420,6 @@
   "guarantor": "الضامن",
   "guarantor_phone": "هاتف الضامن",
   "external_reference": "رقم مرجعي",
-
   "debts": "الديون",
   "add_debt": "إضافة دين",
   "edit_debt": "تعديل الدين",
@@ -445,7 +441,6 @@
   "dispute_debt": "تحديد كمتنازع عليه",
   "settle_for_less": "التسوية بمبلغ أقل",
   "settlement_amount": "مبلغ التسوية",
-
   "record_payment": "تسجيل دفعة",
   "payments": "المدفوعات",
   "payment_details": "تفاصيل الدفعة",
@@ -477,7 +472,6 @@
   "collector_required": "يرجى اختيار المحصِّل",
   "settlement_notes": "ملاحظات التسوية",
   "payment_overpayment_error": "مبلغ الدفعة يتجاوز الرصيد المتبقي",
-
   "cash_on_hand": "النقد لديّ",
   "hand_over_cash": "تسليم النقد",
   "handovers": "التسليمات",
@@ -499,7 +493,6 @@
   "max_cash_on_hand_limit": "حد النقد",
   "max_cash_approaching_warning": "رصيد النقد يقترب من الحد المسموح",
   "max_cash_reached_error": "تم الوصول إلى حد النقد — يجب تسليم النقد قبل تسجيل دفعات جديدة",
-
   "log_visit": "تسجيل زيارة",
   "visits": "الزيارات",
   "contact_type": "نوع التواصل",
@@ -518,7 +511,6 @@
   "ptp_status_pending": "قيد الانتظار",
   "ptp_status_kept": "تم الوفاء به",
   "ptp_status_broken": "لم يُنفَّذ",
-
   "installment_plan": "خطة التقسيط",
   "installments": "الأقساط",
   "installment_amount": "مبلغ القسط",
@@ -540,24 +532,20 @@
   "installment_status_overdue": "متأخر",
   "failed_to_load_installments": "فشل تحميل خطة الأقساط",
   "failed_to_create_plan": "فشل إنشاء خطة الأقساط",
-
   "account_status_good_standing": "وضع جيد",
   "account_status_at_risk": "في خطر",
   "account_status_delinquent": "متعثر",
-
   "aging_current": "جارٍ",
   "aging_1_30_days": "١–٣٠ يوم",
   "aging_31_60_days": "٣١–٦٠ يوم",
   "aging_61_90_days": "٦١–٩٠ يوم",
   "aging_90_plus_days": "٩٠+ يوم",
-
   "total_outstanding": "إجمالي المستحق",
   "collected_today": "المحصَّل اليوم",
   "collected_this_month": "المحصَّل هذا الشهر",
   "collectors_cash_total": "إجمالي النقد مع المحصِّلين",
   "overdue_debts": "الديون المتأخرة",
   "collections_overview": "نظرة عامة على التحصيل",
-
   "no_customers_found": "لا يوجد عملاء مُسنَدون",
   "no_customers_yet": "لم يُضَف أي عملاء بعد",
   "no_debts_found": "لا توجد ديون",
@@ -565,7 +553,6 @@
   "no_payments_found": "لا توجد دفعات مسجَّلة",
   "no_handovers_found": "لا توجد تسليمات بعد",
   "no_visits_found": "لا توجد زيارات مسجَّلة",
-
   "failed_to_load_customers": "فشل تحميل العملاء",
   "failed_to_save_customer": "فشل حفظ بيانات العميل",
   "failed_to_load_debts": "فشل تحميل الديون",
@@ -575,8 +562,15 @@
   "failed_to_initiate_handover": "فشل بدء تسليم النقد",
   "failed_to_verify_handover": "فشل التحقق من التسليم",
   "failed_to_log_visit": "فشل تسجيل الزيارة",
-
   "collections_settings": "إعدادات التحصيل",
   "reconciliation_report": "تقرير التسوية",
-  "aging_report": "تقرير التقادم"
+  "aging_report": "تقرير التقادم",
+  "outcome_wrong_contact": "جهة اتصال خاطئة",
+  "dispute_reason": "سبب النزاع",
+  "broken_ptps": "الوعود المكسورة",
+  "stale_cash_warning_days": "تحذير النقد الراكد (أيام)",
+  "collection_settings": "إعدادات التحصيل",
+  "days": "أيام",
+  "delinquent": "متعثر",
+  "visit_date": "تاريخ الزيارة"
 }

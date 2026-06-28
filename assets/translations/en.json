@@ -356,7 +356,6 @@
   "search_conversations": "Search conversations",
   "you": "You",
   "message_deleted": "Message deleted",
-  "yesterday": "Yesterday",
   "new_conversation": "New Conversation",
   "direct_message": "Direct Message",
   "start_one_on_one_chat": "Start a one-on-one chat",
@@ -407,12 +406,10 @@
   "delete_attachment_confirm": "This photo will be permanently deleted.",
   "attachment_deleted": "Photo deleted",
   "attachment_delete_failed": "Failed to delete photo",
-
   "collector_role": "Collector",
   "collections": "Collections",
   "collections_subtitle": "Field collection management",
   "my_debts": "My Debts",
-
   "customers": "Customers",
   "add_customer": "Add Customer",
   "edit_customer": "Edit Customer",
@@ -423,7 +420,6 @@
   "guarantor": "Guarantor",
   "guarantor_phone": "Guarantor Phone",
   "external_reference": "External Ref.",
-
   "debts": "Debts",
   "add_debt": "Add Debt",
   "edit_debt": "Edit Debt",
@@ -445,7 +441,6 @@
   "dispute_debt": "Mark as Disputed",
   "settle_for_less": "Settle for Less",
   "settlement_amount": "Settlement Amount",
-
   "record_payment": "Record Payment",
   "payments": "Payments",
   "payment_details": "Payment Details",
@@ -477,7 +472,6 @@
   "collector_required": "Please select a collector",
   "settlement_notes": "Settlement Notes",
   "payment_overpayment_error": "Payment amount exceeds remaining balance",
-
   "cash_on_hand": "Cash on Hand",
   "hand_over_cash": "Hand Over Cash",
   "handovers": "Handovers",
@@ -499,7 +493,6 @@
   "max_cash_on_hand_limit": "Cash Limit",
   "max_cash_approaching_warning": "Cash on hand is approaching your limit",
   "max_cash_reached_error": "Cash limit reached — hand over before recording more payments",
-
   "log_visit": "Log Visit",
   "visits": "Visits",
   "contact_type": "Contact Type",
@@ -518,7 +511,6 @@
   "ptp_status_pending": "Pending",
   "ptp_status_kept": "Kept",
   "ptp_status_broken": "Broken",
-
   "installment_plan": "Installment Plan",
   "installments": "Installments",
   "installment_amount": "Installment Amount",
@@ -540,24 +532,20 @@
   "installment_status_overdue": "Overdue",
   "failed_to_load_installments": "Failed to load installment plan",
   "failed_to_create_plan": "Failed to create installment plan",
-
   "account_status_good_standing": "Good Standing",
   "account_status_at_risk": "At Risk",
   "account_status_delinquent": "Delinquent",
-
   "aging_current": "Current",
   "aging_1_30_days": "1–30 Days",
   "aging_31_60_days": "31–60 Days",
   "aging_61_90_days": "61–90 Days",
   "aging_90_plus_days": "90+ Days",
-
   "total_outstanding": "Total Outstanding",
   "collected_today": "Collected Today",
   "collected_this_month": "Collected This Month",
   "collectors_cash_total": "Total Cash with Collectors",
   "overdue_debts": "Overdue Debts",
   "collections_overview": "Collections Overview",
-
   "no_customers_found": "No customers assigned",
   "no_customers_yet": "No customers added yet",
   "no_debts_found": "No debts found",
@@ -565,7 +553,6 @@
   "no_payments_found": "No payments recorded",
   "no_handovers_found": "No handovers yet",
   "no_visits_found": "No visits logged",
-
   "failed_to_load_customers": "Failed to load customers",
   "failed_to_save_customer": "Failed to save customer",
   "failed_to_load_debts": "Failed to load debts",
@@ -575,8 +562,15 @@
   "failed_to_initiate_handover": "Failed to initiate handover",
   "failed_to_verify_handover": "Failed to verify handover",
   "failed_to_log_visit": "Failed to log visit",
-
   "collections_settings": "Collections Settings",
   "reconciliation_report": "Reconciliation Report",
-  "aging_report": "Aging Report"
+  "aging_report": "Aging Report",
+  "outcome_wrong_contact": "Wrong Contact",
+  "dispute_reason": "Dispute Reason",
+  "broken_ptps": "Broken Promises",
+  "stale_cash_warning_days": "Stale Cash Warning (Days)",
+  "collection_settings": "Collection Settings",
+  "days": "Days",
+  "delinquent": "Delinquent",
+  "visit_date": "Visit Date"
 }

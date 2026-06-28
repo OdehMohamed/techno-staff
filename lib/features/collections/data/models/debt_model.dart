@@ -27,6 +27,10 @@ class DebtModel {
   final bool hasInstallmentPlan;
   final String? installmentPlanId;
   final DateTime? nextInstallmentDueDate;
+  // Aging (CF-maintained daily by updateDebtAgingBuckets cron)
+  final int daysPastDue;
+  final String agingBucket; // 'current' | '1-30' | '31-60' | '61-90' | '90+'
+  final DateTime? lastOverdueEscalationAt;
 
   const DebtModel({
     required this.id,
@@ -53,6 +57,9 @@ class DebtModel {
     this.hasInstallmentPlan = false,
     this.installmentPlanId,
     this.nextInstallmentDueDate,
+    this.daysPastDue = 0,
+    this.agingBucket = 'current',
+    this.lastOverdueEscalationAt,
   });
 
   static String formatAmountIls(int agorot) {
@@ -92,6 +99,10 @@ class DebtModel {
       hasInstallmentPlan: map['hasInstallmentPlan'] as bool? ?? false,
       installmentPlanId: map['installmentPlanId'] as String?,
       nextInstallmentDueDate: (map['nextInstallmentDueDate'] as Timestamp?)?.toDate(),
+      daysPastDue: (map['daysPastDue'] as num?)?.toInt() ?? 0,
+      agingBucket: map['agingBucket'] as String? ?? 'current',
+      lastOverdueEscalationAt:
+          (map['lastOverdueEscalationAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -152,6 +163,9 @@ class DebtModel {
     String? installmentPlanId,
     bool clearInstallmentPlanId = false,
     DateTime? nextInstallmentDueDate,
+    int? daysPastDue,
+    String? agingBucket,
+    DateTime? lastOverdueEscalationAt,
   }) {
     return DebtModel(
       id: id ?? this.id,
@@ -178,6 +192,9 @@ class DebtModel {
       hasInstallmentPlan: hasInstallmentPlan ?? this.hasInstallmentPlan,
       installmentPlanId: clearInstallmentPlanId ? null : (installmentPlanId ?? this.installmentPlanId),
       nextInstallmentDueDate: nextInstallmentDueDate ?? this.nextInstallmentDueDate,
+      daysPastDue: daysPastDue ?? this.daysPastDue,
+      agingBucket: agingBucket ?? this.agingBucket,
+      lastOverdueEscalationAt: lastOverdueEscalationAt ?? this.lastOverdueEscalationAt,
     );
   }
 }

@@ -7,10 +7,13 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/models/debt_model.dart';
+import '../../data/models/visit_model.dart';
 import '../cubit/customers_cubit.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/debts_admin_cubit.dart';
 import '../cubit/debts_state.dart';
+import '../cubit/visit_cubit.dart';
+import '../cubit/visit_state.dart';
 import '../widgets/debt_status_badge.dart';
 
 class AdminCustomerDetailScreen extends StatefulWidget {
@@ -30,6 +33,7 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
     super.initState();
     _customer = widget.customer;
     context.read<DebtsAdminCubit>().loadCustomerDebts(_customer.id);
+    context.read<VisitCubit>().loadCustomerVisits(_customer.id);
   }
 
   Future<void> _openEdit() async {
@@ -183,10 +187,76 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
                 );
               },
             ),
+            const SizedBox(height: AppSizes.md),
+            Text('visits'.tr(),
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSizes.sm),
+            BlocBuilder<VisitCubit, VisitState>(
+              builder: (context, visitState) {
+                if (visitState.status == CollectionsStatus.loading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (visitState.visits.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.directions_walk_outlined,
+                    titleKey: 'no_visits_found',
+                  );
+                }
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: visitState.visits.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSizes.sm),
+                  itemBuilder: (context, i) {
+                    final v = visitState.visits[i];
+                    return AppCard(
+                      child: _VisitSummaryRow(visit: v),
+                    );
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
       ),
+    );
+  }
+}
+
+class _VisitSummaryRow extends StatelessWidget {
+  final VisitModel visit;
+
+  const _VisitSummaryRow({required this.visit});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(
+          visit.contactType == 'in_person'
+              ? Icons.directions_walk_outlined
+              : Icons.phone_outlined,
+          size: 16,
+          color: scheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'outcome_${visit.outcome == 'customer_unavailable' ? 'not_available' : visit.outcome}'.tr(),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        Text(
+          DateFormat('dd/MM/yyyy').format(visit.visitedAt),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
