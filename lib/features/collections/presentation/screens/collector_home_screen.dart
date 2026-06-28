@@ -45,8 +45,9 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
           BlocBuilder<PaymentsCubit, PaymentsState>(
             builder: (context, payState) {
               if (payState.cashOnHand <= 0) return const SizedBox.shrink();
+              final scheme = Theme.of(context).colorScheme;
               return Material(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: scheme.primaryContainer,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.md,
@@ -54,12 +55,17 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.account_balance_wallet_outlined),
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: scheme.onPrimaryContainer,
+                      ),
                       const SizedBox(width: AppSizes.sm),
                       Expanded(
                         child: Text(
                           '${'cash_on_hand'.tr()}: ${DebtModel.formatAmountIls(payState.cashOnHand)}',
-                          style: Theme.of(context).textTheme.titleSmall,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: scheme.onPrimaryContainer,
+                          ),
                         ),
                       ),
                       FilledButton.tonal(

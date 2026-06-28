@@ -100,8 +100,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final maxIls = widget.debt.remainingBalance / 100;
-
     return Scaffold(
       appBar: AppBar(title: Text('record_payment'.tr())),
       body: BlocConsumer<PaymentsCubit, PaymentsState>(
@@ -250,14 +248,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         maxLines: 2,
                       ),
                       const SizedBox(height: AppSizes.lg),
-                      // Overpayment max hint
-                      Text(
-                        '${'payment_overpayment_error'.tr().split('—').first.trim()} (max ₪${maxIls.toStringAsFixed(2)})',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.sm),
                       FilledButton(
                         onPressed: isSaving ? null : _save,
                         child: isSaving
