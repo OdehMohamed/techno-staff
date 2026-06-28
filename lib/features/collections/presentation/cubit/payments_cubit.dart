@@ -10,18 +10,23 @@ class PaymentsCubit extends Cubit<PaymentsState> {
   PaymentsCubit(this._repo) : super(const PaymentsState());
 
   // Load payments for a specific debt (debt detail payment history tab).
+  // Collectors must pass their own uid as forCollectorId — required by Firestore
+  // security rules (collection query must constrain collectorId for non-admin reads).
   // Does NOT reset cashOnHand — preserves the collector's running total.
-  Future<void> loadDebtPayments(String debtId) async {
+  Future<void> loadDebtPayments(String debtId, {String? forCollectorId}) async {
     emit(state.copyWith(
       status: CollectionsStatus.loading,
+      payments: const [],
       clearError: true,
     ));
     try {
-      final payments = await _repo.getByDebt(debtId);
+      final payments =
+          await _repo.getByDebt(debtId, forCollectorId: forCollectorId);
       emit(state.copyWith(status: CollectionsStatus.loaded, payments: payments));
     } catch (_) {
       emit(state.copyWith(
         status: CollectionsStatus.error,
+        payments: const [],
         error: 'failed_to_load_payments',
       ));
     }

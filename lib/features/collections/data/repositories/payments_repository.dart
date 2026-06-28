@@ -8,13 +8,22 @@ class PaymentsRepository {
   PaymentsRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // Load all payments for a specific debt (admin + collector viewing debt detail).
-  // No orderBy to avoid missing index. Sorted client-side by collectedAt desc.
-  Future<List<PaymentModel>> getByDebt(String debtId) async {
-    final snap = await _firestore
+  // Load payments for a specific debt.
+  // Collectors must pass their own uid as forCollectorId — Firestore security rules
+  // require the query to include where('collectorId', ==, uid) for non-admin reads.
+  // Admins pass null (no collectorId constraint needed).
+  // No orderBy — client-sorts by collectedAt desc to avoid a missing composite index.
+  Future<List<PaymentModel>> getByDebt(
+    String debtId, {
+    String? forCollectorId,
+  }) async {
+    var query = _firestore
         .collection(FirebasePaths.payments)
-        .where('debtId', isEqualTo: debtId)
-        .get(const GetOptions(source: Source.server));
+        .where('debtId', isEqualTo: debtId);
+    if (forCollectorId != null) {
+      query = query.where('collectorId', isEqualTo: forCollectorId);
+    }
+    final snap = await query.get(const GetOptions(source: Source.server));
     final list = snap.docs
         .map((d) => PaymentModel.fromMap(d.data(), d.id))
         .toList();

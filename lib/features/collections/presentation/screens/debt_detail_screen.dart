@@ -28,32 +28,41 @@ class DebtDetailScreen extends StatefulWidget {
 
 class _DebtDetailScreenState extends State<DebtDetailScreen> {
   late DebtModel _debt;
+  // Captured in initState; passed to loadDebtPayments so the Firestore rule's
+  // collectorId constraint is satisfied for non-admin collection queries.
+  String? _forCollectorId;
 
   @override
   void initState() {
     super.initState();
     _debt = widget.debt;
-    context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
+    final user = context.read<AuthCubit>().state.user!;
+    _forCollectorId = user.role == 'collector' ? user.id : null;
+    context
+        .read<PaymentsCubit>()
+        .loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
   }
 
   Future<void> _openPaymentDetail(PaymentModel p) async {
+    final cubit = context.read<PaymentsCubit>();
     final v = await Navigator.pushNamed(
       context,
       RouteNames.paymentDetail,
       arguments: p,
     );
     if (!mounted) return;
-    if (v == true) context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
+    if (v == true) cubit.loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
   }
 
   Future<void> _openRecordPayment() async {
+    final cubit = context.read<PaymentsCubit>();
     final v = await Navigator.pushNamed(
       context,
       RouteNames.recordPayment,
       arguments: _debt,
     );
     if (!mounted) return;
-    if (v == true) context.read<PaymentsCubit>().loadDebtPayments(_debt.id);
+    if (v == true) cubit.loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
   }
 
   void _syncFromDebts(List<DebtModel> debts) {
@@ -190,6 +199,12 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       return const Padding(
                         padding: EdgeInsets.all(AppSizes.md),
                         child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (payState.status == CollectionsStatus.error) {
+                      return EmptyStateWidget(
+                        icon: Icons.error_outline,
+                        titleKey: payState.error ?? 'unknown_error',
                       );
                     }
                     if (payState.payments.isEmpty) {
