@@ -171,6 +171,15 @@ class AppDrawer extends StatelessWidget {
                     ),
                   if (user?.role == 'admin')
                     ListTile(
+                      leading: const Icon(Icons.dashboard_outlined),
+                      title: Text('collections_dashboard'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.collectionsDashboard);
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
                       leading: const Icon(Icons.tune_outlined),
                       title: Text('collection_settings'.tr()),
                       onTap: () {

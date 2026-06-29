@@ -55,6 +55,7 @@ import 'features/collections/presentation/cubit/collector_debts_cubit.dart';
 import 'features/collections/presentation/cubit/payments_cubit.dart';
 import 'features/collections/presentation/cubit/handover_cubit.dart';
 import 'features/collections/presentation/cubit/installment_cubit.dart';
+import 'features/collections/presentation/cubit/collections_dashboard_cubit.dart';
 import 'features/collections/presentation/cubit/visit_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
@@ -284,6 +285,9 @@ Future<void> main() async {
           ),
           BlocProvider(
             create: (_) => VisitCubit(visitsRepository),
+          ),
+          BlocProvider(
+            create: (_) => CollectionsDashboardCubit(),
           ),
         ],
         child: const TechnoStaffApp(),

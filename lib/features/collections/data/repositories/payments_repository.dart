@@ -56,6 +56,22 @@ class PaymentsRepository {
         .set(payment.toCreateMap());
   }
 
+  // Fetch payments by a list of IDs (used for handover reconciliation PDF).
+  // Firestore has no "get by ids" query; uses parallel document reads.
+  Future<List<PaymentModel>> getByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final snapshots = await Future.wait(
+      ids.map((id) => _firestore
+          .collection(FirebasePaths.payments)
+          .doc(id)
+          .get(const GetOptions(source: Source.server))),
+    );
+    return snapshots
+        .where((s) => s.exists)
+        .map((s) => PaymentModel.fromMap(s.data()!, s.id))
+        .toList();
+  }
+
   // Admin cancels a payment. CF (onPaymentCancelled) reverses debt balances.
   // Blocked by CF if the payment is part of a verified handover.
   Future<void> cancel({

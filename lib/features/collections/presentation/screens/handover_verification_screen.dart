@@ -2,11 +2,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:printing/printing.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/models/handover_model.dart';
+import '../../data/repositories/payments_repository.dart';
+import '../../data/services/collections_report_service.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/handover_cubit.dart';
 import '../cubit/handover_state.dart';
@@ -28,6 +31,7 @@ class _HandoverVerificationScreenState
   final _discrepancyNotesCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String? _amountError;
+  bool _exportingPdf = false;
 
   @override
   void initState() {
@@ -44,6 +48,34 @@ class _HandoverVerificationScreenState
     _discrepancyNotesCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _exportReconciliation() async {
+    if (_exportingPdf) return;
+    setState(() => _exportingPdf = true);
+    try {
+      final repo = PaymentsRepository();
+      final payments = await repo.getByIds(_handover.paymentIds);
+      if (!mounted) return;
+      final locale = context.locale.languageCode;
+      final file = await generateHandoverReconciliationPdf(
+        handover: _handover,
+        payments: payments,
+        locale: locale,
+      );
+      await Printing.sharePdf(
+        bytes: await file.readAsBytes(),
+        filename: 'reconciliation_${_handover.id}.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('failed_to_generate_pdf'.tr())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
+    }
   }
 
   Future<void> _verify() async {
@@ -98,7 +130,25 @@ class _HandoverVerificationScreenState
         final isTerminal = !_handover.isPending;
 
         return Scaffold(
-          appBar: AppBar(title: Text('handover_details'.tr())),
+          appBar: AppBar(
+            title: Text('handover_details'.tr()),
+            actions: [
+              _exportingPdf
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      tooltip: 'reconciliation_report'.tr(),
+                      onPressed: _exportReconciliation,
+                    ),
+            ],
+          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSizes.md),
             child: Column(

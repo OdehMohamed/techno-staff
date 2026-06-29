@@ -50,4 +50,6 @@ class RouteNames {
   static const String installmentPlanDetail = '/installment-plan';
   static const String createInstallmentPlan = '/installment-plan/create';
   static const String collectionsSettings = '/collections-settings';
+  static const String collectionsDashboard = '/collections-dashboard';
+  static const String agingReport = '/aging-report';
 }

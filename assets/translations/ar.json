@@ -572,5 +572,15 @@
   "collection_settings": "إعدادات التحصيل",
   "days": "أيام",
   "delinquent": "متعثر",
-  "visit_date": "تاريخ الزيارة"
+  "visit_date": "تاريخ الزيارة",
+  "collections_dashboard": "لوحة التحصيل",
+  "cash_with_collectors": "نقد لدى المحصّلين",
+  "collected_this_week": "المحصَّل هذا الأسبوع",
+  "aging_breakdown": "تفصيل التقادم",
+  "collector_summary": "ملخص المحصّلين",
+  "no_overdue_debts": "لا توجد ديون متأخرة",
+  "no_collectors": "لا يوجد محصّلون",
+  "assigned_debts": "مُعيَّن",
+  "failed_to_generate_pdf": "فشل إنشاء ملف PDF",
+  "retry": "إعادة المحاولة"
 }

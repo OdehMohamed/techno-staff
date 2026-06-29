@@ -1,11 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:printing/printing.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/models/payment_model.dart';
+import '../../data/services/receipt_pdf_service.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/payments_cubit.dart';
 import '../cubit/payments_state.dart';
@@ -21,11 +25,53 @@ class PaymentDetailScreen extends StatefulWidget {
 
 class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
   late PaymentModel _payment;
+  bool _sharingReceipt = false;
 
   @override
   void initState() {
     super.initState();
     _payment = widget.payment;
+  }
+
+  Future<void> _shareReceipt() async {
+    if (_sharingReceipt) return;
+    setState(() => _sharingReceipt = true);
+    try {
+      final fs = FirebaseFirestore.instance;
+      final customerSnap = await fs
+          .collection(FirebasePaths.customers)
+          .doc(_payment.customerId)
+          .get(const GetOptions(source: Source.server));
+      final phone = customerSnap.data()?['phone'] as String? ?? '';
+
+      final debtSnap = await fs
+          .collection(FirebasePaths.debts)
+          .doc(_payment.debtId)
+          .get(const GetOptions(source: Source.server));
+      final remaining =
+          (debtSnap.data()?['remainingBalance'] as num?)?.toInt() ?? 0;
+
+      if (!mounted) return;
+      final locale = context.locale.languageCode;
+      final file = await generateReceiptPdf(
+        payment: _payment,
+        customerPhone: phone,
+        remainingBalanceAfterPayment: remaining,
+        locale: locale,
+      );
+      await Printing.sharePdf(
+        bytes: await file.readAsBytes(),
+        filename: 'receipt_${_payment.receiptNumber.replaceAll('-', '_')}.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('failed_to_generate_pdf'.tr())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharingReceipt = false);
+    }
   }
 
   Future<void> _showCancelDialog(BuildContext context) async {
@@ -178,6 +224,23 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
                                 .format(_payment.cancelledAt!),
                           ),
                       ],
+                    ),
+                  ),
+                ],
+                if (!_payment.isReceiptPending && !_payment.isCancelled) ...[
+                  const SizedBox(height: AppSizes.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: _sharingReceipt
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.share_outlined),
+                      label: Text('share_receipt'.tr()),
+                      onPressed: _sharingReceipt ? null : _shareReceipt,
                     ),
                   ),
                 ],

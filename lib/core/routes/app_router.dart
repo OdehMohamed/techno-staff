@@ -9,6 +9,8 @@ import 'package:techno_staff/features/collections/presentation/screens/admin_deb
 import 'package:techno_staff/features/collections/data/models/handover_model.dart';
 import 'package:techno_staff/features/collections/data/models/installment_plan_model.dart';
 import 'package:techno_staff/features/collections/data/models/payment_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/aging_report_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/collections_dashboard_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/collections_settings_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/installment_plan_detail_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/installment_plan_form_screen.dart';
@@ -367,6 +369,18 @@ class AppRouter {
       case RouteNames.collectionsSettings:
         return MaterialPageRoute(
           builder: (_) => const CollectionsSettingsScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.collectionsDashboard:
+        return MaterialPageRoute(
+          builder: (_) => const CollectionsDashboardScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.agingReport:
+        return MaterialPageRoute(
+          builder: (_) => const AgingReportScreen(),
           settings: settings,
         );
 

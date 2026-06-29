@@ -572,5 +572,15 @@
   "collection_settings": "Collection Settings",
   "days": "Days",
   "delinquent": "Delinquent",
-  "visit_date": "Visit Date"
+  "visit_date": "Visit Date",
+  "collections_dashboard": "Collections Dashboard",
+  "cash_with_collectors": "Cash with Collectors",
+  "collected_this_week": "Collected This Week",
+  "aging_breakdown": "Aging Breakdown",
+  "collector_summary": "Collector Summary",
+  "no_overdue_debts": "No overdue debts",
+  "no_collectors": "No collectors",
+  "assigned_debts": "Assigned",
+  "failed_to_generate_pdf": "Failed to generate PDF",
+  "retry": "Retry"
 }
