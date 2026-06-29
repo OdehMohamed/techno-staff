@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,8 @@ class _CollectionsSettingsScreenState
   final _daysCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+  bool _triggeringStaleCash = false;
+  bool _triggeringAging = false;
 
   @override
   void initState() {
@@ -42,6 +45,31 @@ class _CollectionsSettingsScreenState
       _daysCtrl.text = '3';
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _triggerCallable(String name, {required void Function(bool) setBusy}) async {
+    setBusy(true);
+    try {
+      await FirebaseFunctions.instance.httpsCallable(name).call();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$name completed')),
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${e.code}: ${e.message}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+    setBusy(false);
   }
 
   Future<void> _save() async {
@@ -98,6 +126,49 @@ class _CollectionsSettingsScreenState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text('save'.tr()),
+                  ),
+                  const SizedBox(height: AppSizes.xl),
+                  const Divider(),
+                  const SizedBox(height: AppSizes.sm),
+                  Text(
+                    'Dev Testing',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  OutlinedButton(
+                    onPressed: _triggeringStaleCash
+                        ? null
+                        : () => _triggerCallable(
+                              'testSendStaleCashWarnings',
+                              setBusy: (v) =>
+                                  setState(() => _triggeringStaleCash = v),
+                            ),
+                    child: _triggeringStaleCash
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Trigger: Stale Cash Warnings'),
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  OutlinedButton(
+                    onPressed: _triggeringAging
+                        ? null
+                        : () => _triggerCallable(
+                              'testUpdateDebtAgingBuckets',
+                              setBusy: (v) =>
+                                  setState(() => _triggeringAging = v),
+                            ),
+                    child: _triggeringAging
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Trigger: Aging Bucket Update'),
                   ),
                 ],
               ),
