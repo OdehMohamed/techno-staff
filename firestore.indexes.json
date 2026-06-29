@@ -229,6 +229,16 @@
         { "fieldPath": "collectedAt", "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "collectorId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isCancelled", "order": "ASCENDING" },
+        { "fieldPath": "collectedAt", "order": "ASCENDING" }
+      ]
+    },
 
     {
       "collectionGroup": "handovers",
@@ -277,6 +287,16 @@
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "dueDate", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "cashOnHand", "order": "ASCENDING" }
       ]
     }
   ],

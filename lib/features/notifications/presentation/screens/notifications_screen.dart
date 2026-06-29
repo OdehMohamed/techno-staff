@@ -238,12 +238,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Navigator.pushNamed(context, RouteNames.handoverList);
                 break;
 
-              // Collections — debt / ptp / installment / stale-cash alerts → collector home
+              // Collections — collector-only alerts → collector home
               case 'debt_overdue':
-              case 'installment_due':
               case 'broken_ptps':
               case 'stale_cash':
                 Navigator.pushNamed(context, RouteNames.collectorHome);
+                break;
+
+              // installment_due is sent to both roles — route by role
+              case 'installment_due':
+                final role =
+                    context.read<AuthCubit>().state.user?.role;
+                if (role == 'admin') {
+                  Navigator.pushNamed(
+                      context, RouteNames.collectionsDashboard);
+                } else {
+                  Navigator.pushNamed(context, RouteNames.collectorHome);
+                }
                 break;
 
               // Collections — admin-level alerts → collections dashboard

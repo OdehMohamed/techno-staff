@@ -1,3 +1,27 @@
+## 2026-06-29 (session 8) — Claude Sonnet 4.6 — v2.0.0 third audit fixes + full deploy
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Close remaining findings from third audit (F1, F2) and complete all deploys before owner verification pass.
+- **Outcome**: ✅ All fixes applied. All deploys complete. `flutter analyze` clean. Ready for owner final verification pass.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| HIGH | F1 | Added missing composite index `users: [role ASC, isActive ASC, cashOnHand ASC]` — `sendStaleCashWarnings` outer query was throwing FAILED_PRECONDITION on every daily run (range + equality on different fields) |
+| HIGH | F1 | Added missing composite index `payments: [collectorId ASC, status ASC, isCancelled ASC, collectedAt ASC]` — `sendStaleCashWarnings` inner payment query failed inside try/catch, so stale cash was never sent to collectors |
+| LOW | F2 | `installment_due` notification routing now checks user role: admin → `collectionsDashboard`; collector → `collectorHome` (previously always routed to `collectorHome`, sending admins into CollectorApp) |
+
+### Deploys
+
+| Deploy | Result |
+|--------|--------|
+| `firebase deploy --only firestore:indexes --force` | ✅ Deployed (2 new indexes live) |
+| `firebase deploy --only functions` | ✅ All 33 functions updated (2 created: `testCheckBrokenPtps`, `testSendOverdueDebtEscalations`; 31 updated) |
+
+---
+
 ## 2026-06-29 (session 7) — Claude Sonnet 4.6 — v2.0.0 second audit fixes + index deploy
 
 - **Agent**: Claude Sonnet 4.6
