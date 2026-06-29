@@ -184,6 +184,18 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     ),
                   ),
                 ],
+                if (_debt.status == 'disputed' && _debt.disputeReason != null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('dispute_debt'.tr(), style: Theme.of(context).textTheme.titleSmall),
+                        _InfoRow('dispute_reason'.tr(), _debt.disputeReason!),
+                      ],
+                    ),
+                  ),
+                ],
                 if (_debt.status == 'written_off' && _debt.writeOffReason != null) ...[
                   const SizedBox(height: AppSizes.md),
                   AppCard(

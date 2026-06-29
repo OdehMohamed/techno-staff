@@ -52,3 +52,5 @@ exports.updateDebtAgingBuckets = schedulers.updateDebtAgingBuckets;
 exports.checkBrokenPtps = schedulers.checkBrokenPtps;
 exports.sendOverdueDebtEscalations = schedulers.sendOverdueDebtEscalations;
 exports.sendStaleCashWarnings = schedulers.sendStaleCashWarnings;
+exports.testUpdateDebtAgingBuckets = schedulers.testUpdateDebtAgingBuckets;
+exports.testSendStaleCashWarnings = schedulers.testSendStaleCashWarnings;

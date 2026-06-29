@@ -21,6 +21,7 @@ class DebtModel {
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final String? writeOffReason;
+  final String? disputeReason;
   final int? settlementAmount; // agorot
   final String? settlementNotes;
   // Installment plan (CF-maintained after plan creation)
@@ -52,6 +53,7 @@ class DebtModel {
     this.cancelledAt,
     this.cancellationReason,
     this.writeOffReason,
+    this.disputeReason,
     this.settlementAmount,
     this.settlementNotes,
     this.hasInstallmentPlan = false,
@@ -93,7 +95,13 @@ class DebtModel {
       isCancelled: map['isCancelled'] as bool? ?? false,
       cancelledAt: (map['cancelledAt'] as Timestamp?)?.toDate(),
       cancellationReason: map['cancellationReason'] as String?,
-      writeOffReason: map['writeOffReason'] as String?,
+      writeOffReason: (map['writeOffReason'] as String?) ??
+          ((map['writeOff'] is Map)
+              ? (map['writeOff'] as Map)['reason'] as String?
+              : null),
+      disputeReason: (map['dispute'] is Map)
+          ? (map['dispute'] as Map)['reason'] as String?
+          : null,
       settlementAmount: (map['settlementAmount'] as num?)?.toInt(),
       settlementNotes: map['settlementNotes'] as String?,
       hasInstallmentPlan: map['hasInstallmentPlan'] as bool? ?? false,
@@ -157,6 +165,7 @@ class DebtModel {
     DateTime? cancelledAt,
     String? cancellationReason,
     String? writeOffReason,
+    String? disputeReason,
     int? settlementAmount,
     String? settlementNotes,
     bool? hasInstallmentPlan,
@@ -187,6 +196,7 @@ class DebtModel {
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       writeOffReason: writeOffReason ?? this.writeOffReason,
+      disputeReason: disputeReason ?? this.disputeReason,
       settlementAmount: settlementAmount ?? this.settlementAmount,
       settlementNotes: settlementNotes ?? this.settlementNotes,
       hasInstallmentPlan: hasInstallmentPlan ?? this.hasInstallmentPlan,

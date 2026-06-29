@@ -6,6 +6,7 @@
 // sendStaleCashWarnings    11:00 Jerusalem — warns about un-handed-over cash
 
 const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const {createInAppNotification} = require("../shared");
 
@@ -39,83 +40,85 @@ function formatAgorot(agorot) {
 
 // ─── updateDebtAgingBuckets ───────────────────────────────────────────────────
 
+async function _runDebtAgingBuckets() {
+  const db = admin.firestore();
+  const today = todayJerusalem();
+
+  // Process in pages of 500
+  let lastDoc = null;
+  const customerUpdates = new Map(); // customerId → worst agingBucket
+
+  for (;;) {
+    let query = db.collection("debts")
+        .where("status", "in", ["active", "partial", "overdue"])
+        .limit(500);
+    if (lastDoc) query = query.startAfter(lastDoc);
+
+    const snap = await query.get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+
+    for (const doc of snap.docs) {
+      const debt = doc.data();
+      let daysPastDue = 0;
+      let newStatus = debt.status;
+
+      if (debt.dueDate) {
+        const due = debt.dueDate.toDate();
+        daysPastDue = Math.max(
+            0,
+            Math.floor((today - due) / 86400000),
+        );
+        if (daysPastDue > 0 && debt.status !== "overdue") {
+          newStatus = "overdue";
+        }
+      }
+
+      const bucket = agingBucket(daysPastDue);
+      const update = {
+        daysPastDue,
+        agingBucket: bucket,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (newStatus !== debt.status) update.status = newStatus;
+      batch.update(doc.ref, update);
+
+      // Track worst bucket per customer for accountStatus update
+      if (debt.customerId) {
+        const existing = customerUpdates.get(debt.customerId);
+        const bucketRank = {"current": 0, "1-30": 1, "31-60": 2, "61-90": 3, "90+": 4};
+        if (!existing || bucketRank[bucket] > bucketRank[existing]) {
+          customerUpdates.set(debt.customerId, bucket);
+        }
+      }
+    }
+
+    await batch.commit();
+    lastDoc = snap.docs[snap.docs.length - 1];
+    if (snap.docs.length < 500) break;
+  }
+
+  // Update customer.accountStatus based on worst aging bucket
+  const customerBatch = db.batch();
+  for (const [customerId, bucket] of customerUpdates) {
+    let accountStatus = "good_standing";
+    if (bucket === "31-60" || bucket === "61-90") accountStatus = "at_risk";
+    if (bucket === "90+") accountStatus = "delinquent";
+
+    customerBatch.update(db.collection("customers").doc(customerId), {
+      accountStatus,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+  if (customerUpdates.size > 0) {
+    await customerBatch.commit();
+  }
+}
+
 exports.updateDebtAgingBuckets = onSchedule(
     {schedule: "0 8 * * *", timeZone: "Asia/Jerusalem"},
-    async () => {
-      const db = admin.firestore();
-      const today = todayJerusalem();
-
-      // Process in pages of 500
-      let lastDoc = null;
-      const customerUpdates = new Map(); // customerId → worst agingBucket
-
-      for (;;) {
-        let query = db.collection("debts")
-            .where("status", "in", ["active", "partial", "overdue"])
-            .limit(500);
-        if (lastDoc) query = query.startAfter(lastDoc);
-
-        const snap = await query.get();
-        if (snap.empty) break;
-
-        const batch = db.batch();
-
-        for (const doc of snap.docs) {
-          const debt = doc.data();
-          let daysPastDue = 0;
-          let newStatus = debt.status;
-
-          if (debt.dueDate) {
-            const due = debt.dueDate.toDate();
-            daysPastDue = Math.max(
-                0,
-                Math.floor((today - due) / 86400000),
-            );
-            if (daysPastDue > 0 && debt.status !== "overdue") {
-              newStatus = "overdue";
-            }
-          }
-
-          const bucket = agingBucket(daysPastDue);
-          const update = {
-            daysPastDue,
-            agingBucket: bucket,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (newStatus !== debt.status) update.status = newStatus;
-          batch.update(doc.ref, update);
-
-          // Track worst bucket per customer for accountStatus update
-          if (debt.customerId) {
-            const existing = customerUpdates.get(debt.customerId);
-            const bucketRank = {"current": 0, "1-30": 1, "31-60": 2, "61-90": 3, "90+": 4};
-            if (!existing || bucketRank[bucket] > bucketRank[existing]) {
-              customerUpdates.set(debt.customerId, bucket);
-            }
-          }
-        }
-
-        await batch.commit();
-        lastDoc = snap.docs[snap.docs.length - 1];
-        if (snap.docs.length < 500) break;
-      }
-
-      // Update customer.accountStatus based on worst aging bucket
-      const customerBatch = db.batch();
-      for (const [customerId, bucket] of customerUpdates) {
-        let accountStatus = "good_standing";
-        if (bucket === "31-60" || bucket === "61-90") accountStatus = "at_risk";
-        if (bucket === "90+") accountStatus = "delinquent";
-
-        customerBatch.update(db.collection("customers").doc(customerId), {
-          accountStatus,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-      if (customerUpdates.size > 0) {
-        await customerBatch.commit();
-      }
-    },
+    _runDebtAgingBuckets,
 );
 
 // ─── checkBrokenPtps ─────────────────────────────────────────────────────────
@@ -300,114 +303,138 @@ exports.sendOverdueDebtEscalations = onSchedule(
 
 // ─── sendStaleCashWarnings ────────────────────────────────────────────────────
 
+async function _runStaleCashWarnings() {
+  const db = admin.firestore();
+  const today = todayJerusalem();
+
+  // Read staleCashWarningDays from config (default 3)
+  let warningDays = 3;
+  try {
+    const settingsSnap = await db
+        .collection("config")
+        .doc("collection_settings")
+        .get();
+    const sdata = settingsSnap.data();
+    warningDays = (sdata && sdata.staleCashWarningDays) || 3;
+  } catch (err) {
+    console.error("sendStaleCashWarnings: settings read failed:", err);
+  }
+
+  const collectorsSnap = await db
+      .collection("users")
+      .where("role", "==", "collector")
+      .where("cashOnHand", ">", 0)
+      .where("isActive", "==", true)
+      .get();
+
+  if (collectorsSnap.empty) return;
+
+  const adminSnap = await db
+      .collection("users")
+      .where("role", "==", "admin")
+      .where("isActive", "==", true)
+      .get();
+
+  for (const collectorDoc of collectorsSnap.docs) {
+    const collector = collectorDoc.data();
+
+    // Skip if already warned today
+    if (collector.lastStaleCashWarnAt) {
+      const last = collector.lastStaleCashWarnAt.toDate();
+      if (last >= today) continue;
+    }
+
+    // Find oldest pending_handover payment for this collector
+    let oldestPayment = null;
+    try {
+      const paySnap = await db
+          .collection("payments")
+          .where("collectorId", "==", collectorDoc.id)
+          .where("status", "==", "pending_handover")
+          .where("isCancelled", "==", false)
+          .orderBy("collectedAt")
+          .limit(1)
+          .get();
+      if (!paySnap.empty) {
+        oldestPayment = paySnap.docs[0].data();
+      }
+    } catch (err) {
+      console.error(`sendStaleCashWarnings: payment query failed (${collectorDoc.id}):`, err);
+      continue;
+    }
+
+    if (!oldestPayment) continue;
+
+    const daysSince = Math.floor(
+        (today - oldestPayment.collectedAt.toDate()) / 86400000,
+    );
+
+    if (daysSince < warningDays) continue;
+
+    const cashOnHand = collector.cashOnHand || 0;
+
+    try {
+      await createInAppNotification({
+        userId: collectorDoc.id,
+        type: "stale_cash",
+        data: {
+          cashOnHand,
+          amountFormatted: formatAgorot(cashOnHand),
+          daysSince,
+        },
+      });
+    } catch (err) {
+      console.error(`sendStaleCashWarnings: collector notify failed (${collectorDoc.id}):`, err);
+    }
+
+    try {
+      await Promise.all(adminSnap.docs.map((adminDoc) =>
+        createInAppNotification({
+          userId: adminDoc.id,
+          type: "stale_cash_admin",
+          data: {
+            collectorId: collectorDoc.id,
+            collectorName: collector.name || "",
+            cashOnHand,
+            amountFormatted: formatAgorot(cashOnHand),
+            daysSince,
+          },
+        }),
+      ));
+    } catch (err) {
+      console.error(`sendStaleCashWarnings: admin notify failed (${collectorDoc.id}):`, err);
+    }
+
+    // Stamp lastStaleCashWarnAt to deduplicate tomorrow
+    await collectorDoc.ref.update({
+      lastStaleCashWarnAt: admin.firestore.Timestamp.fromDate(today),
+    });
+  }
+}
+
 exports.sendStaleCashWarnings = onSchedule(
     {schedule: "0 11 * * *", timeZone: "Asia/Jerusalem"},
-    async () => {
-      const db = admin.firestore();
-      const today = todayJerusalem();
-
-      // Read staleCashWarningDays from config (default 3)
-      let warningDays = 3;
-      try {
-        const settingsSnap = await db
-            .collection("config")
-            .doc("collection_settings")
-            .get();
-        const sdata = settingsSnap.data();
-        warningDays = (sdata && sdata.staleCashWarningDays) || 3;
-      } catch (err) {
-        console.error("sendStaleCashWarnings: settings read failed:", err);
-      }
-
-      const collectorsSnap = await db
-          .collection("users")
-          .where("role", "==", "collector")
-          .where("cashOnHand", ">", 0)
-          .where("isActive", "==", true)
-          .get();
-
-      if (collectorsSnap.empty) return;
-
-      const adminSnap = await db
-          .collection("users")
-          .where("role", "==", "admin")
-          .where("isActive", "==", true)
-          .get();
-
-      for (const collectorDoc of collectorsSnap.docs) {
-        const collector = collectorDoc.data();
-
-        // Skip if already warned today
-        if (collector.lastStaleCashWarnAt) {
-          const last = collector.lastStaleCashWarnAt.toDate();
-          if (last >= today) continue;
-        }
-
-        // Find oldest pending_handover payment for this collector
-        let oldestPayment = null;
-        try {
-          const paySnap = await db
-              .collection("payments")
-              .where("collectorId", "==", collectorDoc.id)
-              .where("status", "==", "pending_handover")
-              .where("isCancelled", "==", false)
-              .orderBy("collectedAt")
-              .limit(1)
-              .get();
-          if (!paySnap.empty) {
-            oldestPayment = paySnap.docs[0].data();
-          }
-        } catch (err) {
-          console.error(`sendStaleCashWarnings: payment query failed (${collectorDoc.id}):`, err);
-          continue;
-        }
-
-        if (!oldestPayment) continue;
-
-        const daysSince = Math.floor(
-            (today - oldestPayment.collectedAt.toDate()) / 86400000,
-        );
-
-        if (daysSince < warningDays) continue;
-
-        const cashOnHand = collector.cashOnHand || 0;
-
-        try {
-          await createInAppNotification({
-            userId: collectorDoc.id,
-            type: "stale_cash",
-            data: {
-              cashOnHand,
-              amountFormatted: formatAgorot(cashOnHand),
-              daysSince,
-            },
-          });
-        } catch (err) {
-          console.error(`sendStaleCashWarnings: collector notify failed (${collectorDoc.id}):`, err);
-        }
-
-        try {
-          await Promise.all(adminSnap.docs.map((adminDoc) =>
-            createInAppNotification({
-              userId: adminDoc.id,
-              type: "stale_cash_admin",
-              data: {
-                collectorId: collectorDoc.id,
-                collectorName: collector.name || "",
-                cashOnHand,
-                amountFormatted: formatAgorot(cashOnHand),
-                daysSince,
-              },
-            }),
-          ));
-        } catch (err) {
-          console.error(`sendStaleCashWarnings: admin notify failed (${collectorDoc.id}):`, err);
-        }
-
-        // Stamp lastStaleCashWarnAt to deduplicate tomorrow
-        await collectorDoc.ref.update({
-          lastStaleCashWarnAt: admin.firestore.Timestamp.fromDate(today),
-        });
-      }
-    },
+    _runStaleCashWarnings,
 );
+
+// ─── Test callables (admin-only) ─────────────────────────────────────────────
+
+async function _assertAdmin(request) {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+  const snap = await admin.firestore().collection("users").doc(request.auth.uid).get();
+  if (!snap.exists || snap.data().role !== "admin") {
+    throw new HttpsError("permission-denied", "Admins only");
+  }
+}
+
+exports.testUpdateDebtAgingBuckets = onCall(async (request) => {
+  await _assertAdmin(request);
+  await _runDebtAgingBuckets();
+  return {success: true};
+});
+
+exports.testSendStaleCashWarnings = onCall(async (request) => {
+  await _assertAdmin(request);
+  await _runStaleCashWarnings();
+  return {success: true};
+});
