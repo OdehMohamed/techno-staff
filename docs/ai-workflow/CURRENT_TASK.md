@@ -25,9 +25,9 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | 4 | Installment Plans | ✅ DONE |
 | 5 | Visit Logs, PTP, Automation Crons | ✅ DONE |
 | 6 | PDF Receipts, Reports, Admin Dashboard | ✅ DONE |
-| 7 | Collector Experience Polish and Settings | ⏳ Pending |
+| 7 | Collector Experience Polish and Settings | ✅ DONE |
 
-**Status**: 🔄 PR 7 of 7 pending — Collector Experience Polish and Settings  
+**Status**: ✅ All 7 PRs complete — awaiting owner smoke test before merging to main  
 **Policy**: No release until all 7 PRs are merged and smoke-tested.
 
 ---

@@ -1,3 +1,29 @@
+## 2026-06-29 (session 5) — Claude Sonnet 4.6 — v2.0.0 PR 7: Collector Experience Polish and Settings
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 7 of 7 — cash limit progress bar, payment blocking, per-collector settings, deactivation guard, notification routing.
+- **Outcome**: ✅ All PR 7 items complete. `flutter analyze` clean. Committed `412174b`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/auth/domain/models/app_user.dart` | Added `maxCashOnHand` field + `clearMaxCashOnHand` copyWith flag |
+| `lib/features/collections/presentation/cubit/payments_state.dart` | Added `maxCashOnHand`; computed getters `isAtCashLimit`, `isApproachingCashLimit`, `cashLimitFraction` |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | `loadCollectorPendingPayments` parallel-reads user doc to hydrate `maxCashOnHand` |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand card replaced with color-coded progress bar (green/orange/red at 80 %/100 % of limit) |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | `_save()` blocks if `cashOnHand + amount > maxCashOnHand` |
+| `lib/features/collections/presentation/screens/collector_settings_screen.dart` | **NEW** — admin sets/clears per-collector `maxCashOnHand`; reads live from Firestore |
+| `lib/features/employees/data/repositories/employees_repository.dart` | Added `setMaxCashOnHand` + `getCashOnHand` |
+| `lib/features/employees/presentation/screens/employees_screen.dart` | Tune icon → CollectorSettingsScreen; deactivation guard warns when collector has cash on hand |
+| `lib/features/notifications/presentation/screens/notifications_screen.dart` | Tap routing + icons + titles/bodies for all 10 collections notification types |
+| `lib/main.dart` | FCM tap routing for collections types via `_routeCollectionsNotification` |
+| `assets/translations/en.json` | 4 new keys: `collector_settings`, `no_limit`, `max_cash_on_hand_hint`, `collector_deactivate_cash_warning` |
+| `assets/translations/ar.json` | 4 matching AR translations |
+
+---
+
 ## 2026-06-29 (session 4) — Claude Sonnet 4.6 — v2.0.0 PR 6: PDF Receipts, Reports, Admin Dashboard
 
 - **Agent**: Claude Sonnet 4.6
