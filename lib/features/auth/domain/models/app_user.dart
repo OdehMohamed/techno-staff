@@ -4,6 +4,8 @@ class AppUser {
   final String name;
   final String role;
   final bool isActive;
+  // Collector-only: agorot; null = no limit. CF-maintained on user doc.
+  final int? maxCashOnHand;
 
   const AppUser({
     required this.id,
@@ -11,6 +13,7 @@ class AppUser {
     required this.name,
     required this.role,
     required this.isActive,
+    this.maxCashOnHand,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map, String documentId) {
@@ -20,6 +23,7 @@ class AppUser {
       name: map['name'] as String? ?? '',
       role: map['role'] as String? ?? 'employee',
       isActive: map['isActive'] as bool? ?? false,
+      maxCashOnHand: (map['maxCashOnHand'] as num?)?.toInt(),
     );
   }
 
@@ -27,13 +31,23 @@ class AppUser {
     return {'email': email, 'name': name, 'role': role, 'isActive': isActive};
   }
 
-  AppUser copyWith({String? id, String? email, String? name, String? role, bool? isActive}) {
+  AppUser copyWith({
+    String? id,
+    String? email,
+    String? name,
+    String? role,
+    bool? isActive,
+    int? maxCashOnHand,
+    bool clearMaxCashOnHand = false,
+  }) {
     return AppUser(
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
+      maxCashOnHand:
+          clearMaxCashOnHand ? null : (maxCashOnHand ?? this.maxCashOnHand),
     );
   }
 }

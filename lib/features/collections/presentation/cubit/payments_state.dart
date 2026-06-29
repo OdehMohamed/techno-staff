@@ -7,6 +7,9 @@ class PaymentsState {
   // Sum of pending_handover payments; set by loadCollectorPendingPayments.
   // Preserved (not reset) when loadDebtPayments is called.
   final int cashOnHand;
+  // Re-read from users/{uid} on each loadCollectorPendingPayments call so the
+  // admin-set limit is enforced without requiring a logout/login cycle.
+  final int? maxCashOnHand;
   final String? error;
   final CollectionsStatus formStatus;
   final String? formError;
@@ -15,15 +18,31 @@ class PaymentsState {
     this.status = CollectionsStatus.initial,
     this.payments = const [],
     this.cashOnHand = 0,
+    this.maxCashOnHand,
     this.error,
     this.formStatus = CollectionsStatus.initial,
     this.formError,
   });
 
+  bool get isAtCashLimit =>
+      maxCashOnHand != null && cashOnHand >= maxCashOnHand!;
+
+  bool get isApproachingCashLimit =>
+      maxCashOnHand != null &&
+      maxCashOnHand! > 0 &&
+      cashOnHand / maxCashOnHand! >= 0.8;
+
+  double get cashLimitFraction =>
+      maxCashOnHand != null && maxCashOnHand! > 0
+          ? (cashOnHand / maxCashOnHand!).clamp(0.0, 1.0)
+          : 0.0;
+
   PaymentsState copyWith({
     CollectionsStatus? status,
     List<PaymentModel>? payments,
     int? cashOnHand,
+    int? maxCashOnHand,
+    bool clearMaxCashOnHand = false,
     String? error,
     CollectionsStatus? formStatus,
     String? formError,
@@ -34,6 +53,9 @@ class PaymentsState {
       status: status ?? this.status,
       payments: payments ?? this.payments,
       cashOnHand: cashOnHand ?? this.cashOnHand,
+      maxCashOnHand: clearMaxCashOnHand
+          ? null
+          : (maxCashOnHand ?? this.maxCashOnHand),
       error: clearError ? null : (error ?? this.error),
       formStatus: formStatus ?? this.formStatus,
       formError: clearFormError ? null : (formError ?? this.formError),

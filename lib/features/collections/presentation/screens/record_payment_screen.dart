@@ -79,6 +79,15 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     final user = context.read<AuthCubit>().state.user!;
     final agorot = DebtModel.parseAmountIls(_amountCtrl.text);
 
+    final payState = context.read<PaymentsCubit>().state;
+    if (payState.maxCashOnHand != null &&
+        payState.cashOnHand + agorot > payState.maxCashOnHand!) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('max_cash_reached_error'.tr())),
+      );
+      return;
+    }
+
     final payment = PaymentModel(
       id: '',
       debtId: widget.debt.id,

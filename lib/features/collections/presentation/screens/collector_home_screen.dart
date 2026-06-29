@@ -44,48 +44,109 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
           // Cash on hand banner
           BlocBuilder<PaymentsCubit, PaymentsState>(
             builder: (context, payState) {
-              if (payState.cashOnHand <= 0) return const SizedBox.shrink();
+              if (payState.cashOnHand <= 0 && payState.maxCashOnHand == null) {
+                return const SizedBox.shrink();
+              }
               final scheme = Theme.of(context).colorScheme;
+              final atLimit = payState.isAtCashLimit;
+              final approaching = payState.isApproachingCashLimit;
+              final bannerColor = atLimit
+                  ? scheme.errorContainer
+                  : approaching
+                      ? Colors.orange.shade100
+                      : scheme.primaryContainer;
+              final onBannerColor = atLimit
+                  ? scheme.onErrorContainer
+                  : approaching
+                      ? Colors.orange.shade900
+                      : scheme.onPrimaryContainer;
+              final barColor = atLimit
+                  ? scheme.error
+                  : approaching
+                      ? Colors.orange
+                      : scheme.primary;
               return Material(
-                color: scheme.primaryContainer,
+                color: bannerColor,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.md,
                     vertical: AppSizes.sm,
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.account_balance_wallet_outlined,
-                        color: scheme.onPrimaryContainer,
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet_outlined,
+                            color: onBannerColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: AppSizes.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${'cash_on_hand'.tr()}: ${DebtModel.formatAmountIls(payState.cashOnHand)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(color: onBannerColor),
+                                ),
+                                if (payState.maxCashOnHand != null)
+                                  Text(
+                                    atLimit
+                                        ? 'max_cash_reached_error'.tr()
+                                        : approaching
+                                            ? 'max_cash_approaching_warning'.tr()
+                                            : '${'max_cash_on_hand_limit'.tr()}: ${DebtModel.formatAmountIls(payState.maxCashOnHand!)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(color: onBannerColor),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: onBannerColor.withValues(alpha: 0.15),
+                              foregroundColor: onBannerColor,
+                            ),
+                            onPressed: () {
+                              final paymentsCubit =
+                                  context.read<PaymentsCubit>();
+                              final userId =
+                                  context.read<AuthCubit>().state.user?.id;
+                              Navigator.pushNamed(
+                                context,
+                                RouteNames.handoverInit,
+                              ).then((_) {
+                                if (userId != null) {
+                                  paymentsCubit
+                                      .loadCollectorPendingPayments(userId);
+                                }
+                              });
+                            },
+                            child: Text('hand_over_cash'.tr()),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: AppSizes.sm),
-                      Expanded(
-                        child: Text(
-                          '${'cash_on_hand'.tr()}: ${DebtModel.formatAmountIls(payState.cashOnHand)}',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: scheme.onPrimaryContainer,
+                      if (payState.maxCashOnHand != null) ...[
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: payState.cashLimitFraction,
+                            minHeight: 6,
+                            backgroundColor:
+                                onBannerColor.withValues(alpha: 0.2),
+                            valueColor:
+                                AlwaysStoppedAnimation(barColor),
                           ),
                         ),
-                      ),
-                      FilledButton.tonal(
-                        onPressed: () {
-                          final paymentsCubit =
-                              context.read<PaymentsCubit>();
-                          final userId =
-                              context.read<AuthCubit>().state.user?.id;
-                          Navigator.pushNamed(
-                            context,
-                            RouteNames.handoverInit,
-                          ).then((_) {
-                            if (userId != null) {
-                              paymentsCubit
-                                  .loadCollectorPendingPayments(userId);
-                            }
-                          });
-                        },
-                        child: Text('hand_over_cash'.tr()),
-                      ),
+                      ],
                     ],
                   ),
                 ),

@@ -124,6 +124,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'task_overdue_reminder':
       case 'task_overdue_escalation':
         return Icons.warning_amber_rounded;
+      case 'payment_recorded':
+        return Icons.payments_outlined;
+      case 'handover_pending':
+        return Icons.move_to_inbox_outlined;
+      case 'handover_verified':
+        return Icons.verified_outlined;
+      case 'handover_discrepancy':
+        return Icons.difference_outlined;
+      case 'debt_overdue':
+      case 'debt_overdue_escalation':
+        return Icons.credit_card_off_outlined;
+      case 'broken_ptps':
+      case 'broken_ptps_admin':
+        return Icons.handshake_outlined;
+      case 'stale_cash':
+      case 'stale_cash_admin':
+        return Icons.account_balance_wallet_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -212,6 +229,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 }
                 break;
 
+              // Collections — handover types → handover list
+              case 'handover_pending':
+              case 'handover_verified':
+              case 'handover_discrepancy':
+                Navigator.pushNamed(context, RouteNames.handoverList);
+                break;
+
+              // Collections — debt / ptp / stale-cash alerts → collector home
+              case 'debt_overdue':
+              case 'broken_ptps':
+              case 'stale_cash':
+                Navigator.pushNamed(context, RouteNames.collectorHome);
+                break;
+
+              // Collections — admin-level alerts → collections dashboard
+              case 'payment_recorded':
+              case 'debt_overdue_escalation':
+              case 'broken_ptps_admin':
+              case 'stale_cash_admin':
+                Navigator.pushNamed(
+                    context, RouteNames.collectionsDashboard);
+                break;
+
               default:
                 break;
             }
@@ -296,6 +336,23 @@ String _buildNotificationTitle(InAppNotificationModel notification) {
       return 'task_overdue_reminder_title'.tr();
     case 'task_overdue_escalation':
       return 'task_overdue_escalation_title'.tr();
+    case 'payment_recorded':
+      return 'payment_details'.tr();
+    case 'handover_pending':
+      return 'hand_over_cash'.tr();
+    case 'handover_verified':
+      return 'handover_status_verified'.tr();
+    case 'handover_discrepancy':
+      return 'handover_discrepancy'.tr();
+    case 'debt_overdue':
+    case 'debt_overdue_escalation':
+      return 'overdue_debts'.tr();
+    case 'broken_ptps':
+    case 'broken_ptps_admin':
+      return 'broken_ptps'.tr();
+    case 'stale_cash':
+    case 'stale_cash_admin':
+      return 'cash_on_hand'.tr();
     default:
       return 'notifications'.tr();
   }
@@ -334,6 +391,30 @@ String _buildNotificationBody(InAppNotificationModel notification) {
           'task': (data['taskTitle'] ?? '').toString(),
         },
       );
+    case 'payment_recorded':
+      return '${data['collectorName'] ?? ''} · ${data['customerName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
+    case 'handover_pending':
+      return '${data['collectorName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
+    case 'handover_verified':
+    case 'handover_discrepancy':
+      return (data['collectorName'] ?? '').toString();
+    case 'debt_overdue':
+    case 'debt_overdue_escalation':
+      final customer = (data['customerName'] ?? '').toString();
+      final days = data['daysPastDue']?.toString() ?? '';
+      return days.isNotEmpty ? '$customer · $days d' : customer;
+    case 'broken_ptps':
+      final count = data['count']?.toString() ?? '';
+      return count.isNotEmpty ? '×$count' : '';
+    case 'broken_ptps_admin':
+      final cnt = data['count']?.toString() ?? '';
+      return cnt.isNotEmpty ? '×$cnt' : '';
+    case 'stale_cash':
+      final ds = data['daysSince']?.toString() ?? '';
+      return ds.isNotEmpty ? '${data['amountFormatted'] ?? ''} · ${ds}d' : '';
+    case 'stale_cash_admin':
+      final cc = data['collectorCount']?.toString() ?? '';
+      return cc.isNotEmpty ? '×$cc collectors' : '';
     default:
       return '';
   }

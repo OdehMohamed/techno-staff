@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,9 +6,13 @@ import 'package:techno_staff/features/attendance/data/models/schedule_day.dart';
 import 'package:techno_staff/features/attendance/data/models/work_schedule_model.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_cubit.dart';
 import 'package:techno_staff/features/attendance/presentation/cubit/attendance_state.dart';
+import 'package:techno_staff/features/auth/domain/models/app_user.dart';
 import 'package:techno_staff/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:techno_staff/features/chat/presentation/cubit/chat_list_cubit.dart';
+import 'package:techno_staff/features/collections/data/models/debt_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/collector_settings_screen.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
@@ -31,6 +36,51 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   void initState() {
     super.initState();
     context.read<EmployeesCubit>().fetchEmployees();
+  }
+
+  // For collectors, reads their cashOnHand from Firestore and shows an
+  // extra warning if cash is still on hand before the standard confirm dialog.
+  Future<bool> _handleDeactivate(AppUser employee) async {
+    if (employee.role == 'collector') {
+      int cashOnHand = 0;
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collection(FirebasePaths.users)
+            .doc(employee.id)
+            .get(const GetOptions(source: Source.server));
+        cashOnHand = (snap.data()?['cashOnHand'] as num?)?.toInt() ?? 0;
+      } catch (_) {}
+
+      if (cashOnHand > 0 && mounted) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('deactivate_employee'.tr()),
+            content: Text(
+              'collector_deactivate_cash_warning'.tr(namedArgs: {
+                'name': employee.name,
+                'amount': DebtModel.formatAmountIls(cashOnHand),
+              }),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('cancel'.tr()),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('confirm'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true) return false;
+      }
+    }
+    return _confirmDeactivate(employee.name);
   }
 
   Future<bool> _confirmDeactivate(String employeeName) async {
@@ -267,8 +317,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                           onChanged: (value) async {
                                             if (!value) {
                                               final ok =
-                                                  await _confirmDeactivate(
-                                                employee.name,
+                                                  await _handleDeactivate(
+                                                employee,
                                               );
                                               if (!ok) return;
                                             }
@@ -335,6 +385,23 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                                             arguments: employee.id,
                                           ),
                                         ),
+                                        if (employee.role == 'collector')
+                                          IconButton(
+                                            icon: const Icon(
+                                                Icons.tune_outlined),
+                                            tooltip:
+                                                'collector_settings'.tr(),
+                                            onPressed: () =>
+                                                Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    CollectorSettingsScreen(
+                                                  collector: employee,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ],

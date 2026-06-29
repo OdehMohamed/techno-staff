@@ -143,6 +143,7 @@ Future<void> main() async {
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
+    final notifType = message.data['type'] as String?;
 
     if (conversationId != null) {
       AppNavigator.navigatorKey.currentState?.pushNamed(
@@ -154,6 +155,8 @@ Future<void> main() async {
         RouteNames.taskDetails,
         arguments: taskId,
       );
+    } else if (notifType != null) {
+      _routeCollectionsNotification(notifType);
     }
   });
 
@@ -162,6 +165,7 @@ Future<void> main() async {
   if (initialMessage != null) {
     final conversationId = initialMessage.data['conversationId'];
     final taskId = initialMessage.data['taskId'];
+    final notifType = initialMessage.data['type'] as String?;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (conversationId != null) {
@@ -174,6 +178,8 @@ Future<void> main() async {
           RouteNames.taskDetails,
           arguments: taskId,
         );
+      } else if (notifType != null) {
+        _routeCollectionsNotification(notifType);
       }
     });
   }
@@ -294,4 +300,24 @@ Future<void> main() async {
       ),
     ),
   );
+}
+
+void _routeCollectionsNotification(String type) {
+  final nav = AppNavigator.navigatorKey.currentState;
+  if (nav == null) return;
+  switch (type) {
+    case 'handover_pending':
+    case 'handover_verified':
+    case 'handover_discrepancy':
+      nav.pushNamed(RouteNames.handoverList);
+    case 'debt_overdue':
+    case 'broken_ptps':
+    case 'stale_cash':
+      nav.pushNamed(RouteNames.collectorHome);
+    case 'payment_recorded':
+    case 'debt_overdue_escalation':
+    case 'broken_ptps_admin':
+    case 'stale_cash_admin':
+      nav.pushNamed(RouteNames.collectionsDashboard);
+  }
 }

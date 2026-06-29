@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/firebase_paths.dart';
 import '../../data/models/payment_model.dart';
 import '../../data/repositories/payments_repository.dart';
 import 'customers_state.dart';
@@ -32,20 +34,32 @@ class PaymentsCubit extends Cubit<PaymentsState> {
     }
   }
 
-  // Load collector's pending_handover payments.
-  // Also computes cashOnHand as the sum of those payments.
+  // Load collector's pending_handover payments and re-read maxCashOnHand from
+  // the user doc so the admin-set limit is enforced without a logout/login cycle.
   Future<void> loadCollectorPendingPayments(String collectorId) async {
     emit(state.copyWith(
       status: CollectionsStatus.loading,
       clearError: true,
     ));
     try {
-      final payments = await _repo.getCollectorPending(collectorId);
-      final cash = payments.fold<int>(0, (sum, p) => sum + p.amount);
+      final results = await Future.wait([
+        _repo.getCollectorPending(collectorId),
+        FirebaseFirestore.instance
+            .collection(FirebasePaths.users)
+            .doc(collectorId)
+            .get(const GetOptions(source: Source.server)),
+      ]);
+      final payments = results[0] as List<PaymentModel>;
+      final userSnap = results[1] as DocumentSnapshot<Map<String, dynamic>>;
+      final cash = payments.fold<int>(0, (acc, p) => acc + p.amount);
+      final maxCash =
+          (userSnap.data()?['maxCashOnHand'] as num?)?.toInt();
       emit(state.copyWith(
         status: CollectionsStatus.loaded,
         payments: payments,
         cashOnHand: cash,
+        maxCashOnHand: maxCash,
+        clearMaxCashOnHand: maxCash == null,
       ));
     } catch (_) {
       emit(state.copyWith(
