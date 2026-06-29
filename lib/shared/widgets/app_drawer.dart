@@ -18,192 +18,199 @@ class AppDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            UserAccountsDrawerHeader(
-              accountName: Text(user?.name ?? '-'),
-              accountEmail: Text(user?.email ?? '-'),
-              currentAccountPicture: const CircleAvatar(
-                child: Icon(Icons.person),
-              ),
-            ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.dashboard_outlined),
-                title: Text('dashboard'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.adminDashboard,
-                  );
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.group_outlined),
-                title: Text('employees'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, RouteNames.employees);
-                },
-              ),
-            if (user?.role == 'employee')
-              ListTile(
-                leading: const Icon(Icons.home_outlined),
-                title: Text('home'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.employeeHome,
-                  );
-                },
-              ),
-            if (user?.role == 'employee')
-              ListTile(
-                leading: const Icon(Icons.fingerprint_outlined),
-                title: Text('my_attendance'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.attendance,
-                  );
-                },
-              ),
-            if (user?.role == 'employee')
-              ListTile(
-                leading: const Icon(Icons.calendar_month_outlined),
-                title: Text('monthly_attendance'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.employeeMonthlyAttendance,
-                  );
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.task_outlined),
-              title: Text('tasks'.tr()),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, RouteNames.tasks);
-              },
-            ),
-            BlocBuilder<ChatListCubit, ChatListState>(
-              builder: (context, chatState) {
-                final unread = chatState.totalUnread;
-                return ListTile(
-                  leading: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.chat_bubble_outline),
-                      if (unread > 0)
-                        PositionedDirectional(
-                          top: -4,
-                          end: -6,
-                          child: Container(
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Center(
-                              child: Text(
-                                unread > 99 ? '99+' : '$unread',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  UserAccountsDrawerHeader(
+                    accountName: Text(user?.name ?? '-'),
+                    accountEmail: Text(user?.email ?? '-'),
+                    currentAccountPicture: const CircleAvatar(
+                      child: Icon(Icons.person),
+                    ),
+                  ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.dashboard_outlined),
+                      title: Text('dashboard'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.adminDashboard,
+                        );
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.group_outlined),
+                      title: Text('employees'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(context, RouteNames.employees);
+                      },
+                    ),
+                  if (user?.role == 'employee')
+                    ListTile(
+                      leading: const Icon(Icons.home_outlined),
+                      title: Text('home'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.employeeHome,
+                        );
+                      },
+                    ),
+                  if (user?.role == 'employee')
+                    ListTile(
+                      leading: const Icon(Icons.fingerprint_outlined),
+                      title: Text('my_attendance'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.attendance,
+                        );
+                      },
+                    ),
+                  if (user?.role == 'employee')
+                    ListTile(
+                      leading: const Icon(Icons.calendar_month_outlined),
+                      title: Text('monthly_attendance'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.employeeMonthlyAttendance,
+                        );
+                      },
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.task_outlined),
+                    title: Text('tasks'.tr()),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushReplacementNamed(context, RouteNames.tasks);
+                    },
+                  ),
+                  BlocBuilder<ChatListCubit, ChatListState>(
+                    builder: (context, chatState) {
+                      final unread = chatState.totalUnread;
+                      return ListTile(
+                        leading: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            const Icon(Icons.chat_bubble_outline),
+                            if (unread > 0)
+                              PositionedDirectional(
+                                top: -4,
+                                end: -6,
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      unread > 99 ? '99+' : '$unread',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                          ],
                         ),
-                    ],
+                        title: Text('messages'.tr()),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, RouteNames.chatList);
+                        },
+                      );
+                    },
                   ),
-                  title: Text('messages'.tr()),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, RouteNames.chatList);
-                  },
-                );
-              },
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.fingerprint_outlined),
+                      title: Text('attendance_management'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.adminAttendance,
+                        );
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.account_balance_wallet_outlined),
+                      title: Text('customers'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(context, RouteNames.customerList);
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.swap_horiz_outlined),
+                      title: Text('handovers'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.handoverList);
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.tune_outlined),
+                      title: Text('collection_settings'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, RouteNames.collectionsSettings);
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.bar_chart_outlined),
+                      title: Text('reports'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(context, RouteNames.reports);
+                      },
+                    ),
+                  if (user?.role == 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.repeat),
+                      title: Text('recurring_tasks'.tr()),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          RouteNames.recurringTasks,
+                        );
+                      },
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.settings_outlined),
+                    title: Text('settings'.tr()),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, RouteNames.settings);
+                    },
+                  ),
+                ],
+              ),
             ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.fingerprint_outlined),
-                title: Text('attendance_management'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.adminAttendance,
-                  );
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.account_balance_wallet_outlined),
-                title: Text('customers'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, RouteNames.customerList);
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.swap_horiz_outlined),
-                title: Text('handovers'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, RouteNames.handoverList);
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.tune_outlined),
-                title: Text('collection_settings'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, RouteNames.collectionsSettings);
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.bar_chart_outlined),
-                title: Text('reports'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, RouteNames.reports);
-                },
-              ),
-            if (user?.role == 'admin')
-              ListTile(
-                leading: const Icon(Icons.repeat),
-                title: Text('recurring_tasks'.tr()),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(
-                    context,
-                    RouteNames.recurringTasks,
-                  );
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: Text('settings'.tr()),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, RouteNames.settings);
-              },
-            ),
-            const Spacer(),
+            const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout),
               title: Text('logout'.tr()),
