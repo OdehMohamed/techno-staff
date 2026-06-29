@@ -226,6 +226,18 @@ exports.sendInstallmentDueReminders = onSchedule(
 
       if (snap.empty) return;
 
+      // Fetch admin list once outside the loop instead of once per installment.
+      let adminSnap;
+      try {
+        adminSnap = await db.collection("users")
+            .where("role", "==", "admin")
+            .where("isActive", "==", true)
+            .get();
+      } catch (err) {
+        console.error("sendInstallmentDueReminders: admin query failed:", err);
+        adminSnap = {docs: []};
+      }
+
       for (const doc of snap.docs) {
         const inst = doc.data();
         const {collectorId, debtId, customerId, expectedAmount, paidAmount, dueDate} = inst;
@@ -254,10 +266,6 @@ exports.sendInstallmentDueReminders = onSchedule(
 
         // Notify admins
         try {
-          const adminSnap = await db.collection("users")
-              .where("role", "==", "admin")
-              .where("isActive", "==", true)
-              .get();
           await Promise.all(adminSnap.docs.map((adminDoc) =>
             createInAppNotification({
               userId: adminDoc.id,

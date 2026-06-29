@@ -96,7 +96,7 @@ class _HandoverInitScreenState extends State<HandoverInitScreen> {
                   .loadCollectorPendingPayments(userId);
             }
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('initiate_handover'.tr())),
+              SnackBar(content: Text('handover_initiated'.tr())),
             );
             Navigator.pop(context, true);
           }

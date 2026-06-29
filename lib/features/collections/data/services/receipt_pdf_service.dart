@@ -94,8 +94,8 @@ Future<File> generateReceiptPdf({
   final wordsAr = amountInWords(payment.amount, arabic: true);
   final firstWords = isAr ? wordsAr : wordsEn;
   final secondWords = isAr ? wordsEn : wordsAr;
-  final firstLabel = isAr ? l.inWords : l.inWords;
-  final secondLabel = isAr ? l.inArabic : l.inArabic;
+  final firstLabel = l.inWords;
+  final secondLabel = l.inArabic;
 
   pw.TextStyle base({bool bold = false, double size = 10, PdfColor? color}) =>
       pw.TextStyle(

@@ -135,6 +135,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'debt_overdue':
       case 'debt_overdue_escalation':
         return Icons.credit_card_off_outlined;
+      case 'installment_due':
+        return Icons.event_outlined;
       case 'broken_ptps':
       case 'broken_ptps_admin':
         return Icons.handshake_outlined;
@@ -236,8 +238,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 Navigator.pushNamed(context, RouteNames.handoverList);
                 break;
 
-              // Collections — debt / ptp / stale-cash alerts → collector home
+              // Collections — debt / ptp / installment / stale-cash alerts → collector home
               case 'debt_overdue':
+              case 'installment_due':
               case 'broken_ptps':
               case 'stale_cash':
                 Navigator.pushNamed(context, RouteNames.collectorHome);
@@ -347,6 +350,8 @@ String _buildNotificationTitle(InAppNotificationModel notification) {
     case 'debt_overdue':
     case 'debt_overdue_escalation':
       return 'overdue_debts'.tr();
+    case 'installment_due':
+      return 'next_installment_due'.tr();
     case 'broken_ptps':
     case 'broken_ptps_admin':
       return 'broken_ptps'.tr();
@@ -392,17 +397,24 @@ String _buildNotificationBody(InAppNotificationModel notification) {
         },
       );
     case 'payment_recorded':
+      // amountFormatted is now included in the CF payload.
       return '${data['collectorName'] ?? ''} · ${data['customerName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
     case 'handover_pending':
+      // amountFormatted is now included in the CF payload.
       return '${data['collectorName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
     case 'handover_verified':
     case 'handover_discrepancy':
+      // collectorName is now included in the CF payload.
       return (data['collectorName'] ?? '').toString();
     case 'debt_overdue':
     case 'debt_overdue_escalation':
       final customer = (data['customerName'] ?? '').toString();
       final days = data['daysPastDue']?.toString() ?? '';
-      return days.isNotEmpty ? '$customer · $days d' : customer;
+      return days.isNotEmpty ? '$customer · ${days}d' : customer;
+    case 'installment_due':
+      final amt = (data['amountFormatted'] ?? '').toString();
+      final due = (data['dueDate'] ?? '').toString();
+      return [amt, due].where((s) => s.isNotEmpty).join(' · ');
     case 'broken_ptps':
       final count = data['count']?.toString() ?? '';
       return count.isNotEmpty ? '×$count' : '';
@@ -413,8 +425,10 @@ String _buildNotificationBody(InAppNotificationModel notification) {
       final ds = data['daysSince']?.toString() ?? '';
       return ds.isNotEmpty ? '${data['amountFormatted'] ?? ''} · ${ds}d' : '';
     case 'stale_cash_admin':
-      final cc = data['collectorCount']?.toString() ?? '';
-      return cc.isNotEmpty ? '×$cc collectors' : '';
+      // CF sends per-collector notifications (collectorName + amountFormatted).
+      final name = (data['collectorName'] ?? '').toString();
+      final cash = (data['amountFormatted'] ?? '').toString();
+      return [name, cash].where((s) => s.isNotEmpty).join(' · ');
     default:
       return '';
   }

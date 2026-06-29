@@ -35,20 +35,4 @@ class EmployeesRepository {
     });
   }
 
-  Future<void> setMaxCashOnHand({
-    required String userId,
-    required int? agorot,
-  }) async {
-    await _firestore.collection(FirebasePaths.users).doc(userId).update({
-      'maxCashOnHand': agorot,
-    });
-  }
-
-  Future<int> getCashOnHand(String userId) async {
-    final snap = await _firestore
-        .collection(FirebasePaths.users)
-        .doc(userId)
-        .get(const GetOptions(source: Source.server));
-    return (snap.data()?['cashOnHand'] as num?)?.toInt() ?? 0;
-  }
 }

@@ -482,6 +482,7 @@
   "handover_status_pending": "Pending Verification",
   "handover_status_verified": "Verified",
   "handover_discrepancy": "Discrepancy",
+  "handover_initiated": "Handover submitted successfully",
   "discrepancy_amount": "Discrepancy Amount",
   "discrepancy_notes": "Discrepancy Notes",
   "discrepancy_notes_required": "Discrepancy notes are required when the amount differs",

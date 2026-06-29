@@ -26,8 +26,9 @@ class PaymentModel {
   // Receipt number — '' while CF is pending
   final String receiptNumber;
 
-  // Lifecycle: pending_handover | handed_over | verified | cancelled | invalid
+  // Lifecycle: pending_handover → verified | cancelled | invalid
   final String status;
+  // Set by CF at handover creation, then updated again at verification.
   final String? handoverId;
 
   final String? notes;
@@ -44,7 +45,13 @@ class PaymentModel {
 
   bool get isReceiptPending => receiptNumber.isEmpty;
   bool get isVerified => status == 'verified';
-  bool get isCancelable => !isCancelled && status != 'verified' && status != 'invalid';
+  // handoverId is stamped at handover creation, so a non-null value means the
+  // payment is locked inside a handover (pending or verified).
+  bool get isCancelable =>
+      !isCancelled &&
+      status != 'verified' &&
+      status != 'invalid' &&
+      handoverId == null;
 
   const PaymentModel({
     required this.id,

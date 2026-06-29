@@ -123,182 +123,193 @@ exports.updateDebtAgingBuckets = onSchedule(
 
 // ─── checkBrokenPtps ─────────────────────────────────────────────────────────
 
+async function _runCheckBrokenPtps() {
+  const db = admin.firestore();
+  const today = todayJerusalem();
+
+  let snap;
+  try {
+    snap = await db.collection("visits")
+        .where("promiseToPay.status", "==", "pending")
+        .where("promiseToPay.promisedDate", "<",
+            admin.firestore.Timestamp.fromDate(today))
+        .get();
+  } catch (err) {
+    console.error("checkBrokenPtps: query failed:", err);
+    return;
+  }
+
+  if (snap.empty) return;
+
+  // Chunk into batches of 200 pairs (400 ops max per batch; Firestore limit is 500).
+  const CHUNK = 200;
+  const brokenByCollector = new Map();
+
+  for (let i = 0; i < snap.docs.length; i += CHUNK) {
+    const chunk = snap.docs.slice(i, i + CHUNK);
+    const batch = db.batch();
+
+    for (const doc of chunk) {
+      const visit = doc.data();
+      batch.update(doc.ref, {"promiseToPay.status": "broken"});
+
+      const logRef = db.collection("collection_logs").doc();
+      batch.set(logRef, {
+        entityType: "visit",
+        entityId: doc.id,
+        action: "ptp.broken",
+        actorId: "system",
+        actorName: "system",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        customerId: visit.customerId || null,
+        debtId: visit.debtId || null,
+        collectorId: visit.collectorId || null,
+        amount: (visit.promiseToPay && visit.promiseToPay.amount) || null,
+      });
+
+      if (visit.collectorId) {
+        brokenByCollector.set(
+            visit.collectorId,
+            (brokenByCollector.get(visit.collectorId) || 0) + 1,
+        );
+      }
+    }
+
+    await batch.commit();
+  }
+
+  // Notify each collector with a digest
+  for (const [collectorId, count] of brokenByCollector) {
+    try {
+      await createInAppNotification({
+        userId: collectorId,
+        type: "broken_ptps",
+        data: {count},
+      });
+    } catch (err) {
+      console.error(`checkBrokenPtps: collector notify failed (${collectorId}):`, err);
+    }
+  }
+
+  // Single admin digest
+  const totalBroken = snap.size;
+  try {
+    const adminSnap = await db.collection("users")
+        .where("role", "==", "admin")
+        .where("isActive", "==", true)
+        .get();
+    await Promise.all(adminSnap.docs.map((doc) =>
+      createInAppNotification({
+        userId: doc.id,
+        type: "broken_ptps_admin",
+        data: {count: totalBroken},
+      }),
+    ));
+  } catch (err) {
+    console.error("checkBrokenPtps: admin notify failed:", err);
+  }
+}
+
 exports.checkBrokenPtps = onSchedule(
     {schedule: "30 8 * * *", timeZone: "Asia/Jerusalem"},
-    async () => {
-      const db = admin.firestore();
-      const today = todayJerusalem();
-
-      let snap;
-      try {
-        snap = await db.collection("visits")
-            .where("promiseToPay.status", "==", "pending")
-            .where("promiseToPay.promisedDate", "<",
-                admin.firestore.Timestamp.fromDate(today))
-            .get();
-      } catch (err) {
-        console.error("checkBrokenPtps: query failed:", err);
-        return;
-      }
-
-      if (snap.empty) return;
-
-      const batch = db.batch();
-      const brokenByCollector = new Map(); // collectorId → count
-
-      for (const doc of snap.docs) {
-        const visit = doc.data();
-        batch.update(doc.ref, {"promiseToPay.status": "broken"});
-
-        // Write ptp.broken log
-        const logRef = db.collection("collection_logs").doc();
-        batch.set(logRef, {
-          entityType: "visit",
-          entityId: doc.id,
-          action: "ptp.broken",
-          actorId: "system",
-          actorName: "system",
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          customerId: visit.customerId || null,
-          debtId: visit.debtId || null,
-          collectorId: visit.collectorId || null,
-          amount: (visit.promiseToPay && visit.promiseToPay.amount) || null,
-        });
-
-        if (visit.collectorId) {
-          brokenByCollector.set(
-              visit.collectorId,
-              (brokenByCollector.get(visit.collectorId) || 0) + 1,
-          );
-        }
-      }
-
-      await batch.commit();
-
-      // Notify each collector with a digest
-      for (const [collectorId, count] of brokenByCollector) {
-        try {
-          await createInAppNotification({
-            userId: collectorId,
-            type: "broken_ptps",
-            data: {count},
-          });
-        } catch (err) {
-          console.error(`checkBrokenPtps: collector notify failed (${collectorId}):`, err);
-        }
-      }
-
-      // Single admin digest
-      const totalBroken = snap.size;
-      try {
-        const adminSnap = await db.collection("users")
-            .where("role", "==", "admin")
-            .where("isActive", "==", true)
-            .get();
-        await Promise.all(adminSnap.docs.map((doc) =>
-          createInAppNotification({
-            userId: doc.id,
-            type: "broken_ptps_admin",
-            data: {count: totalBroken},
-          }),
-        ));
-      } catch (err) {
-        console.error("checkBrokenPtps: admin notify failed:", err);
-      }
-    },
+    _runCheckBrokenPtps,
 );
 
 // ─── sendOverdueDebtEscalations ──────────────────────────────────────────────
 
+async function _runSendOverdueDebtEscalations() {
+  const db = admin.firestore();
+  const today = todayJerusalem();
+  const todayTs = admin.firestore.Timestamp.fromDate(today);
+
+  let snap;
+  try {
+    // Filter by status only — overdue debts are never 'current' once aging runs,
+    // so the redundant agingBucket filter has been removed (it also required a
+    // composite index that did not exist, causing this cron to fail silently).
+    snap = await db.collection("debts")
+        .where("status", "==", "overdue")
+        .get();
+  } catch (err) {
+    console.error("sendOverdueDebtEscalations: query failed:", err);
+    return;
+  }
+
+  if (snap.empty) return;
+
+  const adminSnap = await db.collection("users")
+      .where("role", "==", "admin")
+      .where("isActive", "==", true)
+      .get();
+
+  const batch = db.batch();
+
+  for (const doc of snap.docs) {
+    const debt = doc.data();
+
+    // Skip if already escalated today
+    if (debt.lastOverdueEscalationAt) {
+      const last = debt.lastOverdueEscalationAt.toDate();
+      if (last >= today) continue;
+    }
+
+    // Notify collector
+    if (debt.assignedCollectorId) {
+      try {
+        await createInAppNotification({
+          userId: debt.assignedCollectorId,
+          type: "debt_overdue",
+          data: {
+            debtId: doc.id,
+            customerName: debt.customerName,
+            daysPastDue: debt.daysPastDue,
+            remainingBalance: debt.remainingBalance,
+            amountFormatted: formatAgorot(debt.remainingBalance),
+          },
+        });
+      } catch (err) {
+        console.error(`sendOverdueDebtEscalations: collector notify failed (${doc.id}):`, err);
+      }
+    }
+
+    // Escalate to admins if 30+ days past due
+    if (debt.daysPastDue >= 30) {
+      try {
+        await Promise.all(adminSnap.docs.map((adminDoc) =>
+          createInAppNotification({
+            userId: adminDoc.id,
+            type: "debt_overdue_escalation",
+            data: {
+              debtId: doc.id,
+              customerName: debt.customerName,
+              collectorName: debt.assignedCollectorName,
+              daysPastDue: debt.daysPastDue,
+              remainingBalance: debt.remainingBalance,
+              amountFormatted: formatAgorot(debt.remainingBalance),
+            },
+          }),
+        ));
+      } catch (err) {
+        console.error(`sendOverdueDebtEscalations: admin escalation failed (${doc.id}):`, err);
+      }
+    }
+
+    batch.update(doc.ref, {
+      lastOverdueEscalationAt: todayTs,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  try {
+    await batch.commit();
+  } catch (err) {
+    console.error("sendOverdueDebtEscalations: batch update failed:", err);
+  }
+}
+
 exports.sendOverdueDebtEscalations = onSchedule(
     {schedule: "0 10 * * *", timeZone: "Asia/Jerusalem"},
-    async () => {
-      const db = admin.firestore();
-      const today = todayJerusalem();
-      const todayTs = admin.firestore.Timestamp.fromDate(today);
-
-      let snap;
-      try {
-        snap = await db.collection("debts")
-            .where("status", "==", "overdue")
-            .where("agingBucket", "!=", "current")
-            .get();
-      } catch (err) {
-        console.error("sendOverdueDebtEscalations: query failed:", err);
-        return;
-      }
-
-      if (snap.empty) return;
-
-      const adminSnap = await db.collection("users")
-          .where("role", "==", "admin")
-          .where("isActive", "==", true)
-          .get();
-
-      const batch = db.batch();
-
-      for (const doc of snap.docs) {
-        const debt = doc.data();
-
-        // Skip if already escalated today
-        if (debt.lastOverdueEscalationAt) {
-          const last = debt.lastOverdueEscalationAt.toDate();
-          if (last >= today) continue;
-        }
-
-        // Notify collector
-        if (debt.assignedCollectorId) {
-          try {
-            await createInAppNotification({
-              userId: debt.assignedCollectorId,
-              type: "debt_overdue",
-              data: {
-                debtId: doc.id,
-                customerName: debt.customerName,
-                daysPastDue: debt.daysPastDue,
-                remainingBalance: debt.remainingBalance,
-                amountFormatted: formatAgorot(debt.remainingBalance),
-              },
-            });
-          } catch (err) {
-            console.error(`sendOverdueDebtEscalations: collector notify failed (${doc.id}):`, err);
-          }
-        }
-
-        // Escalate to admins if 30+ days past due
-        if (debt.daysPastDue >= 30) {
-          try {
-            await Promise.all(adminSnap.docs.map((adminDoc) =>
-              createInAppNotification({
-                userId: adminDoc.id,
-                type: "debt_overdue_escalation",
-                data: {
-                  debtId: doc.id,
-                  customerName: debt.customerName,
-                  collectorName: debt.assignedCollectorName,
-                  daysPastDue: debt.daysPastDue,
-                  remainingBalance: debt.remainingBalance,
-                  amountFormatted: formatAgorot(debt.remainingBalance),
-                },
-              }),
-            ));
-          } catch (err) {
-            console.error(`sendOverdueDebtEscalations: admin escalation failed (${doc.id}):`, err);
-          }
-        }
-
-        batch.update(doc.ref, {
-          lastOverdueEscalationAt: todayTs,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-
-      try {
-        await batch.commit();
-      } catch (err) {
-        console.error("sendOverdueDebtEscalations: batch update failed:", err);
-      }
-    },
+    _runSendOverdueDebtEscalations,
 );
 
 // ─── sendStaleCashWarnings ────────────────────────────────────────────────────
@@ -436,5 +447,17 @@ exports.testUpdateDebtAgingBuckets = onCall(async (request) => {
 exports.testSendStaleCashWarnings = onCall(async (request) => {
   await _assertAdmin(request);
   await _runStaleCashWarnings();
+  return {success: true};
+});
+
+exports.testCheckBrokenPtps = onCall(async (request) => {
+  await _assertAdmin(request);
+  await _runCheckBrokenPtps();
+  return {success: true};
+});
+
+exports.testSendOverdueDebtEscalations = onCall(async (request) => {
+  await _assertAdmin(request);
+  await _runSendOverdueDebtEscalations();
   return {success: true};
 });

@@ -56,6 +56,16 @@ exports.onHandoverCreated = onDocumentCreated("handovers/{handoverId}", async (e
     console.error("onHandoverCreated: collection_log failed:", err);
   }
 
+  // Stamp handoverId on all included payments so cancellation can be blocked
+  // before verification, and client-side isCancelable can reflect the constraint.
+  try {
+    await Promise.all(handover.paymentIds.map((payId) =>
+      db.collection("payments").doc(payId).update({handoverId}),
+    ));
+  } catch (err) {
+    console.error("onHandoverCreated: payment handoverId stamp failed:", err);
+  }
+
   // Notify all admins (FCM + in-app)
   try {
     const adminSnap = await db.collection("users")
@@ -94,6 +104,7 @@ exports.onHandoverCreated = onDocumentCreated("handovers/{handoverId}", async (e
             collectorId: handover.collectorId,
             collectorName: handover.collectorName,
             amount: handover.claimedAmount,
+            amountFormatted: formatAgorot(handover.claimedAmount),
           },
         }),
       ]);
@@ -116,10 +127,9 @@ exports.onHandoverUpdated = onDocumentUpdated("handovers/{handoverId}", async (e
   const handoverId = event.params.handoverId;
   const db = admin.firestore();
 
-  // Settled amount: verified = claimedAmount, discrepancy = actualAmount (what admin received)
-  const settledAmount = after.status === "verified" ?
-    after.claimedAmount :
-    (after.actualAmount || 0);
+  // cashOnHand always decrements by the full claimedAmount — those payments were
+  // physically handed over regardless of any discrepancy the admin noted.
+  const settledAmount = after.claimedAmount;
 
   // Batch-update all included payments to 'verified' and attach handoverId,
   // then decrement collector cashOnHand atomically
@@ -204,6 +214,7 @@ exports.onHandoverUpdated = onDocumentUpdated("handovers/{handoverId}", async (e
         handoverId,
         status: after.status,
         settledAmount,
+        collectorName: after.collectorName || null,
         discrepancyAmount: after.discrepancyAmount || null,
         adminName: after.receivedByName || null,
       },

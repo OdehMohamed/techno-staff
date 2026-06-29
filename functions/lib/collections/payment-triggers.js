@@ -238,6 +238,7 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
           collectorName: payment.collectorName,
           customerName: payment.customerName,
           amount: payment.amount,
+          amountFormatted: formatAgorot(payment.amount),
           receiptNumber,
           debtId: payment.debtId,
         },
@@ -260,20 +261,23 @@ exports.onPaymentCancelled = onDocumentUpdated("payments/{paymentId}", async (ev
   const paymentId = event.params.paymentId;
   const db = admin.firestore();
 
-  // Block cancellation if payment is in a verified handover
+  // Block cancellation if payment belongs to any handover.
+  // handoverId is stamped at handover creation so this covers pending_verification
+  // handovers as well as verified ones, preventing cashOnHand double-decrement.
   if (after.handoverId) {
     try {
       const handoverSnap = await db.collection("handovers").doc(after.handoverId).get();
-      if (handoverSnap.exists && handoverSnap.data().status === "verified") {
-        // Revert the cancellation
+      if (handoverSnap.exists) {
+        const hStatus = handoverSnap.data().status;
+        const revertStatus = hStatus === "pending_verification" ? "pending_handover" : "verified";
         await db.collection("payments").doc(paymentId).update({
           isCancelled: false,
           cancellationReason: null,
           cancelledBy: null,
           cancelledAt: null,
-          status: "verified",
+          status: revertStatus,
         });
-        console.warn(`Payment ${paymentId} cancellation blocked: in verified handover ${after.handoverId}`);
+        console.warn(`Payment ${paymentId} cancellation blocked: in ${hStatus} handover ${after.handoverId}`);
         return;
       }
     } catch (err) {

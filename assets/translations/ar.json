@@ -482,6 +482,7 @@
   "handover_status_pending": "قيد التحقق",
   "handover_status_verified": "مُتحقَّق منه",
   "handover_discrepancy": "فرق في المبلغ",
+  "handover_initiated": "تم إرسال طلب التسليم بنجاح",
   "discrepancy_amount": "مقدار الفرق",
   "discrepancy_notes": "ملاحظات الفرق",
   "discrepancy_notes_required": "ملاحظات الفرق مطلوبة عند اختلاف المبلغ",
