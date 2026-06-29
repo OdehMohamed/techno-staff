@@ -1,3 +1,42 @@
+## 2026-06-29 (session 4) — Claude Sonnet 4.6 — v2.0.0 PR 6: PDF Receipts, Reports, Admin Dashboard
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 6 of 7 — Amount-in-words utility, receipt PDF, reconciliation/aging PDFs, collections dashboard, aging report screen.
+- **Outcome**: ✅ All PR 6 items complete. `flutter analyze` clean, 37/37 unit tests pass. Committed `43b160f`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/services/amount_in_words.dart` | **NEW** — bilingual EN/AR currency-to-words; handles MSA grammatical gender rules for شيكل |
+| `lib/features/collections/data/services/receipt_pdf_service.dart` | **NEW** — A5 receipt PDF; Cairo font; bilingual amount-in-words always shown; disclaimer note |
+| `lib/features/collections/data/services/collections_report_service.dart` | **NEW** — A4 handover reconciliation PDF + aging report PDF; bucket order `90+→current` |
+| `lib/features/collections/presentation/cubit/collections_dashboard_state.dart` | **NEW** — `CollectorSummary` + `CollectionsDashboardState` (portfolio totals, aging maps, collector summaries) |
+| `lib/features/collections/presentation/cubit/collections_dashboard_cubit.dart` | **NEW** — parallel Firestore queries; debt aging aggregation; per-collector MTD + cash on hand |
+| `lib/features/collections/presentation/screens/collections_dashboard_screen.dart` | **NEW** — admin portfolio view; stat grid, aging breakdown bars, per-collector table; pull-to-refresh |
+| `lib/features/collections/presentation/screens/aging_report_screen.dart` | **NEW** — debts grouped by aging bucket (sorted remaining desc); PDF export in AppBar |
+| `lib/features/collections/data/repositories/payments_repository.dart` | Added `getByIds` (parallel doc reads for handover reconciliation) |
+| `lib/features/collections/presentation/screens/payment_detail_screen.dart` | Added Share Receipt button; fetches customer phone + current debt balance at tap time |
+| `lib/features/collections/presentation/screens/handover_verification_screen.dart` | Added Export Reconciliation PDF button in AppBar; fetches payment objects via `getByIds` |
+| `lib/core/routes/route_names.dart` | Added `collectionsDashboard`, `agingReport` |
+| `lib/core/routes/app_router.dart` | Wired `collectionsDashboard` → `CollectionsDashboardScreen`, `agingReport` → `AgingReportScreen` |
+| `lib/shared/widgets/app_drawer.dart` | Added Collections Dashboard drawer entry for admins |
+| `lib/main.dart` | Added `CollectionsDashboardCubit` to `MultiBlocProvider` |
+| `assets/translations/en.json` | 11 new keys: `collections_dashboard`, `cash_with_collectors`, `collected_this_week`, `aging_breakdown`, `collector_summary`, `no_overdue_debts`, `no_collectors`, `assigned_debts`, `failed_to_generate_pdf`, `retry` |
+| `assets/translations/ar.json` | 11 matching AR translations |
+| `test/features/collections/amount_in_words_test.dart` | **NEW** — 37 tests covering all denominations and edge cases in EN + AR |
+
+### PR 5 round-2 fixes (also in this session, committed earlier)
+- `DebtModel`: added `disputeReason` (reads `dispute.reason` sub-map) + fixed `writeOffReason` (reads `writeOff.reason`)
+- `debt_detail_screen.dart`: dispute reason card added
+- `functions/lib/collections/schedulers.js`: extracted cron bodies → named async functions; added admin-only `testUpdateDebtAgingBuckets` + `testSendStaleCashWarnings` callables
+- `functions/index.js`: exported both test callables
+- `app_drawer.dart`: refactored from `Column` → `Expanded + ListView` to fix overflow; added Collections Settings + Collections Dashboard entries
+- `collections_settings_screen.dart`: cleaned to production version (no dev testing section)
+
+---
+
 ## 2026-06-28 (session 3) — Claude Sonnet 4.6 — v2.0.0 PR 5: Visit Logs, PTP, Admin Debt Actions, Automation Crons
 
 - **Agent**: Claude Sonnet 4.6

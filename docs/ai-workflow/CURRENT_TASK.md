@@ -24,10 +24,10 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | 3 | Core Financial — Payment Recording and Handover (highest risk; CF unit tests required) | ✅ DONE |
 | 4 | Installment Plans | ✅ DONE |
 | 5 | Visit Logs, PTP, Automation Crons | ✅ DONE |
-| 6 | PDF Receipts, Reports, Admin Dashboard | ⏳ Pending |
+| 6 | PDF Receipts, Reports, Admin Dashboard | ✅ DONE |
 | 7 | Collector Experience Polish and Settings | ⏳ Pending |
 
-**Status**: 🔄 PR 6 of 7 pending — PDF Receipts, Reports, Admin Dashboard  
+**Status**: 🔄 PR 7 of 7 pending — Collector Experience Polish and Settings  
 **Policy**: No release until all 7 PRs are merged and smoke-tested.
 
 ---
