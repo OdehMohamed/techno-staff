@@ -117,7 +117,8 @@ class _HandoverInitScreenState extends State<HandoverInitScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final payments = payState.payments;
+              final payments =
+                  payState.payments.where((p) => p.handoverId == null).toList();
 
               if (payments.isEmpty) {
                 return Center(

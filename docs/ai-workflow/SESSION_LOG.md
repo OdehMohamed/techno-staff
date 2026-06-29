@@ -1,3 +1,25 @@
+## 2026-06-29 (session 7) — Claude Sonnet 4.6 — v2.0.0 second audit fixes + index deploy
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Apply all findings from the second pre-merge audit (after commit `c443be8`) and deploy missing Firestore indexes.
+- **Outcome**: ✅ All fixes applied, indexes deployed. `flutter analyze` clean. Awaiting owner final verification pass before merge.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| MEDIUM | N1 | `handover_verified`/`handover_discrepancy` in-app body now shows `adminName · settledAmount` (was showing collector's own name — useless to the recipient) |
+| HIGH | P1 | Added missing composite index `visits: [promiseToPay.status ASC, promiseToPay.promisedDate ASC]` — `checkBrokenPtps` cron was silently failing every day since PR 5 |
+| HIGH | P2 | Added missing collection-group index `installments: [status ASC, dueDate ASC]` — `sendInstallmentDueReminders` cron was silently failing every day since PR 4 |
+| LOW | P3 | `HandoverInitScreen` now filters out payments where `handoverId != null`, preventing a collector from including an already-in-handover payment in a second handover |
+| — | — | Reconciled 6 production indexes that existed in remote Firestore but were missing from local `firestore.indexes.json` (`notifications`, `task_logs`, three `tasks` compound indexes, `tasks: [dueDate, status]`) — they are now in the local file and were preserved by the deploy |
+
+### Deploy
+- `firebase deploy --only firestore:indexes --force` — ✅ deployed successfully (local binary `functions/node_modules/.bin/firebase`; global install broken due to missing template file)
+
+---
+
 ## 2026-06-29 (session 6) — Claude Sonnet 4.6 — v2.0.0 pre-merge audit fixes
 
 - **Agent**: Claude Sonnet 4.6

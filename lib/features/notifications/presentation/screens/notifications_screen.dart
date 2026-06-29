@@ -404,8 +404,12 @@ String _buildNotificationBody(InAppNotificationModel notification) {
       return '${data['collectorName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
     case 'handover_verified':
     case 'handover_discrepancy':
-      // collectorName is now included in the CF payload.
-      return (data['collectorName'] ?? '').toString();
+      final admin = (data['adminName'] ?? '').toString();
+      final settled = data['settledAmount'];
+      final amt = settled != null
+          ? '₪${((settled as num).toInt() / 100).toStringAsFixed(2)}'
+          : '';
+      return [admin, amt].where((s) => s.isNotEmpty).join(' · ');
     case 'debt_overdue':
     case 'debt_overdue_escalation':
       final customer = (data['customerName'] ?? '').toString();
