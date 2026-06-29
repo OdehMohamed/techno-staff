@@ -1,3 +1,26 @@
+## 2026-06-29 (session 6) — Claude Sonnet 4.6 — v2.0.0 pre-merge audit fixes
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Apply all findings from the pre-merge audit (13 issues across 9 files) before merging to `main`.
+- **Outcome**: ✅ All fixes applied. `flutter analyze` clean, ESLint clean. Committed `c443be8`. Awaiting owner verification pass before final merge approval.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| CRITICAL | C1 | `cashOnHand` decrement now uses `claimedAmount` always, not `actualAmount` on discrepancy |
+| CRITICAL | C2 | `handoverId` stamped at handover creation; `onPaymentCancelled` blocks for any handover, not just verified |
+| HIGH | H1 | Removed `agingBucket != 'current'` filter (missing composite index → cron silently failed every day) |
+| HIGH | H2 | `amountFormatted` added to `payment_recorded`/`handover_pending` payloads; `collectorName` added to `handover_verified`/`handover_discrepancy` |
+| MEDIUM | M1 | `installment_due` notification routed, titled, bodied in `NotificationsScreen` |
+| MEDIUM | M2 | Admin Firestore query hoisted outside installment loop |
+| MEDIUM | M3 | HandoverInitScreen success SnackBar now says "handover_initiated" |
+| MEDIUM | M4 | `checkBrokenPtps` batch chunked to 200 to stay under Firestore 500-op limit |
+| LOW | — | `PaymentModel.isCancelable` checks `handoverId == null`; `stale_cash_admin` body fixed; dead ternary in `receipt_pdf_service.dart` removed; dead repo methods removed; lifecycle comment corrected; `handover_initiated` translation key added (EN + AR); test callables for `checkBrokenPtps` and `sendOverdueDebtEscalations` added |
+
+---
+
 ## 2026-06-29 (session 5) — Claude Sonnet 4.6 — v2.0.0 PR 7: Collector Experience Polish and Settings
 
 - **Agent**: Claude Sonnet 4.6
