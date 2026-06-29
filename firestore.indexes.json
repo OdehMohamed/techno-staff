@@ -173,6 +173,14 @@
         { "fieldPath": "collectedAt", "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isCancelled", "order": "ASCENDING" },
+        { "fieldPath": "collectedAt", "order": "DESCENDING" }
+      ]
+    },
 
     {
       "collectionGroup": "handovers",

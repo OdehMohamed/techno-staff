@@ -53,33 +53,32 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
             (agingCounts[d.agingBucket] ?? 0) + 1;
       }
 
-      // 2. Payments — three date-range queries run in parallel
+      // 2. Payments — three date-range queries run in parallel.
+      // isCancelled filter is applied client-side: no composite index exists
+      // for (collectedAt range + isCancelled) without a collectorId prefix.
       final futures = await Future.wait([
         _firestore
             .collection('payments')
             .where('collectedAt',
                 isGreaterThanOrEqualTo:
                     Timestamp.fromDate(todayStart))
-            .where('isCancelled', isEqualTo: false)
             .get(const GetOptions(source: Source.server)),
         _firestore
             .collection('payments')
             .where('collectedAt',
                 isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart))
-            .where('isCancelled', isEqualTo: false)
             .get(const GetOptions(source: Source.server)),
         _firestore
             .collection('payments')
             .where('collectedAt',
                 isGreaterThanOrEqualTo:
                     Timestamp.fromDate(monthStart))
-            .where('isCancelled', isEqualTo: false)
             .get(const GetOptions(source: Source.server)),
-        // 3. Collectors (for cash on hand + per-collector summary)
+        // 3. Collectors — isActive filter applied client-side (no composite
+        // index exists for role + isActive on users collection).
         _firestore
             .collection('users')
             .where('role', isEqualTo: 'collector')
-            .where('isActive', isEqualTo: true)
             .get(const GetOptions(source: Source.server)),
       ]);
 
@@ -90,11 +89,13 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
 
       int collectedToday = 0;
       for (final d in todaySnap.docs) {
+        if (d.data()['isCancelled'] == true) continue;
         collectedToday += ((d.data()['amount'] as num?)?.toInt() ?? 0);
       }
 
       int collectedWeek = 0;
       for (final d in weekSnap.docs) {
+        if (d.data()['isCancelled'] == true) continue;
         collectedWeek += ((d.data()['amount'] as num?)?.toInt() ?? 0);
       }
 
@@ -102,6 +103,7 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
       final collectorMtd = <String, int>{}; // collectorId → agorot
       int collectedMonth = 0;
       for (final d in monthSnap.docs) {
+        if (d.data()['isCancelled'] == true) continue;
         final data = d.data();
         final amt = (data['amount'] as num?)?.toInt() ?? 0;
         collectedMonth += amt;
@@ -111,12 +113,13 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
         }
       }
 
-      // 4. Per-collector summary
+      // 4. Per-collector summary — filter inactive collectors client-side
       int totalCash = 0;
       final summaries = <CollectorSummary>[];
 
       for (final doc in collectorsSnap.docs) {
         final data = doc.data();
+        if (data['isActive'] != true) continue;
         final cashOnHand = (data['cashOnHand'] as num?)?.toInt() ?? 0;
         totalCash += cashOnHand;
 
