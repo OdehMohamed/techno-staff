@@ -276,6 +276,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: Text('logout'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.read<AuthCubit>().signOut(),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
                     leading: Icon(
                       Icons.delete_forever,
                       color: Theme.of(context).colorScheme.error,
