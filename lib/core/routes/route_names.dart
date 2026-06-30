@@ -52,4 +52,5 @@ class RouteNames {
   static const String collectionsSettings = '/collections-settings';
   static const String collectionsDashboard = '/collections-dashboard';
   static const String agingReport = '/aging-report';
+  static const String paymentDetailLoader = '/payment-detail-loader';
 }

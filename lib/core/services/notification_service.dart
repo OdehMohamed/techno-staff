@@ -76,10 +76,20 @@ class NotificationService {
 
     final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
+    final paymentId = message.data['paymentId'];
+    final notifType = message.data['type'] as String?;
 
     final isChat = conversationId != null;
+    final isPayment = notifType == 'payment_recorded' && paymentId != null;
     final channel = isChat ? _chatChannel : _taskChannel;
-    final payload = isChat ? 'conv:$conversationId' : taskId;
+    final String? payload;
+    if (isChat) {
+      payload = 'conv:$conversationId';
+    } else if (isPayment) {
+      payload = 'pay:$paymentId';
+    } else {
+      payload = taskId;
+    }
 
     await _localNotifications.show(
       id: message.hashCode,

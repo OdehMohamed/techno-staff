@@ -4,8 +4,27 @@
 
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/firestore");
 const admin = require("firebase-admin");
-const {createInAppNotification} = require("../shared");
+const {createInAppNotification, getFcmTokensBatch, sendFCMNotification} = require("../shared");
 const {applyPaymentToInstallments} = require("./installment-triggers");
+
+// ─── i18n strings for payment push notifications ──────────────────────────────
+
+const i18nPayment = {
+  en: {
+    payment_recorded_title: "Payment Received",
+    payment_recorded_body: "{collector} collected {amount} from {customer}",
+  },
+  ar: {
+    payment_recorded_title: "تم تسجيل الدفع",
+    payment_recorded_body: "حصّل {collector} مبلغ {amount} من {customer}",
+  },
+};
+
+function localizePayment(key, args, langCode) {
+  const lang = langCode === "ar" ? i18nPayment.ar : i18nPayment.en;
+  const template = lang[key] || i18nPayment.en[key] || "";
+  return template.replace(/\{(\w+)\}/g, (_, k) => (args && args[k] != null ? args[k] : ""));
+}
 
 // ─── Pure helpers (exported for unit testing) ─────────────────────────────────
 
@@ -222,28 +241,52 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
     console.error("onPaymentCreated: collection_log failed:", err);
   }
 
-  // Notify all admins (in-app only; payment is low urgency)
+  // Notify all admins: FCM push + in-app notification
   try {
     const adminSnap = await db.collection("users")
         .where("role", "==", "admin")
         .where("isActive", "==", true)
         .get();
 
-    await Promise.all(adminSnap.docs.map((doc) =>
-      createInAppNotification({
-        userId: doc.id,
-        type: "payment_recorded",
-        data: {
-          paymentId,
-          collectorName: payment.collectorName,
-          customerName: payment.customerName,
-          amount: payment.amount,
-          amountFormatted: formatAgorot(payment.amount),
-          receiptNumber,
-          debtId: payment.debtId,
-        },
-      }),
-    ));
+    const adminIds = adminSnap.docs.map((d) => d.id);
+    const adminDocs = adminSnap.docs.map((d) => d.data());
+    const tokenMap = await getFcmTokensBatch(db, adminIds);
+
+    await Promise.all(adminIds.map((adminId, idx) => {
+      const langCode = adminDocs[idx].languageCode || "en";
+      const title = localizePayment("payment_recorded_title", {}, langCode);
+      const body = localizePayment("payment_recorded_body", {
+        collector: payment.collectorName,
+        amount: formatAgorot(payment.amount),
+        customer: payment.customerName,
+      }, langCode);
+
+      const token = tokenMap[adminId];
+      const fcmPromise = token ?
+        sendFCMNotification({
+          token,
+          notification: {title, body},
+          data: {paymentId, type: "payment_recorded"},
+        }) :
+        Promise.resolve();
+
+      return Promise.all([
+        fcmPromise,
+        createInAppNotification({
+          userId: adminId,
+          type: "payment_recorded",
+          data: {
+            paymentId,
+            collectorName: payment.collectorName,
+            customerName: payment.customerName,
+            amount: payment.amount,
+            amountFormatted: formatAgorot(payment.amount),
+            receiptNumber,
+            debtId: payment.debtId,
+          },
+        }),
+      ]);
+    }));
   } catch (err) {
     console.error("onPaymentCreated: admin notification failed:", err);
   }

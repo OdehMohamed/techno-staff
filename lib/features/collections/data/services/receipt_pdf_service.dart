@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/payment_model.dart';
 import 'amount_in_words.dart';
+import 'arabic_reshaper.dart';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,9 @@ bool _containsArabic(String text) =>
 
 pw.TextDirection _dir(String text) =>
     _containsArabic(text) ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+
+// Reshape Arabic text for the pdf package (no GSUB → needs Presentation Forms).
+String _pdfText(String text) => reshapeArabic(text);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -111,10 +115,10 @@ Future<File> generateReceiptPdf({
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(label, style: base(color: _kMuted)),
+          pw.Text(_pdfText(label), style: base(color: _kMuted)),
           pw.Expanded(
             child: pw.Text(
-              value,
+              _pdfText(value),
               textAlign: pw.TextAlign.right,
               textDirection: _dir(value),
               style: base(bold: true),
@@ -144,9 +148,9 @@ Future<File> generateReceiptPdf({
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(l.appName,
+                  pw.Text(_pdfText(l.appName),
                       style: base(bold: true, size: 14, color: _kNavy)),
-                  pw.Text(l.receiptTitle,
+                  pw.Text(_pdfText(l.receiptTitle),
                       style: base(size: 11, color: _kNavy)),
                 ],
               ),
@@ -186,7 +190,7 @@ Future<File> generateReceiptPdf({
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(l.amount, style: base(color: _kMuted)),
+                pw.Text(_pdfText(l.amount), style: base(color: _kMuted)),
                 pw.Text(amountFormatted,
                     style: base(bold: true, size: 14, color: _kNavy)),
               ],
@@ -195,7 +199,7 @@ Future<File> generateReceiptPdf({
           pw.Padding(
             padding: const pw.EdgeInsets.only(bottom: 2),
             child: pw.Text(
-              '$firstLabel: $firstWords',
+              _pdfText('$firstLabel: $firstWords'),
               textAlign: align,
               textDirection: dir,
               style: base(size: 9, color: _kMuted),
@@ -204,7 +208,7 @@ Future<File> generateReceiptPdf({
           pw.Padding(
             padding: const pw.EdgeInsets.only(bottom: 6),
             child: pw.Text(
-              '$secondLabel: $secondWords',
+              _pdfText('$secondLabel: $secondWords'),
               textAlign: isAr ? pw.TextAlign.left : pw.TextAlign.right,
               textDirection: isAr
                   ? pw.TextDirection.ltr
@@ -228,7 +232,7 @@ Future<File> generateReceiptPdf({
           // Disclaimer
           pw.Center(
             child: pw.Text(
-              l.disclaimer,
+              _pdfText(l.disclaimer),
               textAlign: pw.TextAlign.center,
               textDirection: dir,
               style: base(size: 8, color: _kMuted),
@@ -239,7 +243,7 @@ Future<File> generateReceiptPdf({
           pw.Spacer(),
           pw.Center(
             child: pw.Text(
-              '${l.page} 1',
+              _pdfText('${l.page} 1'),
               style: base(size: 8, color: _kMuted),
             ),
           ),

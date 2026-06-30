@@ -109,12 +109,18 @@ Future<void> main() async {
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {
-      // Payload format: 'conv:<conversationId>' for chat, raw taskId for tasks.
+      // Payload format: 'conv:<id>' for chat, 'pay:<id>' for payments, raw taskId otherwise.
       if (payload.startsWith('conv:')) {
         final conversationId = payload.substring(5);
         AppNavigator.navigatorKey.currentState?.pushNamed(
           RouteNames.conversation,
           arguments: conversationId,
+        );
+      } else if (payload.startsWith('pay:')) {
+        final paymentId = payload.substring(4);
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.paymentDetailLoader,
+          arguments: paymentId,
         );
       } else {
         AppNavigator.navigatorKey.currentState?.pushNamed(
@@ -156,7 +162,7 @@ Future<void> main() async {
         arguments: taskId,
       );
     } else if (notifType != null) {
-      _routeCollectionsNotification(notifType);
+      _routeCollectionsNotification(notifType, data: message.data);
     }
   });
 
@@ -179,7 +185,7 @@ Future<void> main() async {
           arguments: taskId,
         );
       } else if (notifType != null) {
-        _routeCollectionsNotification(notifType);
+        _routeCollectionsNotification(notifType, data: initialMessage.data);
       }
     });
   }
@@ -302,7 +308,10 @@ Future<void> main() async {
   );
 }
 
-void _routeCollectionsNotification(String type) {
+void _routeCollectionsNotification(
+  String type, {
+  Map<String, dynamic>? data,
+}) {
   final nav = AppNavigator.navigatorKey.currentState;
   if (nav == null) return;
   switch (type) {
@@ -315,6 +324,12 @@ void _routeCollectionsNotification(String type) {
     case 'stale_cash':
       nav.pushNamed(RouteNames.collectorHome);
     case 'payment_recorded':
+      final paymentId = (data?['paymentId'] ?? '').toString();
+      if (paymentId.isNotEmpty) {
+        nav.pushNamed(RouteNames.paymentDetailLoader, arguments: paymentId);
+      } else {
+        nav.pushNamed(RouteNames.collectionsDashboard);
+      }
     case 'debt_overdue_escalation':
     case 'broken_ptps_admin':
     case 'stale_cash_admin':

@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/debt_model.dart';
 import '../models/handover_model.dart';
 import '../models/payment_model.dart';
+import 'arabic_reshaper.dart';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,8 @@ class _L {
 bool _containsArabic(String text) =>
     text.runes.any((r) => r >= 0x0600 && r <= 0x06FF);
 
+String _pdfText(String text) => reshapeArabic(text);
+
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 Future<pw.Font> _regular() async =>
@@ -125,7 +128,7 @@ pw.Widget _cell(
   return pw.Padding(
     padding: const pw.EdgeInsets.all(4),
     child: pw.Text(
-      text,
+      _pdfText(text),
       textDirection: rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
       textAlign: align,
       style: pw.TextStyle(
@@ -167,9 +170,9 @@ Future<File> generateHandoverReconciliationPdf({
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(label, style: base(color: _kMuted)),
+            pw.Text(_pdfText(label), style: base(color: _kMuted)),
             pw.Text(
-              value,
+              _pdfText(value),
               textDirection: _containsArabic(value)
                   ? pw.TextDirection.rtl
                   : pw.TextDirection.ltr,
@@ -201,9 +204,9 @@ Future<File> generateHandoverReconciliationPdf({
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(l.appName,
+                  pw.Text(_pdfText(l.appName),
                       style: base(isBold: true, size: 13, color: _kNavy)),
-                  pw.Text(l.handoverTitle,
+                  pw.Text(_pdfText(l.handoverTitle),
                       style: base(size: 10, color: _kNavy)),
                 ],
               ),
@@ -361,7 +364,7 @@ Future<File> generateAgingReportPdf({
   pw.Widget headerCell(String text) => pw.Padding(
         padding: const pw.EdgeInsets.all(4),
         child: pw.Text(
-          text,
+          _pdfText(text),
           textDirection: _containsArabic(text)
               ? pw.TextDirection.rtl
               : pw.TextDirection.ltr,
@@ -373,7 +376,7 @@ Future<File> generateAgingReportPdf({
       pw.Padding(
         padding: const pw.EdgeInsets.all(4),
         child: pw.Text(
-          text,
+          _pdfText(text),
           textDirection:
               rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
           textAlign: align,
@@ -390,7 +393,7 @@ Future<File> generateAgingReportPdf({
         color: _kHeaderRow,
         padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: pw.Text(
-          l.bucketLabel(bucket),
+          _pdfText(l.bucketLabel(bucket)),
           style: base(isBold: true, size: 9, color: _kNavy),
         ),
       ),
@@ -436,7 +439,7 @@ Future<File> generateAgingReportPdf({
               pw.SizedBox(),
               pw.Padding(
                 padding: const pw.EdgeInsets.all(4),
-                child: pw.Text(l.subtotal,
+                child: pw.Text(_pdfText(l.subtotal),
                     style: base(isBold: true, color: _kRed)),
               ),
               pw.SizedBox(),
@@ -478,9 +481,9 @@ Future<File> generateAgingReportPdf({
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(l.appName,
+                  pw.Text(_pdfText(l.appName),
                       style: base(isBold: true, size: 13, color: _kNavy)),
-                  pw.Text(l.agingTitle,
+                  pw.Text(_pdfText(l.agingTitle),
                       style: base(size: 10, color: _kNavy)),
                   pw.Text(reportDate, style: base(size: 8, color: _kMuted)),
                 ],
@@ -512,7 +515,7 @@ Future<File> generateAgingReportPdf({
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text(l.grandTotal,
+              pw.Text(_pdfText(l.grandTotal),
                   style: base(isBold: true, size: 10, color: _kNavy)),
               pw.Text(_fmt(grandTotal),
                   style: base(isBold: true, size: 10, color: _kRed)),

@@ -55,6 +55,16 @@ class PaymentsRepository {
         .set(payment.toCreateMap());
   }
 
+  // Fetch a single payment by document ID (used by PaymentDetailLoaderScreen).
+  Future<PaymentModel?> getById(String paymentId) async {
+    final snap = await _firestore
+        .collection(FirebasePaths.payments)
+        .doc(paymentId)
+        .get(const GetOptions(source: Source.server));
+    if (!snap.exists) return null;
+    return PaymentModel.fromMap(snap.data()!, snap.id);
+  }
+
   // Fetch payments by a list of IDs (used for handover reconciliation PDF).
   // Firestore has no "get by ids" query; uses parallel document reads.
   Future<List<PaymentModel>> getByIds(List<String> ids) async {

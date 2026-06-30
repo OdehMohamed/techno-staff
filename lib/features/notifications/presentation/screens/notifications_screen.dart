@@ -257,8 +257,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 }
                 break;
 
-              // Collections — admin-level alerts → collections dashboard
+              // payment_recorded → open the specific payment
               case 'payment_recorded':
+                final paymentId =
+                    (notification.data?['paymentId'] ?? '').toString();
+                if (paymentId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.paymentDetailLoader,
+                    arguments: paymentId,
+                  );
+                } else {
+                  Navigator.pushNamed(
+                      context, RouteNames.collectionsDashboard);
+                }
+                break;
+
+              // Collections — admin-level alerts → collections dashboard
               case 'debt_overdue_escalation':
               case 'broken_ptps_admin':
               case 'stale_cash_admin':
