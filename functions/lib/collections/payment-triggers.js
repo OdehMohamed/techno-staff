@@ -266,7 +266,11 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
         sendFCMNotification({
           token,
           notification: {title, body},
-          data: {paymentId, type: "payment_recorded"},
+          data: {paymentId, type: "payment_recorded", click_action: "FLUTTER_NOTIFICATION_CLICK"},
+          android: {
+            priority: "high",
+            notification: {channelId: "task_notifications"},
+          },
         }) :
         Promise.resolve();
 

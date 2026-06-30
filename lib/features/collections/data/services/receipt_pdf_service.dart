@@ -34,10 +34,6 @@ class _L {
   String get receivedBy => ar ? 'استُلم بواسطة' : 'Received by';
   String get remainingBalance => ar ? 'الرصيد المتبقي' : 'Remaining balance';
   String get date => ar ? 'التاريخ' : 'Date';
-  String get disclaimer => ar
-      ? 'هذا الإيصال إثبات للدفع المستلم — الإيصال الرسمي يُقدَّم بشكل منفصل'
-      : 'This receipt is a record of payment received — Official receipt to be provided separately';
-  String get page => ar ? 'صفحة' : 'Page';
 
   String methodLabel(String method) {
     switch (method) {
@@ -205,15 +201,39 @@ Future<File> generateReceiptPdf({
               style: base(size: 9, color: _kMuted),
             ),
           ),
+          // Second "in words" line: label direction differs from content direction,
+          // so render them as separate Text widgets in a Row to avoid reversed glyphs.
           pw.Padding(
             padding: const pw.EdgeInsets.only(bottom: 6),
-            child: pw.Text(
-              _pdfText('$secondLabel: $secondWords'),
-              textAlign: isAr ? pw.TextAlign.left : pw.TextAlign.right,
-              textDirection: isAr
-                  ? pw.TextDirection.ltr
-                  : pw.TextDirection.rtl,
-              style: base(size: 9, color: _kMuted),
+            child: pw.Row(
+              children: isAr
+                  ? [
+                      // AR locale: Arabic label (RTL) + English value (LTR).
+                      // In RTL page, Row lays children right→left: label on right, value on left.
+                      pw.Text(
+                        _pdfText(secondLabel),
+                        textDirection: pw.TextDirection.rtl,
+                        style: base(size: 9, color: _kMuted),
+                      ),
+                      pw.Text(
+                        ': $secondWords',
+                        textDirection: pw.TextDirection.ltr,
+                        style: base(size: 9, color: _kMuted),
+                      ),
+                    ]
+                  : [
+                      // EN locale: English label (LTR) + Arabic value (RTL).
+                      // In LTR page, Row lays children left→right: label on left, value on right.
+                      pw.Text(
+                        '$secondLabel: ',
+                        style: base(size: 9, color: _kMuted),
+                      ),
+                      pw.Text(
+                        _pdfText(secondWords),
+                        textDirection: pw.TextDirection.rtl,
+                        style: base(size: 9, color: _kMuted),
+                      ),
+                    ],
             ),
           ),
           pw.Divider(color: _kDivider, height: 10),
@@ -227,26 +247,6 @@ Future<File> generateReceiptPdf({
             rtlValue: _containsArabic(payment.collectorName),
           ),
           labelValue(l.remainingBalance, balanceFormatted),
-          pw.Divider(color: _kDivider, height: 16),
-
-          // Disclaimer
-          pw.Center(
-            child: pw.Text(
-              _pdfText(l.disclaimer),
-              textAlign: pw.TextAlign.center,
-              textDirection: dir,
-              style: base(size: 8, color: _kMuted),
-            ),
-          ),
-
-          // Page number
-          pw.Spacer(),
-          pw.Center(
-            child: pw.Text(
-              _pdfText('${l.page} 1'),
-              style: base(size: 8, color: _kMuted),
-            ),
-          ),
         ],
       ),
     ),
