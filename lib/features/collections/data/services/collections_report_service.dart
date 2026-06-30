@@ -108,7 +108,8 @@ Future<pw.MemoryImage> _logo() async => pw.MemoryImage(
       (await rootBundle.load('assets/images/logo.png')).buffer.asUint8List(),
     );
 
-String _fmt(int agorot) => '₪${(agorot / 100).toStringAsFixed(2)}';
+// Cairo font does not include the ₪ glyph (U+20AA). Use ILS in PDFs.
+String _fmt(int agorot) => 'ILS ${(agorot / 100).toStringAsFixed(2)}';
 String _fmtDate(DateTime dt, String locale) =>
     DateFormat('d MMM yyyy', locale).format(dt.toLocal());
 

@@ -53,14 +53,12 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   }
 
   Future<void> _openPaymentDetail(PaymentModel p) async {
-    final cubit = context.read<PaymentsCubit>();
-    final v = await Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       RouteNames.paymentDetail,
       arguments: p,
     );
-    if (!mounted) return;
-    if (v == true) cubit.loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
+    // No manual reload needed: the real-time stream auto-reflects cancellations.
   }
 
   Future<void> _openLogVisit() async {
@@ -77,14 +75,13 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   }
 
   Future<void> _openRecordPayment() async {
-    final cubit = context.read<PaymentsCubit>();
-    final v = await Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       RouteNames.recordPayment,
       arguments: _debt,
     );
-    if (!mounted) return;
-    if (v == true) cubit.loadDebtPayments(_debt.id, forCollectorId: _forCollectorId);
+    // No manual reload needed: the real-time stream picks up the new payment
+    // and the CF-assigned receiptNumber automatically.
   }
 
   void _syncFromDebts(List<DebtModel> debts) {

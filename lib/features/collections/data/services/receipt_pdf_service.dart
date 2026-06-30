@@ -85,10 +85,11 @@ Future<File> generateReceiptPdf({
 
   final dateLabel = DateFormat('d MMMM yyyy  HH:mm', locale)
       .format(payment.collectedAt.toLocal());
+  // Cairo font does not include the ₪ glyph (U+20AA). Use ILS in PDFs.
   final amountFormatted =
-      '₪${(payment.amount / 100).toStringAsFixed(2)}';
+      'ILS ${(payment.amount / 100).toStringAsFixed(2)}';
   final balanceFormatted =
-      '₪${(remainingBalanceAfterPayment / 100).toStringAsFixed(2)}';
+      'ILS ${(remainingBalanceAfterPayment / 100).toStringAsFixed(2)}';
 
   final wordsEn = amountInWords(payment.amount, arabic: false);
   final wordsAr = amountInWords(payment.amount, arabic: true);

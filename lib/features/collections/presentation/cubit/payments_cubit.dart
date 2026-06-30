@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/firebase_paths.dart';
@@ -8,12 +9,13 @@ import 'payments_state.dart';
 
 class PaymentsCubit extends Cubit<PaymentsState> {
   final PaymentsRepository _repo;
+  StreamSubscription<List<PaymentModel>>? _debtPaymentsSubscription;
 
   PaymentsCubit(this._repo) : super(const PaymentsState());
 
-  // Load payments for a specific debt (debt detail payment history tab).
-  // Collectors must pass their own uid as forCollectorId — required by Firestore
-  // security rules (collection query must constrain collectorId for non-admin reads).
+  // Subscribe to real-time updates for a debt's payments (debt detail screen).
+  // Automatically reflects CF updates (e.g. receiptNumber assignment) without a
+  // manual reload. Cancels any previous subscription before starting a new one.
   // Does NOT reset cashOnHand — preserves the collector's running total.
   Future<void> loadDebtPayments(String debtId, {String? forCollectorId}) async {
     emit(state.copyWith(
@@ -21,17 +23,26 @@ class PaymentsCubit extends Cubit<PaymentsState> {
       payments: const [],
       clearError: true,
     ));
-    try {
-      final payments =
-          await _repo.getByDebt(debtId, forCollectorId: forCollectorId);
-      emit(state.copyWith(status: CollectionsStatus.loaded, payments: payments));
-    } catch (_) {
-      emit(state.copyWith(
-        status: CollectionsStatus.error,
-        payments: const [],
-        error: 'failed_to_load_payments',
-      ));
-    }
+    await _debtPaymentsSubscription?.cancel();
+    _debtPaymentsSubscription = _repo
+        .streamByDebt(debtId, forCollectorId: forCollectorId)
+        .listen(
+          (payments) => emit(state.copyWith(
+            status: CollectionsStatus.loaded,
+            payments: payments,
+          )),
+          onError: (_) => emit(state.copyWith(
+            status: CollectionsStatus.error,
+            payments: const [],
+            error: 'failed_to_load_payments',
+          )),
+        );
+  }
+
+  @override
+  Future<void> close() async {
+    await _debtPaymentsSubscription?.cancel();
+    return super.close();
   }
 
   // Load collector's pending_handover payments and re-read maxCashOnHand from

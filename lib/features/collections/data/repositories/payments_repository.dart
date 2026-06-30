@@ -8,27 +8,26 @@ class PaymentsRepository {
   PaymentsRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // Load payments for a specific debt.
-  // Collectors must pass their own uid as forCollectorId — Firestore security rules
-  // require the query to include where('collectorId', ==, uid) for non-admin reads.
-  // Admins pass null (no collectorId constraint needed).
-  // No orderBy — client-sorts by collectedAt desc to avoid a missing composite index.
-  Future<List<PaymentModel>> getByDebt(
+  // Real-time stream of payments for a specific debt.
+  // Automatically pushes updates (e.g. CF writing receiptNumber) without a manual reload.
+  // Collectors must pass their own uid — Firestore rules require collectorId constraint.
+  Stream<List<PaymentModel>> streamByDebt(
     String debtId, {
     String? forCollectorId,
-  }) async {
+  }) {
     var query = _firestore
         .collection(FirebasePaths.payments)
         .where('debtId', isEqualTo: debtId);
     if (forCollectorId != null) {
       query = query.where('collectorId', isEqualTo: forCollectorId);
     }
-    final snap = await query.get(const GetOptions(source: Source.server));
-    final list = snap.docs
-        .map((d) => PaymentModel.fromMap(d.data(), d.id))
-        .toList();
-    list.sort((a, b) => b.collectedAt.compareTo(a.collectedAt));
-    return list;
+    return query.snapshots().map((snap) {
+      final list = snap.docs
+          .map((d) => PaymentModel.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.collectedAt.compareTo(a.collectedAt));
+      return list;
+    });
   }
 
   // Load collector's pending_handover payments (for cash on hand + handover init).
