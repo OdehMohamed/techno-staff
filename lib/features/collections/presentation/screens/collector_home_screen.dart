@@ -250,7 +250,9 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
                     context,
                     RouteNames.debtDetail,
                     arguments: debt,
-                  ),
+                  ).then((_) {
+                    if (mounted) _refresh();
+                  }),
                   child: AppCard(
                     child: Row(
                       children: [

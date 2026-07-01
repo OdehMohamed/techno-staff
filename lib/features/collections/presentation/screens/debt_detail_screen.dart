@@ -80,8 +80,16 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
       RouteNames.recordPayment,
       arguments: _debt,
     );
-    // No manual reload needed: the real-time stream picks up the new payment
-    // and the CF-assigned receiptNumber automatically.
+    if (!mounted) return;
+    // The payment list updates via the real-time stream, but _debt.remainingBalance
+    // and _debt.status are only refreshed when a debt cubit reloads its list.
+    // Reload the appropriate cubit so _syncFromDebts fires with CF-updated values.
+    final user = context.read<AuthCubit>().state.user;
+    if (user?.role == 'collector') {
+      context.read<CollectorDebtsCubit>().loadCollectorDebts(user!.id);
+    } else {
+      context.read<DebtsAdminCubit>().loadCustomerDebts(_debt.customerId);
+    }
   }
 
   void _syncFromDebts(List<DebtModel> debts) {
