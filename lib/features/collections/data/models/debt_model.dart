@@ -32,6 +32,12 @@ class DebtModel {
   final int daysPastDue;
   final String agingBucket; // 'current' | '1-30' | '31-60' | '61-90' | '90+'
   final DateTime? lastOverdueEscalationAt;
+  final DateTime? settledAt;
+  final bool hasPendingSettlementRequest;
+  final int? pendingSettlementAmount;
+  final String? pendingSettlementReason;
+  final String? pendingSettlementRequestedByName;
+  final DateTime? pendingSettlementRequestedAt;
 
   const DebtModel({
     required this.id,
@@ -62,6 +68,12 @@ class DebtModel {
     this.daysPastDue = 0,
     this.agingBucket = 'current',
     this.lastOverdueEscalationAt,
+    this.settledAt,
+    this.hasPendingSettlementRequest = false,
+    this.pendingSettlementAmount,
+    this.pendingSettlementReason,
+    this.pendingSettlementRequestedByName,
+    this.pendingSettlementRequestedAt,
   });
 
   static String formatAmountIls(int agorot) {
@@ -111,6 +123,23 @@ class DebtModel {
       agingBucket: map['agingBucket'] as String? ?? 'current',
       lastOverdueEscalationAt:
           (map['lastOverdueEscalationAt'] as Timestamp?)?.toDate(),
+      settledAt: (map['settledAt'] as Timestamp?)?.toDate(),
+      hasPendingSettlementRequest:
+          map['hasPendingSettlementRequest'] as bool? ?? false,
+      pendingSettlementAmount: (map['settlementRequest'] is Map)
+          ? ((map['settlementRequest'] as Map)['requestedAmount'] as num?)
+              ?.toInt()
+          : null,
+      pendingSettlementReason: (map['settlementRequest'] is Map)
+          ? (map['settlementRequest'] as Map)['reason'] as String?
+          : null,
+      pendingSettlementRequestedByName: (map['settlementRequest'] is Map)
+          ? (map['settlementRequest'] as Map)['requestedByName'] as String?
+          : null,
+      pendingSettlementRequestedAt: (map['settlementRequest'] is Map)
+          ? ((map['settlementRequest'] as Map)['requestedAt'] as Timestamp?)
+              ?.toDate()
+          : null,
     );
   }
 
@@ -175,6 +204,12 @@ class DebtModel {
     int? daysPastDue,
     String? agingBucket,
     DateTime? lastOverdueEscalationAt,
+    DateTime? settledAt,
+    bool? hasPendingSettlementRequest,
+    int? pendingSettlementAmount,
+    String? pendingSettlementReason,
+    String? pendingSettlementRequestedByName,
+    DateTime? pendingSettlementRequestedAt,
   }) {
     return DebtModel(
       id: id ?? this.id,
@@ -205,6 +240,15 @@ class DebtModel {
       daysPastDue: daysPastDue ?? this.daysPastDue,
       agingBucket: agingBucket ?? this.agingBucket,
       lastOverdueEscalationAt: lastOverdueEscalationAt ?? this.lastOverdueEscalationAt,
+      settledAt: settledAt ?? this.settledAt,
+      hasPendingSettlementRequest:
+          hasPendingSettlementRequest ?? this.hasPendingSettlementRequest,
+      pendingSettlementAmount: pendingSettlementAmount ?? this.pendingSettlementAmount,
+      pendingSettlementReason: pendingSettlementReason ?? this.pendingSettlementReason,
+      pendingSettlementRequestedByName:
+          pendingSettlementRequestedByName ?? this.pendingSettlementRequestedByName,
+      pendingSettlementRequestedAt:
+          pendingSettlementRequestedAt ?? this.pendingSettlementRequestedAt,
     );
   }
 }

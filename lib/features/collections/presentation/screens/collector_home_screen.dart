@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../../../features/notifications/presentation/cubit/notifications_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../data/models/debt_model.dart';
@@ -22,6 +23,9 @@ class CollectorHomeScreen extends StatefulWidget {
 }
 
 class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +34,21 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
       context.read<CollectorDebtsCubit>().loadCollectorDebts(userId);
       context.read<PaymentsCubit>().loadCollectorPendingPayments(userId);
     }
+    _searchCtrl.addListener(() {
+      setState(() => _searchQuery = _searchCtrl.text.toLowerCase().trim());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _matchesDebt(DebtModel debt) {
+    if (_searchQuery.isEmpty) return true;
+    return debt.customerName.toLowerCase().contains(_searchQuery) ||
+        (debt.description ?? '').toLowerCase().contains(_searchQuery);
   }
 
   @override
@@ -38,6 +57,25 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
       appBar: AppBar(
         title: Text('my_debts'.tr()),
         automaticallyImplyLeading: false,
+        actions: [
+          BlocBuilder<NotificationsCubit, NotificationsState>(
+            builder: (context, notifState) {
+              final unread = notifState.notifications
+                  .where((n) => !n.isRead)
+                  .length;
+              return IconButton(
+                icon: Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text(unread > 9 ? '9+' : '$unread'),
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                tooltip: 'notifications'.tr(),
+                onPressed: () =>
+                    Navigator.pushNamed(context, RouteNames.notifications),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -198,6 +236,27 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
               );
             },
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.md, AppSizes.sm, AppSizes.md, 0),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'search_hint'.tr(),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _searchCtrl.clear(),
+                      )
+                    : null,
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
           Expanded(
             child: BlocBuilder<CollectorDebtsCubit, DebtsState>(
         builder: (context, state) {
@@ -235,15 +294,16 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
             );
           }
 
+          final visibleDebts = state.debts.where(_matchesDebt).toList();
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSizes.md),
-              itemCount: state.debts.length,
+              itemCount: visibleDebts.length,
               separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
               itemBuilder: (context, index) {
-                final debt = state.debts[index];
+                final debt = visibleDebts[index];
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () => Navigator.pushNamed(

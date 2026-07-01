@@ -22,4 +22,33 @@ class CollectorDebtsCubit extends Cubit<DebtsState> {
       ));
     }
   }
+
+  Future<void> requestSettlement(
+    String debtId, {
+    required int requestedAmount,
+    required String reason,
+    required String collectorId,
+    required String collectorName,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.requestSettlement(
+        debtId,
+        requestedAmount: requestedAmount,
+        reason: reason,
+        collectorId: collectorId,
+        collectorName: collectorName,
+      );
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+    } catch (_) {
+      emit(state.copyWith(
+        formStatus: CollectionsStatus.error,
+        formError: 'failed_to_request_settlement',
+      ));
+    }
+  }
+
+  void clearFormStatus() {
+    emit(state.copyWith(formStatus: CollectionsStatus.initial, clearFormError: true));
+  }
 }

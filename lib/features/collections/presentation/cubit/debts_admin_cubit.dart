@@ -146,6 +146,61 @@ class DebtsAdminCubit extends Cubit<DebtsState> {
     }
   }
 
+  Future<void> approveSettlementRequest(
+    String debtId,
+    String customerId, {
+    required int settledAmount,
+    required String adminName,
+    required String collectorId,
+    required String collectorName,
+    required String customerName,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.approveSettlementRequest(
+        debtId,
+        settledAmount: settledAmount,
+        adminName: adminName,
+        collectorId: collectorId,
+        collectorName: collectorName,
+        customerId: customerId,
+        customerName: customerName,
+      );
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+      loadCustomerDebts(customerId);
+    } catch (_) {
+      emit(state.copyWith(
+        formStatus: CollectionsStatus.error,
+        formError: 'failed_to_approve_settlement',
+      ));
+    }
+  }
+
+  Future<void> rejectSettlementRequest(
+    String debtId,
+    String customerId, {
+    required String adminId,
+    required String adminName,
+    String? rejectionReason,
+  }) async {
+    emit(state.copyWith(formStatus: CollectionsStatus.loading, clearFormError: true));
+    try {
+      await _repo.rejectSettlementRequest(
+        debtId,
+        adminId: adminId,
+        adminName: adminName,
+        rejectionReason: rejectionReason,
+      );
+      emit(state.copyWith(formStatus: CollectionsStatus.loaded));
+      loadCustomerDebts(customerId);
+    } catch (_) {
+      emit(state.copyWith(
+        formStatus: CollectionsStatus.error,
+        formError: 'failed_to_reject_settlement',
+      ));
+    }
+  }
+
   void clearFormStatus() {
     emit(state.copyWith(formStatus: CollectionsStatus.initial, clearFormError: true));
   }

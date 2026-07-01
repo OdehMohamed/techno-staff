@@ -143,6 +143,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'stale_cash':
       case 'stale_cash_admin':
         return Icons.account_balance_wallet_outlined;
+      case 'settlement_requested':
+        return Icons.pending_actions_outlined;
+      case 'settlement_approved':
+        return Icons.price_check_outlined;
+      case 'settlement_rejected':
+        return Icons.cancel_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -281,6 +287,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     context, RouteNames.collectionsDashboard);
                 break;
 
+              // Settlement request/approval/rejection → debt detail
+              case 'settlement_requested':
+              case 'settlement_approved':
+              case 'settlement_rejected':
+                final debtId =
+                    (notification.data?['debtId'] ?? '').toString();
+                if (debtId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.debtDetailLoader,
+                    arguments: debtId,
+                  );
+                }
+                break;
+
               default:
                 break;
             }
@@ -384,6 +405,12 @@ String _buildNotificationTitle(InAppNotificationModel notification) {
     case 'stale_cash':
     case 'stale_cash_admin':
       return 'cash_on_hand'.tr();
+    case 'settlement_requested':
+      return 'settlement_request_pending'.tr();
+    case 'settlement_approved':
+      return 'settlement_approved_title'.tr();
+    case 'settlement_rejected':
+      return 'settlement_rejected_title'.tr();
     default:
       return 'notifications'.tr();
   }
@@ -459,6 +486,23 @@ String _buildNotificationBody(InAppNotificationModel notification) {
       final name = (data['collectorName'] ?? '').toString();
       final cash = (data['amountFormatted'] ?? '').toString();
       return [name, cash].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_requested':
+      // Admin receives: collectorName requested amount for customerName
+      final collector = (data['collectorName'] ?? '').toString();
+      final customer = (data['customerName'] ?? '').toString();
+      final amount = (data['amountFormatted'] ?? '').toString();
+      return [collector, customer, amount].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_approved':
+      // Collector receives: customerName · amount · adminName
+      final approvedCustomer = (data['customerName'] ?? '').toString();
+      final approvedAmount = (data['amountFormatted'] ?? '').toString();
+      final admin = (data['adminName'] ?? '').toString();
+      return [approvedCustomer, approvedAmount, admin].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_rejected':
+      // Collector receives: customerName (+ optional rejection reason)
+      final rejectedCustomer = (data['customerName'] ?? '').toString();
+      final rejectionReason = (data['rejectionReason'] ?? '').toString();
+      return [rejectedCustomer, rejectionReason].where((s) => s.isNotEmpty).join(' · ');
     default:
       return '';
   }

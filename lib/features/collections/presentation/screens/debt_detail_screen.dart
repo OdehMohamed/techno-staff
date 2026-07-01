@@ -2,14 +2,17 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../data/models/customer_model.dart';
 import '../../data/models/debt_model.dart';
 import '../../data/models/payment_model.dart';
 import '../../data/models/visit_model.dart';
+import '../../data/repositories/customers_repository.dart';
 import '../cubit/collector_debts_cubit.dart';
 import '../cubit/customers_state.dart';
 import '../cubit/debts_admin_cubit.dart';
@@ -36,6 +39,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   // Captured in initState; passed to loadDebtPayments so the Firestore rule's
   // collectorId constraint is satisfied for non-admin collection queries.
   String? _forCollectorId;
+  CustomerModel? _customer;
 
   @override
   void initState() {
@@ -50,6 +54,14 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     context
         .read<VisitCubit>()
         .loadDebtVisits(_debt.id, forCollectorId: _forCollectorId);
+    _fetchCustomer();
+  }
+
+  Future<void> _fetchCustomer() async {
+    final customer = await CustomersRepository().getById(_debt.customerId);
+    if (mounted && customer != null) {
+      setState(() => _customer = customer);
+    }
   }
 
   Future<void> _openPaymentDetail(PaymentModel p) async {
@@ -99,6 +111,211 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     }
   }
 
+  Future<void> _showRequestSettlementDialog() async {
+    final amountCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+    String? amountError;
+    String? reasonError;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('request_settlement'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountCtrl,
+                decoration: InputDecoration(
+                  labelText: 'settlement_amount'.tr(),
+                  prefixText: '₪ ',
+                  errorText: amountError,
+                  helperText:
+                      '${'remaining_balance'.tr()}: ${DebtModel.formatAmountIls(_debt.remainingBalance)}',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                autofocus: true,
+                onChanged: (_) {
+                  if (amountError != null) setDialogState(() => amountError = null);
+                },
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextField(
+                controller: reasonCtrl,
+                decoration: InputDecoration(
+                  labelText: 'reason'.tr(),
+                  hintText: 'settlement_request_reason_hint'.tr(),
+                  errorText: reasonError,
+                ),
+                maxLines: 2,
+                onChanged: (_) {
+                  if (reasonError != null) setDialogState(() => reasonError = null);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('cancel'.tr()),
+            ),
+            FilledButton(
+              onPressed: () {
+                final agorot = DebtModel.parseAmountIls(amountCtrl.text);
+                if (agorot <= 0 || agorot >= _debt.remainingBalance) {
+                  setDialogState(() => amountError = 'amount_required'.tr());
+                  return;
+                }
+                if (reasonCtrl.text.trim().isEmpty) {
+                  setDialogState(() => reasonError = 'reason_required'.tr());
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: Text('confirm'.tr()),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final user = context.read<AuthCubit>().state.user!;
+      context.read<CollectorDebtsCubit>().requestSettlement(
+        _debt.id,
+        requestedAmount: DebtModel.parseAmountIls(amountCtrl.text),
+        reason: reasonCtrl.text.trim(),
+        collectorId: user.id,
+        collectorName: user.name,
+      );
+    }
+  }
+
+  Future<void> _approveSettlementRequest() async {
+    final user = context.read<AuthCubit>().state.user!;
+    final initialAmount = _debt.pendingSettlementAmount ?? _debt.remainingBalance;
+    final amountCtrl = TextEditingController(
+      text: (initialAmount / 100).toStringAsFixed(2),
+    );
+    String? amountError;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('approve'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_debt.pendingSettlementReason != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSizes.sm),
+                  child: Text(
+                    '${'reason'.tr()}: ${_debt.pendingSettlementReason}',
+                    style: Theme.of(ctx).textTheme.bodySmall,
+                  ),
+                ),
+              TextField(
+                controller: amountCtrl,
+                decoration: InputDecoration(
+                  labelText: 'settlement_amount'.tr(),
+                  prefixText: '₪ ',
+                  errorText: amountError,
+                  helperText:
+                      '${'remaining_balance'.tr()}: ${DebtModel.formatAmountIls(_debt.remainingBalance)}',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                autofocus: true,
+                onChanged: (_) {
+                  if (amountError != null) setDialogState(() => amountError = null);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('cancel'.tr()),
+            ),
+            FilledButton(
+              onPressed: () {
+                final agorot = DebtModel.parseAmountIls(amountCtrl.text);
+                if (agorot <= 0 || agorot > _debt.remainingBalance) {
+                  setDialogState(() => amountError = 'amount_required'.tr());
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: Text('approve'.tr()),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      context.read<DebtsAdminCubit>().approveSettlementRequest(
+        _debt.id,
+        _debt.customerId,
+        settledAmount: DebtModel.parseAmountIls(amountCtrl.text),
+        adminName: user.name,
+        collectorId: _debt.assignedCollectorId,
+        collectorName: _debt.assignedCollectorName,
+        customerName: _debt.customerName,
+      );
+    }
+  }
+
+  Future<void> _rejectSettlementRequest() async {
+    final user = context.read<AuthCubit>().state.user!;
+    final reasonCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('reject'.tr()),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: InputDecoration(
+            labelText: 'reason'.tr(),
+            hintText: 'reject_reason_hint'.tr(),
+          ),
+          maxLines: 2,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('cancel'.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('reject'.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      context.read<DebtsAdminCubit>().rejectSettlementRequest(
+        _debt.id,
+        _debt.customerId,
+        adminId: user.id,
+        adminName: user.name,
+        rejectionReason: reasonCtrl.text.trim().isEmpty
+            ? null
+            : reasonCtrl.text.trim(),
+      );
+    }
+  }
+
   bool get _isTerminal =>
       _debt.isCancelled ||
       _debt.status == 'settled' ||
@@ -108,15 +325,56 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   Widget build(BuildContext context) {
     final isAdmin = context.read<AuthCubit>().state.user?.role == 'admin';
 
-    return BlocListener<DebtsAdminCubit, DebtsState>(
-      listenWhen: (prev, curr) =>
-          curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
-      listener: (_, state) => _syncFromDebts(state.debts),
-      child: BlocListener<CollectorDebtsCubit, DebtsState>(
-        listenWhen: (prev, curr) =>
-            curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
-        listener: (_, state) => _syncFromDebts(state.debts),
-        child: Scaffold(
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<DebtsAdminCubit, DebtsState>(
+          listenWhen: (prev, curr) =>
+              curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
+          listener: (_, state) => _syncFromDebts(state.debts),
+        ),
+        BlocListener<CollectorDebtsCubit, DebtsState>(
+          listenWhen: (prev, curr) =>
+              curr.status == CollectionsStatus.loaded && prev.debts != curr.debts,
+          listener: (_, state) => _syncFromDebts(state.debts),
+        ),
+        BlocListener<CollectorDebtsCubit, DebtsState>(
+          listenWhen: (prev, curr) =>
+              prev.formStatus != curr.formStatus &&
+              curr.formStatus != CollectionsStatus.initial,
+          listener: (context, state) {
+            if (state.formStatus == CollectionsStatus.loaded) {
+              context.read<CollectorDebtsCubit>().clearFormStatus();
+              final userId = context.read<AuthCubit>().state.user?.id;
+              if (userId != null) {
+                context.read<CollectorDebtsCubit>().loadCollectorDebts(userId);
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('settlement_request_submitted'.tr())),
+              );
+            } else if (state.formStatus == CollectionsStatus.error &&
+                state.formError != null) {
+              context.read<CollectorDebtsCubit>().clearFormStatus();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.formError!.tr())),
+              );
+            }
+          },
+        ),
+        BlocListener<DebtsAdminCubit, DebtsState>(
+          listenWhen: (prev, curr) =>
+              prev.formStatus != curr.formStatus &&
+              curr.formStatus == CollectionsStatus.error,
+          listener: (context, state) {
+            if (state.formError != null) {
+              context.read<DebtsAdminCubit>().clearFormStatus();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.formError!.tr())),
+              );
+            }
+          },
+        ),
+      ],
+      child: Scaffold(
           appBar: AppBar(
             title: Text('debt_details'.tr()),
             actions: [
@@ -174,6 +432,33 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     ],
                   ),
                 ),
+                // Customer contact card — shown when customer data is available
+                if (_customer != null) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'customer_details'.tr(),
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: AppSizes.xs),
+                        _PhoneRow('phone'.tr(), _customer!.phone),
+                        if (_customer!.phone2 != null)
+                          _PhoneRow('phone2'.tr(), _customer!.phone2!),
+                        if (_customer!.address != null)
+                          _InfoRow('address'.tr(), _customer!.address!),
+                        if (_customer!.guarantor != null)
+                          _InfoRow('guarantor'.tr(), _customer!.guarantor!),
+                        if (_customer!.guarantorPhone != null)
+                          _PhoneRow('guarantor_phone'.tr(), _customer!.guarantorPhone!),
+                        if (_customer!.notes != null)
+                          _InfoRow('notes'.tr(), _customer!.notes!),
+                      ],
+                    ),
+                  ),
+                ],
                 if (_debt.isCancelled) ...[
                   const SizedBox(height: AppSizes.md),
                   AppCard(
@@ -223,6 +508,70 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                         _InfoRow('settlement_amount'.tr(), DebtModel.formatAmountIls(_debt.settlementAmount!)),
                         if (_debt.settlementNotes != null)
                           _InfoRow('settlement_notes'.tr(), _debt.settlementNotes!),
+                      ],
+                    ),
+                  ),
+                ],
+                // Admin: pending settlement request card
+                if (isAdmin && _debt.hasPendingSettlementRequest) ...[
+                  const SizedBox(height: AppSizes.md),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.pending_actions_outlined,
+                                color: Colors.orange, size: 18),
+                            const SizedBox(width: AppSizes.sm),
+                            Text(
+                              'settlement_request_pending'.tr(),
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: Colors.orange,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        if (_debt.pendingSettlementAmount != null)
+                          _InfoRow(
+                            'settlement_amount'.tr(),
+                            DebtModel.formatAmountIls(_debt.pendingSettlementAmount!),
+                          ),
+                        if (_debt.pendingSettlementReason != null)
+                          _InfoRow('reason'.tr(), _debt.pendingSettlementReason!),
+                        if (_debt.pendingSettlementRequestedByName != null)
+                          _InfoRow('requested_by'.tr(),
+                              _debt.pendingSettlementRequestedByName!),
+                        if (_debt.pendingSettlementRequestedAt != null)
+                          _InfoRow(
+                            'date'.tr(),
+                            DateFormat.yMMMd()
+                                .format(_debt.pendingSettlementRequestedAt!),
+                          ),
+                        const SizedBox(height: AppSizes.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _rejectSettlementRequest,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.error,
+                                  side: BorderSide(
+                                      color: Theme.of(context).colorScheme.error),
+                                ),
+                                child: Text('reject'.tr()),
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.sm),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: _approveSettlementRequest,
+                                child: Text('approve'.tr()),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -412,12 +761,54 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       onPressed: _openLogVisit,
                     ),
                   ),
+                  // Collector: request settlement or show pending badge
+                  if (!isAdmin) ...[
+                    const SizedBox(height: AppSizes.sm),
+                    if (_debt.hasPendingSettlementRequest)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.md,
+                          vertical: AppSizes.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: Colors.orange.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.pending_actions_outlined,
+                                color: Colors.orange, size: 16),
+                            const SizedBox(width: AppSizes.sm),
+                            Expanded(
+                              child: Text(
+                                'settlement_request_pending_review'.tr(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.orange),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.handshake_outlined),
+                          label: Text('request_settlement'.tr()),
+                          onPressed: _showRequestSettlementDialog,
+                        ),
+                      ),
+                  ],
                 ],
               ],
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -761,6 +1152,55 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneRow extends StatelessWidget {
+  final String label;
+  final String phone;
+
+  const _PhoneRow(this.label, this.phone);
+
+  Future<void> _call() async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: _call,
+              child: Text(
+                phone,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          Icon(Icons.call_outlined,
+              size: 16, color: Theme.of(context).colorScheme.primary),
         ],
       ),
     );

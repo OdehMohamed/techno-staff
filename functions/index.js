@@ -12,6 +12,7 @@ const handoverTriggers = require("./lib/collections/handover-triggers");
 const installmentTriggers = require("./lib/collections/installment-triggers");
 const visitTriggers = require("./lib/collections/visit-triggers");
 const debtTriggers = require("./lib/collections/debt-triggers");
+const settlementTriggers = require("./lib/collections/settlement-triggers");
 const schedulers = require("./lib/collections/schedulers");
 
 exports.generateRecurringTaskInstances = tasks.generateRecurringTaskInstances;
@@ -49,6 +50,8 @@ exports.sendInstallmentDueReminders = installmentTriggers.sendInstallmentDueRemi
 exports.onVisitCreated = visitTriggers.onVisitCreated;
 exports.onDebtCreated = debtTriggers.onDebtCreated;
 exports.onDebtStatusChanged = debtTriggers.onDebtStatusChanged;
+exports.onSettlementRequested = settlementTriggers.onSettlementRequested;
+exports.approveCollectorSettlementRequest = settlementTriggers.approveCollectorSettlementRequest;
 
 exports.updateDebtAgingBuckets = schedulers.updateDebtAgingBuckets;
 exports.checkBrokenPtps = schedulers.checkBrokenPtps;

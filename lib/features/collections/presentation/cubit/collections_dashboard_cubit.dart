@@ -80,12 +80,19 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
             .collection('users')
             .where('role', isEqualTo: 'collector')
             .get(const GetOptions(source: Source.server)),
+        // 4. Settle-for-less events — status filter applied client-side.
+        _firestore
+            .collection('debts')
+            .where('settledAt',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(monthStart))
+            .get(const GetOptions(source: Source.server)),
       ]);
 
       final todaySnap = futures[0];
       final weekSnap = futures[1];
       final monthSnap = futures[2];
       final collectorsSnap = futures[3];
+      final settledSnap = futures[4];
 
       int collectedToday = 0;
       for (final d in todaySnap.docs) {
@@ -97,6 +104,20 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
       for (final d in weekSnap.docs) {
         if (d.data()['isCancelled'] == true) continue;
         collectedWeek += ((d.data()['amount'] as num?)?.toInt() ?? 0);
+      }
+
+      // Settled debts (settle-for-less) — amounts not in payments collection
+      int settledToday = 0;
+      int settledWeek = 0;
+      int settledMonth = 0;
+      for (final d in settledSnap.docs) {
+        if (d.data()['status'] != 'settled') continue;
+        final amt = (d.data()['settlementAmount'] as num?)?.toInt() ?? 0;
+        final at = (d.data()['settledAt'] as Timestamp?)?.toDate();
+        if (at == null) continue;
+        settledMonth += amt;
+        if (!at.isBefore(weekStart)) settledWeek += amt;
+        if (!at.isBefore(todayStart)) settledToday += amt;
       }
 
       // Build month-level per-collector map at the same time
@@ -143,9 +164,9 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
       emit(state.copyWith(
         status: CollectionsStatus.loaded,
         totalOutstandingAgorot: totalOutstanding,
-        collectedTodayAgorot: collectedToday,
-        collectedThisWeekAgorot: collectedWeek,
-        collectedThisMonthAgorot: collectedMonth,
+        collectedTodayAgorot: collectedToday + settledToday,
+        collectedThisWeekAgorot: collectedWeek + settledWeek,
+        collectedThisMonthAgorot: collectedMonth + settledMonth,
         totalCashWithCollectorsAgorot: totalCash,
         overdueDebtCount: overdueCount,
         overdueDebtTotalAgorot: overdueTotal,

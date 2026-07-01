@@ -53,4 +53,5 @@ class RouteNames {
   static const String collectionsDashboard = '/collections-dashboard';
   static const String agingReport = '/aging-report';
   static const String paymentDetailLoader = '/payment-detail-loader';
+  static const String debtDetailLoader = '/debt-detail-loader';
 }

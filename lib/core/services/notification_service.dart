@@ -77,16 +77,23 @@ class NotificationService {
     final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
     final paymentId = message.data['paymentId'];
+    final debtId = message.data['debtId'];
     final notifType = message.data['type'] as String?;
 
     final isChat = conversationId != null;
     final isPayment = notifType == 'payment_recorded' && paymentId != null;
+    final isDebt = debtId != null &&
+        (notifType == 'settlement_requested' ||
+            notifType == 'settlement_approved' ||
+            notifType == 'settlement_rejected');
     final channel = isChat ? _chatChannel : _taskChannel;
     final String? payload;
     if (isChat) {
       payload = 'conv:$conversationId';
     } else if (isPayment) {
       payload = 'pay:$paymentId';
+    } else if (isDebt) {
+      payload = 'debt:$debtId';
     } else {
       payload = taskId;
     }

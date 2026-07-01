@@ -122,6 +122,12 @@ Future<void> main() async {
           RouteNames.paymentDetailLoader,
           arguments: paymentId,
         );
+      } else if (payload.startsWith('debt:')) {
+        final debtId = payload.substring(5);
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.debtDetailLoader,
+          arguments: debtId,
+        );
       } else {
         AppNavigator.navigatorKey.currentState?.pushNamed(
           RouteNames.taskDetails,
@@ -334,5 +340,14 @@ void _routeCollectionsNotification(
     case 'broken_ptps_admin':
     case 'stale_cash_admin':
       nav.pushNamed(RouteNames.collectionsDashboard);
+    case 'settlement_requested':
+    case 'settlement_approved':
+    case 'settlement_rejected':
+      final debtId = (data != null && data['debtId'] != null)
+          ? data['debtId'].toString()
+          : '';
+      if (debtId.isNotEmpty) {
+        nav.pushNamed(RouteNames.debtDetailLoader, arguments: debtId);
+      }
   }
 }

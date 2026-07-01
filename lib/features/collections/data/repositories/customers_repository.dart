@@ -31,6 +31,15 @@ class CustomersRepository {
         .update(customer.toUpdateMap());
   }
 
+  Future<CustomerModel?> getById(String id) async {
+    final snap = await _firestore
+        .collection(FirebasePaths.customers)
+        .doc(id)
+        .get(const GetOptions(source: Source.server));
+    if (!snap.exists || snap.data() == null) return null;
+    return CustomerModel.fromMap(snap.data()!, snap.id);
+  }
+
   Future<List<AppUser>> getCollectors() async {
     final snap = await _firestore
         .collection(FirebasePaths.users)

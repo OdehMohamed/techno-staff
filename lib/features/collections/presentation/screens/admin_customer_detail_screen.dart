@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -97,9 +98,9 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _InfoRow('phone'.tr(), _customer.phone),
+                  _PhoneRow('phone'.tr(), _customer.phone),
                   if (_customer.phone2 != null)
-                    _InfoRow('phone2'.tr(), _customer.phone2!),
+                    _PhoneRow('phone2'.tr(), _customer.phone2!),
                   if (_customer.address != null)
                     _InfoRow('address'.tr(), _customer.address!),
                   _InfoRow('collector_role'.tr(), _customer.assignedCollectorName),
@@ -110,7 +111,7 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
                   if (_customer.guarantor != null)
                     _InfoRow('guarantor'.tr(), _customer.guarantor!),
                   if (_customer.guarantorPhone != null)
-                    _InfoRow('guarantor_phone'.tr(), _customer.guarantorPhone!),
+                    _PhoneRow('guarantor_phone'.tr(), _customer.guarantorPhone!),
                   if (_customer.externalReference != null)
                     _InfoRow('external_reference'.tr(), _customer.externalReference!),
                   if (_customer.notes != null)
@@ -286,6 +287,55 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneRow extends StatelessWidget {
+  final String label;
+  final String phone;
+
+  const _PhoneRow(this.label, this.phone);
+
+  Future<void> _call() async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: _call,
+              child: Text(
+                phone,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          Icon(Icons.call_outlined,
+              size: 16, color: Theme.of(context).colorScheme.primary),
         ],
       ),
     );

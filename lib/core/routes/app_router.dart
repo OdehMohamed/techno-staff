@@ -20,6 +20,7 @@ import 'package:techno_staff/features/collections/presentation/screens/handover_
 import 'package:techno_staff/features/collections/presentation/screens/handover_list_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/handover_verification_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/payment_detail_loader_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/debt_detail_loader_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/payment_detail_screen.dart';
 import 'package:techno_staff/features/collections/presentation/screens/record_payment_screen.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
@@ -327,6 +328,14 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => PaymentDetailLoaderScreen(
             paymentId: settings.arguments as String,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.debtDetailLoader:
+        return MaterialPageRoute(
+          builder: (_) => DebtDetailLoaderScreen(
+            debtId: settings.arguments as String,
           ),
           settings: settings,
         );

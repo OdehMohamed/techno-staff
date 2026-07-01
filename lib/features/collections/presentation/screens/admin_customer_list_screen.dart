@@ -17,10 +17,30 @@ class AdminCustomerListScreen extends StatefulWidget {
 }
 
 class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     context.read<CustomersCubit>().loadCustomers();
+    _searchCtrl.addListener(() {
+      setState(() => _searchQuery = _searchCtrl.text.toLowerCase().trim());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _matches(customer) {
+    if (_searchQuery.isEmpty) return true;
+    return customer.name.toLowerCase().contains(_searchQuery) ||
+        customer.phone.contains(_searchQuery) ||
+        (customer.address ?? '').toLowerCase().contains(_searchQuery) ||
+        customer.assignedCollectorName.toLowerCase().contains(_searchQuery);
   }
 
   String _accountStatusColor(String status) => status;
@@ -50,51 +70,82 @@ class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
         icon: const Icon(Icons.person_add_outlined),
         label: Text('add_customer'.tr()),
       ),
-      body: BlocBuilder<CustomersCubit, CustomersState>(
-        builder: (context, state) {
-          if (state.status == CollectionsStatus.loading && state.customers.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state.status == CollectionsStatus.error) {
-            return RefreshIndicator(
-              onRefresh: () => context.read<CustomersCubit>().loadCustomers(silent: true),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  EmptyStateWidget(
-                    icon: Icons.error_outline,
-                    titleKey: state.error ?? 'unknown_error',
-                  ),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.md, AppSizes.sm, AppSizes.md, 0),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'search_hint'.tr(),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _searchCtrl.clear(),
+                      )
+                    : null,
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            );
-          }
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<CustomersCubit, CustomersState>(
+              builder: (context, state) {
+                if (state.status == CollectionsStatus.loading &&
+                    state.customers.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (state.customers.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: () => context.read<CustomersCubit>().loadCustomers(silent: true),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  EmptyStateWidget(
-                    icon: Icons.people_outline,
-                    titleKey: 'no_customers_yet',
-                  ),
-                ],
-              ),
-            );
-          }
+                if (state.status == CollectionsStatus.error) {
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<CustomersCubit>().loadCustomers(silent: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        EmptyStateWidget(
+                          icon: Icons.error_outline,
+                          titleKey: state.error ?? 'unknown_error',
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-          return RefreshIndicator(
-            onRefresh: () => context.read<CustomersCubit>().loadCustomers(silent: true),
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppSizes.md).copyWith(bottom: 96),
-              itemCount: state.customers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
-              itemBuilder: (context, index) {
-                final customer = state.customers[index];
+                final customers =
+                    state.customers.where(_matches).toList();
+
+                if (customers.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<CustomersCubit>().loadCustomers(silent: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        EmptyStateWidget(
+                          icon: Icons.people_outline,
+                          titleKey: 'no_customers_yet',
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () =>
+                      context.read<CustomersCubit>().loadCustomers(silent: true),
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSizes.md).copyWith(bottom: 96),
+                    itemCount: customers.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
+                    itemBuilder: (context, index) {
+                      final customer = customers[index];
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () => Navigator.pushNamed(
@@ -156,6 +207,9 @@ class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
           );
         },
       ),
+    ),
+  ],
+),
     );
   }
 }

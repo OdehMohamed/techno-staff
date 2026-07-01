@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:techno_staff/core/constants/firebase_paths.dart';
 import '../models/debt_model.dart';
 
@@ -7,6 +8,15 @@ class DebtsRepository {
 
   DebtsRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  Future<DebtModel?> getById(String debtId) async {
+    final snap = await _firestore
+        .collection(FirebasePaths.debts)
+        .doc(debtId)
+        .get(const GetOptions(source: Source.server));
+    if (!snap.exists || snap.data() == null) return null;
+    return DebtModel.fromMap(snap.data()!, snap.id);
+  }
 
   Future<List<DebtModel>> getByCustomer(String customerId) async {
     final snap = await _firestore
@@ -137,6 +147,68 @@ class DebtsRepository {
         'authorizedByName': adminName,
         'at': FieldValue.serverTimestamp(),
       },
+      'settledAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> requestSettlement(
+    String debtId, {
+    required int requestedAmount,
+    required String reason,
+    required String collectorId,
+    required String collectorName,
+  }) async {
+    await _firestore.collection(FirebasePaths.debts).doc(debtId).update({
+      'hasPendingSettlementRequest': true,
+      'settlementRequest': {
+        'requestedAmount': requestedAmount,
+        'reason': reason,
+        'requestedBy': collectorId,
+        'requestedByName': collectorName,
+        'requestedAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> approveSettlementRequest(
+    String debtId, {
+    required int settledAmount,
+    required String adminName,
+    required String collectorId,
+    required String collectorName,
+    required String customerId,
+    required String customerName,
+  }) async {
+    await FirebaseFunctions.instance
+        .httpsCallable('approveCollectorSettlementRequest')
+        .call({
+      'debtId': debtId,
+      'settledAmount': settledAmount,
+      'adminName': adminName,
+      'collectorId': collectorId,
+      'collectorName': collectorName,
+      'customerId': customerId,
+      'customerName': customerName,
+    });
+  }
+
+  Future<void> rejectSettlementRequest(
+    String debtId, {
+    required String adminId,
+    required String adminName,
+    String? rejectionReason,
+  }) async {
+    await _firestore.collection(FirebasePaths.debts).doc(debtId).update({
+      'hasPendingSettlementRequest': false,
+      'settlementRequest.status': 'rejected',
+      'settlementRequest.reviewedBy': adminId,
+      'settlementRequest.reviewedByName': adminName,
+      'settlementRequest.reviewedAt': FieldValue.serverTimestamp(),
+      if (rejectionReason != null && rejectionReason.isNotEmpty)
+        'settlementRequest.rejectionReason': rejectionReason,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
