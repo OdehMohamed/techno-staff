@@ -77,15 +77,18 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final user = context.read<AuthCubit>().state.user!;
+    final isAdmin = user.role == 'admin';
     final agorot = DebtModel.parseAmountIls(_amountCtrl.text);
 
-    final payState = context.read<PaymentsCubit>().state;
-    if (payState.maxCashOnHand != null &&
-        payState.cashOnHand + agorot > payState.maxCashOnHand!) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('max_cash_reached_error'.tr())),
-      );
-      return;
+    if (!isAdmin) {
+      final payState = context.read<PaymentsCubit>().state;
+      if (payState.maxCashOnHand != null &&
+          payState.cashOnHand + agorot > payState.maxCashOnHand!) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('max_cash_reached_error'.tr())),
+        );
+        return;
+      }
     }
 
     final payment = PaymentModel(
@@ -104,6 +107,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       collectedAt: _collectedAt,
       createdAt: DateTime.now(),
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      isAdminPayment: isAdmin,
     );
 
     context.read<PaymentsCubit>().createPayment(payment);

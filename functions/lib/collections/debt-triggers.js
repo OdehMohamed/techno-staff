@@ -1,6 +1,7 @@
 // debt-triggers.js — onDebtStatusChanged
 // Writes collection_log entries for admin status transitions (write-off, dispute, settle).
-// The client (admin) writes the status change directly; this trigger picks it up.
+// Also syncs customer.totalOutstandingBalance when a debt is written off, cancelled,
+// or settled via settle-for-less (normal payment settlement is handled by onPaymentCreated).
 
 const {onDocumentUpdated} = require("firebase-functions/firestore");
 const admin = require("firebase-admin");
@@ -67,5 +68,37 @@ exports.onDebtStatusChanged = onDocumentUpdated("debts/{debtId}", async (event) 
     });
   } catch (err) {
     console.error("onDebtStatusChanged: collection_log failed:", err);
+  }
+
+  // Sync customer.totalOutstandingBalance for terminal transitions.
+  // written_off / cancelled: the remaining balance is forgiven — reduce customer total.
+  // settled via settleForLess (after.settlement present): no payment was recorded,
+  //   so onPaymentCreated did NOT decrement the balance — we must do it here.
+  // settled via normal payment: onPaymentCreated already decremented by the payment
+  //   amount, so we do NOT decrement again here.
+  const terminalStatuses = ["written_off", "cancelled", "settled"];
+  const prevWasNonTerminal = !terminalStatuses.includes(before.status);
+  const nowIsTerminal = terminalStatuses.includes(after.status);
+
+  if (prevWasNonTerminal && nowIsTerminal && after.customerId) {
+    let adjustment = 0;
+
+    if (after.status === "written_off" || after.status === "cancelled") {
+      adjustment = before.remainingBalance || 0;
+    } else if (after.status === "settled" && after.settlement) {
+      // settleForLess: before.remainingBalance is the outstanding amount being forgiven
+      adjustment = before.remainingBalance || 0;
+    }
+
+    if (adjustment > 0) {
+      try {
+        await db.collection("customers").doc(after.customerId).update({
+          totalOutstandingBalance: admin.firestore.FieldValue.increment(-adjustment),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (balErr) {
+        console.error("onDebtStatusChanged: customer balance sync failed:", balErr);
+      }
+    }
   }
 });

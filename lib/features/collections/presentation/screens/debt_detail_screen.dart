@@ -387,15 +387,14 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                 ),
                 if (!_isTerminal) ...[
                   const SizedBox(height: AppSizes.lg),
-                  if (!isAdmin)
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.payments_outlined),
-                        label: Text('record_payment'.tr()),
-                        onPressed: _openRecordPayment,
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.payments_outlined),
+                      label: Text('record_payment'.tr()),
+                      onPressed: _openRecordPayment,
                     ),
+                  ),
                   const SizedBox(height: AppSizes.sm),
                   SizedBox(
                     width: double.infinity,
@@ -704,6 +703,15 @@ class _DebtPaymentRow extends StatelessWidget {
                   payment.receiptNumber,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              if (payment.isAdminPayment) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'admin_payment'.tr(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],

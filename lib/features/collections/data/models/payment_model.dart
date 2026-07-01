@@ -43,6 +43,9 @@ class PaymentModel {
   final bool isCorrection;
   final String? originalPaymentId;
 
+  // Admin-recorded: verified immediately, no cashOnHand increment, no handover
+  final bool isAdminPayment;
+
   bool get isReceiptPending => receiptNumber.isEmpty;
   bool get isVerified => status == 'verified';
   // handoverId is stamped at handover creation, so a non-null value means the
@@ -79,6 +82,7 @@ class PaymentModel {
     this.cancelledAt,
     this.isCorrection = false,
     this.originalPaymentId,
+    this.isAdminPayment = false,
   });
 
   factory PaymentModel.fromMap(Map<String, dynamic> map, String id) {
@@ -108,6 +112,7 @@ class PaymentModel {
       cancelledAt: (map['cancelledAt'] as Timestamp?)?.toDate(),
       isCorrection: map['isCorrection'] as bool? ?? false,
       originalPaymentId: map['originalPaymentId'] as String?,
+      isAdminPayment: map['isAdminPayment'] as bool? ?? false,
     );
   }
 
@@ -129,10 +134,11 @@ class PaymentModel {
       'collectedAt': Timestamp.fromDate(collectedAt),
       'createdAt': FieldValue.serverTimestamp(),
       'receiptNumber': '',
-      'status': 'pending_handover',
+      'status': isAdminPayment ? 'verified' : 'pending_handover',
       if (notes != null && notes!.isNotEmpty) 'notes': notes,
       'isCancelled': false,
       'isCorrection': false,
+      if (isAdminPayment) 'isAdminPayment': true,
     };
   }
 
@@ -171,6 +177,7 @@ class PaymentModel {
     bool? isCorrection,
     String? originalPaymentId,
     bool clearOriginalPaymentId = false,
+    bool? isAdminPayment,
   }) {
     return PaymentModel(
       id: id ?? this.id,
@@ -198,6 +205,7 @@ class PaymentModel {
       cancelledAt: clearCancelledAt ? null : (cancelledAt ?? this.cancelledAt),
       isCorrection: isCorrection ?? this.isCorrection,
       originalPaymentId: clearOriginalPaymentId ? null : (originalPaymentId ?? this.originalPaymentId),
+      isAdminPayment: isAdminPayment ?? this.isAdminPayment,
     );
   }
 }

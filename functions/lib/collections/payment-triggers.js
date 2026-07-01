@@ -155,9 +155,12 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
         status: newStatus,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      tx.update(collectorRef, {
-        cashOnHand: admin.firestore.FieldValue.increment(paymentData.amount),
-      });
+      // Admin-recorded payments bypass collector cash custody
+      if (!paymentData.isAdminPayment) {
+        tx.update(collectorRef, {
+          cashOnHand: admin.firestore.FieldValue.increment(paymentData.amount),
+        });
+      }
       tx.update(customerRef, {
         lastPaymentAt: paymentData.collectedAt,
         totalOutstandingBalance: admin.firestore.FieldValue.increment(-paymentData.amount),
@@ -353,9 +356,11 @@ exports.onPaymentCancelled = onDocumentUpdated("payments/{paymentId}", async (ev
         status: newStatus,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      tx.update(collectorRef, {
-        cashOnHand: admin.firestore.FieldValue.increment(-after.amount),
-      });
+      if (!after.isAdminPayment) {
+        tx.update(collectorRef, {
+          cashOnHand: admin.firestore.FieldValue.increment(-after.amount),
+        });
+      }
       tx.update(customerRef, {
         totalOutstandingBalance: admin.firestore.FieldValue.increment(after.amount),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
