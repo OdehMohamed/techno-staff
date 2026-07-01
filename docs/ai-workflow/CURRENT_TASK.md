@@ -27,7 +27,7 @@ See [docs/features/collections_design.md](../features/collections_design.md) for
 | 6 | PDF Receipts, Reports, Admin Dashboard | ✅ DONE |
 | 7 | Collector Experience Polish and Settings | ✅ DONE |
 
-**Status**: ✅ All 7 PRs + pre-merge audit fixes complete — awaiting owner verification pass before final merge approval  
+**Status**: ✅ All 7 PRs + pre-merge audit fixes complete + 4 post-testing fixes applied — awaiting owner re-verification before final merge approval  
 **Policy**: No release until all 7 PRs are merged, smoke-tested, and audit fixes verified.
 
 ---

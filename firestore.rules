@@ -186,7 +186,13 @@ service cloud.firestore {
       allow read: if isAdmin() ||
         (isCollector() && resource.data.assignedCollectorId == request.auth.uid);
       allow create: if isAdmin();
-      allow update: if isAdmin();
+      allow update: if isAdmin() || (
+        isCollector() &&
+        resource.data.assignedCollectorId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['hasPendingSettlementRequest', 'settlementRequest', 'updatedAt']) &&
+        request.resource.data.hasPendingSettlementRequest == true
+      );
       allow delete: if false;
     }
 

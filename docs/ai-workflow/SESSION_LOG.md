@@ -1,3 +1,44 @@
+## 2026-07-01 (session 9) — Claude Sonnet 4.6 — post-owner-testing fixes (4 issues)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Fix four issues found during owner testing of the collector settlement request flow.
+- **Outcome**: ✅ All 4 fixes applied. `flutter analyze` and `npm run lint` both clean. Requires `firebase deploy --only functions` and `firestore:rules` before re-test.
+
+### Fixes applied
+
+| Issue | Fix |
+|-------|-----|
+| 1 — Reason validation UX | `_showRequestSettlementDialog()` now shows inline `errorText` on the reason field instead of silently blocking submission. Added `reason_required` translation key (en + ar). |
+| 2 — cashOnHand not updated on approval | New CF callable `approveCollectorSettlementRequest` atomically: settles debt, creates a `pending_handover` payment (receiptNumber=`SETTLEMENT` bypasses `onPaymentCreated`), increments collector `cashOnHand`, decrements customer balance, sets `_customerBalanceSynced=true` so `onDebtStatusChanged` skips duplicate balance update. |
+| 3 — Admin amount as source of truth | The callable receives `settledAmount` from the Flutter dialog (admin's final entered value) and uses it for all financial writes. |
+| 4 — Settlement request notifications | New CF trigger `onSettlementRequested` on debts collection: (A) `hasPendingSettlementRequest: false→true` → FCM + in-app to all admins; (C) `true→false + rejected + not settled` → FCM + in-app to collector. (B) Admin approval notification sent inside the callable. Full FCM deep-link routing: `debt:<debtId>` payload → `DebtDetailLoaderScreen`. |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `functions/lib/collections/settlement-triggers.js` | **NEW** — `onSettlementRequested` trigger + `approveCollectorSettlementRequest` callable |
+| `functions/index.js` | Export both new functions |
+| `lib/features/collections/data/repositories/debts_repository.dart` | `getById()` added; `approveSettlementRequest()` now calls CF callable instead of direct Firestore write |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | `approveSettlementRequest()` updated signature (dropped `originalBalance`/`adminId`, added `collectorId`/`collectorName`/`customerName`) |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Issue 1: reason inline error; Issue 2/3: pass extra fields to cubit |
+| `lib/features/collections/presentation/screens/debt_detail_loader_screen.dart` | **NEW** — fetches debt by ID for FCM deep-link navigation |
+| `lib/core/routes/route_names.dart` | Add `debtDetailLoader` |
+| `lib/core/routes/app_router.dart` | Add `debtDetailLoader` route handler |
+| `lib/core/services/notification_service.dart` | Handle `debt:` payload prefix for settlement notifications |
+| `lib/main.dart` | `debt:` tap routing + settlement cases in `_routeCollectionsNotification` |
+| `assets/translations/en.json` | Add `reason_required`, `debt_not_found` |
+| `assets/translations/ar.json` | Add `reason_required`, `debt_not_found` |
+
+### Deploy steps required
+
+1. `firebase deploy --only functions` — deploys `onSettlementRequested` + `approveCollectorSettlementRequest`
+2. No Firestore rules change needed (callable uses Admin SDK)
+3. No new Firestore indexes needed
+
+---
+
 ## 2026-06-29 (session 8) — Claude Sonnet 4.6 — v2.0.0 third audit fixes + full deploy
 
 - **Agent**: Claude Sonnet 4.6
