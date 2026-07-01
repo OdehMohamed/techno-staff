@@ -588,5 +588,6 @@
   "assigned_debts": "Assigned",
   "failed_to_generate_pdf": "Failed to generate PDF",
   "retry": "Retry",
-  "payment_not_found": "Payment not found"
+  "payment_not_found": "Payment not found",
+  "logout_confirm_message": "Are you sure you want to sign out?"
 }

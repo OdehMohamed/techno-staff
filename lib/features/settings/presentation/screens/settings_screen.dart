@@ -279,7 +279,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(Icons.logout),
                     title: Text('logout'.tr()),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.read<AuthCubit>().signOut(),
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text('logout'.tr()),
+                          content: Text('logout_confirm_message'.tr()),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: Text('cancel'.tr()),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: Text('logout'.tr()),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && context.mounted) {
+                        context.read<AuthCubit>().signOut();
+                      }
+                    },
                   ),
                   const Divider(height: 1),
                   ListTile(

@@ -588,5 +588,6 @@
   "assigned_debts": "مُعيَّن",
   "failed_to_generate_pdf": "فشل إنشاء ملف PDF",
   "retry": "إعادة المحاولة",
-  "payment_not_found": "لم يتم العثور على الدفعة"
+  "payment_not_found": "لم يتم العثور على الدفعة",
+  "logout_confirm_message": "هل أنت متأكد من رغبتك في تسجيل الخروج؟"
 }
