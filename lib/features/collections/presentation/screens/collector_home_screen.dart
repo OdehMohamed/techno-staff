@@ -41,6 +41,51 @@ class _CollectorHomeScreenState extends State<CollectorHomeScreen> {
       ),
       body: Column(
         children: [
+          // Discrepancy balance warning — shown when collector owes money from
+          // a past handover where the admin received less than claimed.
+          BlocBuilder<PaymentsCubit, PaymentsState>(
+            builder: (context, payState) {
+              if (payState.discrepancyBalance <= 0) return const SizedBox.shrink();
+              final scheme = Theme.of(context).colorScheme;
+              return Material(
+                color: scheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.md,
+                    vertical: AppSizes.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: scheme.onErrorContainer, size: 20),
+                      const SizedBox(width: AppSizes.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${'discrepancy_balance_label'.tr()}: ${DebtModel.formatAmountIls(payState.discrepancyBalance)}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(color: scheme.onErrorContainer),
+                            ),
+                            Text(
+                              'discrepancy_balance_info'.tr(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onErrorContainer),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           // Cash on hand banner
           BlocBuilder<PaymentsCubit, PaymentsState>(
             builder: (context, payState) {

@@ -65,12 +65,15 @@ class PaymentsCubit extends Cubit<PaymentsState> {
       final cash = payments.fold<int>(0, (acc, p) => acc + p.amount);
       final maxCash =
           (userSnap.data()?['maxCashOnHand'] as num?)?.toInt();
+      final discrepancyBalance =
+          (userSnap.data()?['discrepancyBalance'] as num?)?.toInt() ?? 0;
       emit(state.copyWith(
         status: CollectionsStatus.loaded,
         payments: payments,
         cashOnHand: cash,
         maxCashOnHand: maxCash,
         clearMaxCashOnHand: maxCash == null,
+        discrepancyBalance: discrepancyBalance,
       ));
     } catch (_) {
       emit(state.copyWith(

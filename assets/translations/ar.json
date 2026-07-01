@@ -591,5 +591,7 @@
   "payment_not_found": "لم يتم العثور على الدفعة",
   "logout_confirm_message": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "admin_payment": "دفعة إدارية",
-  "payment_type": "نوع الدفعة"
+  "payment_type": "نوع الدفعة",
+  "discrepancy_balance_label": "فارق مستحق",
+  "discrepancy_balance_info": "لديك مبلغ مستحق للشركة من تسليم سابق — تواصل مع المسؤول لتسويته"
 }

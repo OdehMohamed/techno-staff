@@ -10,6 +10,9 @@ class PaymentsState {
   // Re-read from users/{uid} on each loadCollectorPendingPayments call so the
   // admin-set limit is enforced without requiring a logout/login cycle.
   final int? maxCashOnHand;
+  // Cumulative unresolved discrepancy amount the collector owes the company.
+  // Read from users/{uid}.discrepancyBalance; CF-maintained.
+  final int discrepancyBalance;
   final String? error;
   final CollectionsStatus formStatus;
   final String? formError;
@@ -19,6 +22,7 @@ class PaymentsState {
     this.payments = const [],
     this.cashOnHand = 0,
     this.maxCashOnHand,
+    this.discrepancyBalance = 0,
     this.error,
     this.formStatus = CollectionsStatus.initial,
     this.formError,
@@ -43,6 +47,7 @@ class PaymentsState {
     int? cashOnHand,
     int? maxCashOnHand,
     bool clearMaxCashOnHand = false,
+    int? discrepancyBalance,
     String? error,
     CollectionsStatus? formStatus,
     String? formError,
@@ -56,6 +61,7 @@ class PaymentsState {
       maxCashOnHand: clearMaxCashOnHand
           ? null
           : (maxCashOnHand ?? this.maxCashOnHand),
+      discrepancyBalance: discrepancyBalance ?? this.discrepancyBalance,
       error: clearError ? null : (error ?? this.error),
       formStatus: formStatus ?? this.formStatus,
       formError: clearFormError ? null : (formError ?? this.formError),

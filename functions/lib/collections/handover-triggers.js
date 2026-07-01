@@ -132,7 +132,9 @@ exports.onHandoverUpdated = onDocumentUpdated("handovers/{handoverId}", async (e
   const settledAmount = after.claimedAmount;
 
   // Batch-update all included payments to 'verified' and attach handoverId,
-  // then decrement collector cashOnHand atomically
+  // then decrement collector cashOnHand atomically.
+  // On a discrepancy: also increment discrepancyBalance by the shortfall so the
+  // collector has a persistent outstanding liability separate from cashOnHand.
   try {
     const batch = db.batch();
 
@@ -142,10 +144,21 @@ exports.onHandoverUpdated = onDocumentUpdated("handovers/{handoverId}", async (e
     }
 
     const collectorRef = db.collection("users").doc(after.collectorId);
-    batch.update(collectorRef, {
+    const collectorUpdate = {
       cashOnHand: admin.firestore.FieldValue.increment(-settledAmount),
-    });
+    };
 
+    if (after.status === "discrepancy") {
+      const shortfall = after.claimedAmount - (after.actualAmount || 0);
+      if (shortfall > 0) {
+        // discrepancyBalance accumulates across unresolved discrepancies.
+        // Admin clears it when the collector settles the outstanding amount.
+        collectorUpdate.discrepancyBalance =
+            admin.firestore.FieldValue.increment(shortfall);
+      }
+    }
+
+    batch.update(collectorRef, collectorUpdate);
     await batch.commit();
   } catch (err) {
     console.error("onHandoverUpdated: batch update failed:", err);

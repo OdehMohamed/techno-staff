@@ -591,5 +591,7 @@
   "payment_not_found": "Payment not found",
   "logout_confirm_message": "Are you sure you want to sign out?",
   "admin_payment": "Admin payment",
-  "payment_type": "Payment type"
+  "payment_type": "Payment type",
+  "discrepancy_balance_label": "Outstanding discrepancy",
+  "discrepancy_balance_info": "You owe the company for a past handover shortfall — contact admin to resolve"
 }

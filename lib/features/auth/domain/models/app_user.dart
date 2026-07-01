@@ -6,6 +6,9 @@ class AppUser {
   final bool isActive;
   // Collector-only: agorot; null = no limit. CF-maintained on user doc.
   final int? maxCashOnHand;
+  // Collector-only: cumulative agorot owed to the company from unresolved
+  // handover discrepancies. CF-maintained; admin clears when collector pays back.
+  final int discrepancyBalance;
 
   const AppUser({
     required this.id,
@@ -14,6 +17,7 @@ class AppUser {
     required this.role,
     required this.isActive,
     this.maxCashOnHand,
+    this.discrepancyBalance = 0,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map, String documentId) {
@@ -24,6 +28,7 @@ class AppUser {
       role: map['role'] as String? ?? 'employee',
       isActive: map['isActive'] as bool? ?? false,
       maxCashOnHand: (map['maxCashOnHand'] as num?)?.toInt(),
+      discrepancyBalance: (map['discrepancyBalance'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -39,6 +44,7 @@ class AppUser {
     bool? isActive,
     int? maxCashOnHand,
     bool clearMaxCashOnHand = false,
+    int? discrepancyBalance,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -48,6 +54,7 @@ class AppUser {
       isActive: isActive ?? this.isActive,
       maxCashOnHand:
           clearMaxCashOnHand ? null : (maxCashOnHand ?? this.maxCashOnHand),
+      discrepancyBalance: discrepancyBalance ?? this.discrepancyBalance,
     );
   }
 }
