@@ -18,6 +18,11 @@ class CustomerModel {
   final DateTime createdAt;
   final bool isActive;
 
+  // Running total of all non-terminal debts' remainingBalance (agorot).
+  // Maintained exclusively by Cloud Functions (onDebtCreated, onPaymentCreated,
+  // onPaymentCancelled, onDebtStatusChanged). Never write from the client.
+  final int totalOutstandingBalance;
+
   const CustomerModel({
     required this.id,
     required this.name,
@@ -35,6 +40,7 @@ class CustomerModel {
     required this.createdByName,
     required this.createdAt,
     this.isActive = true,
+    this.totalOutstandingBalance = 0,
   });
 
   factory CustomerModel.fromMap(Map<String, dynamic> map, String id) {
@@ -55,6 +61,8 @@ class CustomerModel {
       createdByName: map['createdByName'] as String? ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: map['isActive'] as bool? ?? true,
+      totalOutstandingBalance:
+          (map['totalOutstandingBalance'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -116,6 +124,7 @@ class CustomerModel {
     String? createdByName,
     DateTime? createdAt,
     bool? isActive,
+    int? totalOutstandingBalance,
   }) {
     return CustomerModel(
       id: id ?? this.id,
@@ -134,6 +143,7 @@ class CustomerModel {
       createdByName: createdByName ?? this.createdByName,
       createdAt: createdAt ?? this.createdAt,
       isActive: isActive ?? this.isActive,
+      totalOutstandingBalance: totalOutstandingBalance ?? this.totalOutstandingBalance,
     );
   }
 }

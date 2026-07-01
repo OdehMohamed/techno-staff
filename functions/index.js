@@ -46,6 +46,7 @@ exports.onInstallmentPlanCreated = installmentTriggers.onInstallmentPlanCreated;
 exports.sendInstallmentDueReminders = installmentTriggers.sendInstallmentDueReminders;
 
 exports.onVisitCreated = visitTriggers.onVisitCreated;
+exports.onDebtCreated = debtTriggers.onDebtCreated;
 exports.onDebtStatusChanged = debtTriggers.onDebtStatusChanged;
 
 exports.updateDebtAgingBuckets = schedulers.updateDebtAgingBuckets;
