@@ -593,5 +593,10 @@
   "admin_payment": "دفعة إدارية",
   "payment_type": "نوع الدفعة",
   "discrepancy_balance_label": "فارق مستحق",
-  "discrepancy_balance_info": "لديك مبلغ مستحق للشركة من تسليم سابق — تواصل مع المسؤول لتسويته"
+  "discrepancy_balance_info": "لديك مبلغ مستحق للشركة من تسليم سابق — تواصل مع المسؤول لتسويته",
+  "record_discrepancy_settlement": "تسجيل تسوية الفارق",
+  "settlement_note_hint": "ملاحظة اختيارية (سبب، مرجع، إلخ)",
+  "settlement_recorded": "تم تسجيل التسوية",
+  "settlement_exceeds_balance": "المبلغ يتجاوز الفارق المستحق",
+  "failed_to_record_settlement": "فشل تسجيل التسوية"
 }

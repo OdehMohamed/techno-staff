@@ -593,5 +593,10 @@
   "admin_payment": "Admin payment",
   "payment_type": "Payment type",
   "discrepancy_balance_label": "Outstanding discrepancy",
-  "discrepancy_balance_info": "You owe the company for a past handover shortfall — contact admin to resolve"
+  "discrepancy_balance_info": "You owe the company for a past handover shortfall — contact admin to resolve",
+  "record_discrepancy_settlement": "Record Settlement",
+  "settlement_note_hint": "Optional note (reason, reference, etc.)",
+  "settlement_recorded": "Settlement recorded",
+  "settlement_exceeds_balance": "Amount exceeds outstanding discrepancy balance",
+  "failed_to_record_settlement": "Failed to record settlement"
 }

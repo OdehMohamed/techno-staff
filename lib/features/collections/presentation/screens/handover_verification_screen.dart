@@ -128,6 +128,8 @@ class _HandoverVerificationScreenState
       builder: (context, state) {
         final isSaving = state.formStatus == CollectionsStatus.loading;
         final isTerminal = !_handover.isPending;
+        final isAdmin =
+            context.read<AuthCubit>().state.user?.role == 'admin';
 
         return Scaffold(
           appBar: AppBar(
@@ -202,8 +204,8 @@ class _HandoverVerificationScreenState
                     ],
                   ),
                 ),
-                // Verification form (only for pending handovers)
-                if (!isTerminal) ...[
+                // Verification form (only for pending handovers viewed by admin)
+                if (!isTerminal && isAdmin) ...[
                   const SizedBox(height: AppSizes.lg),
                   Text(
                     'verify_handover'.tr(),

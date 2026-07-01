@@ -2,6 +2,7 @@
 // CF notifies admins on creation; updates payment statuses + cashOnHand on verification.
 
 const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/firestore");
+const {onCall, HttpsError} = require("firebase-functions/https");
 const admin = require("firebase-admin");
 const {createInAppNotification, getFcmToken, getFcmTokensBatch, sendFCMNotification} = require("../shared");
 const {formatAgorot} = require("./payment-triggers");
@@ -235,4 +236,67 @@ exports.onHandoverUpdated = onDocumentUpdated("handovers/{handoverId}", async (e
   } catch (err) {
     console.error("onHandoverUpdated: collector notification failed:", err);
   }
+});
+
+// ─── settleDiscrepancy (callable) ────────────────────────────────────────────
+// Admin records a cash repayment from a collector that reduces their
+// discrepancyBalance. Does NOT affect cashOnHand or customer debts.
+
+exports.settleDiscrepancy = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be logged in");
+  }
+
+  const {collectorId, amount, note} = request.data;
+
+  if (!collectorId || typeof amount !== "number" || amount <= 0) {
+    throw new HttpsError("invalid-argument", "Invalid collectorId or amount");
+  }
+
+  const db = admin.firestore();
+
+  // Verify caller is admin via Firestore (same pattern as createEmployeeUser)
+  const callerSnap = await db.collection("users").doc(request.auth.uid).get();
+  if (!callerSnap.exists || callerSnap.data().role !== "admin") {
+    throw new HttpsError("permission-denied", "Admins only");
+  }
+  const callerName = callerSnap.data().name || "";
+
+  await db.runTransaction(async (tx) => {
+    const collectorRef = db.collection("users").doc(collectorId);
+    const collectorSnap = await tx.get(collectorRef);
+
+    if (!collectorSnap.exists) {
+      throw new HttpsError("not-found", "Collector not found");
+    }
+
+    const currentBalance = (collectorSnap.data() && collectorSnap.data().discrepancyBalance) || 0;
+    if (amount > currentBalance) {
+      throw new HttpsError("invalid-argument", "settlement_exceeds_balance");
+    }
+
+    const newBalance = Math.max(0, currentBalance - amount);
+    tx.update(collectorRef, {
+      discrepancyBalance: newBalance,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const logRef = db.collection("collection_logs").doc();
+    tx.set(logRef, {
+      entityType: "discrepancy_settlement",
+      entityId: collectorId,
+      action: "discrepancy.settled",
+      actorId: request.auth.uid,
+      actorName: callerName,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      collectorId,
+      collectorName: collectorSnap.data().name || "",
+      amount,
+      note: note || null,
+      balanceBefore: currentBalance,
+      balanceAfter: newBalance,
+    });
+  });
+
+  return {success: true};
 });

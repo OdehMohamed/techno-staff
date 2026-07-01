@@ -41,6 +41,7 @@ exports.onPaymentCreated = paymentTriggers.onPaymentCreated;
 exports.onPaymentCancelled = paymentTriggers.onPaymentCancelled;
 exports.onHandoverCreated = handoverTriggers.onHandoverCreated;
 exports.onHandoverUpdated = handoverTriggers.onHandoverUpdated;
+exports.settleDiscrepancy = handoverTriggers.settleDiscrepancy;
 
 exports.onInstallmentPlanCreated = installmentTriggers.onInstallmentPlanCreated;
 exports.sendInstallmentDueReminders = installmentTriggers.sendInstallmentDueReminders;
