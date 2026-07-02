@@ -182,6 +182,59 @@ class _CollectionsDashboardScreenState
                 ),
                 const SizedBox(height: AppSizes.lg),
 
+                // Discrepancy liabilities warning card
+                if (state.totalDiscrepancyBalanceAgorot > 0) ...[
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded,
+                                color: Theme.of(context).colorScheme.error,
+                                size: 18),
+                            const SizedBox(width: AppSizes.sm),
+                            Text(
+                              'collector_discrepancies'.tr(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.error,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSizes.xs),
+                        Text(
+                          '${'total_discrepancy_balance'.tr()}: ${DebtModel.formatAmountIls(state.totalDiscrepancyBalanceAgorot)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: AppSizes.xs),
+                        ...state.collectorSummaries
+                            .where((s) => s.discrepancyBalanceAgorot > 0)
+                            .map((s) => Padding(
+                                  padding: const EdgeInsets.only(
+                                      top: 2),
+                                  child: Text(
+                                    '• ${s.name}: ${DebtModel.formatAmountIls(s.discrepancyBalanceAgorot)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                        ),
+                                  ),
+                                )),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.lg),
+                ],
+
                 // Per-collector summary
                 _SectionHeader('collector_summary'.tr()),
                 const SizedBox(height: AppSizes.sm),
@@ -390,6 +443,11 @@ class _CollectorTableHeader extends StatelessWidget {
               flex: 3,
               child: Text('cash_with_collectors'.tr(),
                   style: style, textAlign: TextAlign.right)),
+          Expanded(
+              flex: 2,
+              child: Text('discrepancy_col'.tr(),
+                  style: style?.copyWith(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.right)),
         ],
       ),
     );
@@ -440,6 +498,23 @@ class _CollectorRow extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: summary.cashOnHandAgorot > 0
                         ? Colors.orange
+                        : null,
+                  ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              summary.discrepancyBalanceAgorot > 0
+                  ? DebtModel.formatAmountIls(summary.discrepancyBalanceAgorot)
+                  : '—',
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: summary.discrepancyBalanceAgorot > 0
+                        ? Theme.of(context).colorScheme.error
+                        : null,
+                    fontWeight: summary.discrepancyBalanceAgorot > 0
+                        ? FontWeight.w600
                         : null,
                   ),
             ),

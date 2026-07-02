@@ -623,5 +623,9 @@
   "settlement_payment": "دفعة التسوية",
   "verified_this_month": "تم التحقق هذا الشهر",
   "load_more": "تحميل المزيد",
-  "loading_more": "جاري التحميل..."
+  "loading_more": "جاري التحميل...",
+  "collector_discrepancies": "مطلوبات الفروقات على المحصّلين",
+  "total_discrepancy_balance": "إجمالي الفروقات المستحقة",
+  "collectors_with_discrepancy": "محصّلون لديهم فروقات مستحقة",
+  "discrepancy_col": "الفارق"
 }

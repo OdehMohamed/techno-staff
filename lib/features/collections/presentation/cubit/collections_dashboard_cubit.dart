@@ -144,13 +144,17 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
 
       // 4. Per-collector summary — filter inactive collectors client-side
       int totalCash = 0;
+      int totalDiscrepancy = 0;
       final summaries = <CollectorSummary>[];
 
       for (final doc in collectorsSnap.docs) {
         final data = doc.data();
         if (data['isActive'] != true) continue;
         final cashOnHand = (data['cashOnHand'] as num?)?.toInt() ?? 0;
+        final discrepancyBalance =
+            (data['discrepancyBalance'] as num?)?.toInt() ?? 0;
         totalCash += cashOnHand;
+        totalDiscrepancy += discrepancyBalance;
 
         final assignedCount = debts
             .where((d) => d.assignedCollectorId == doc.id)
@@ -163,6 +167,7 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
           collectedMtdAgorot: collectorMtd[doc.id] ?? 0,
           cashOnHandAgorot: cashOnHand,
           pendingHandoversCount: 0, // omitted to avoid extra queries
+          discrepancyBalanceAgorot: discrepancyBalance,
         ));
       }
 
@@ -180,6 +185,7 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
         overdueDebtTotalAgorot: overdueTotal,
         verifiedThisMonthAgorot: verifiedThisMonth,
         pendingHandoverThisMonthAgorot: pendingHandoverThisMonth,
+        totalDiscrepancyBalanceAgorot: totalDiscrepancy,
         agingTotals: agingTotals,
         agingCounts: agingCounts,
         collectorSummaries: summaries,

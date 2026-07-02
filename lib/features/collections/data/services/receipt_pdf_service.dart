@@ -115,7 +115,7 @@ Future<File> generateReceiptPdf({
           pw.Expanded(
             child: pw.Text(
               _pdfText(value),
-              textAlign: pw.TextAlign.right,
+              textAlign: isAr ? pw.TextAlign.left : pw.TextAlign.right,
               textDirection: _dir(value),
               style: base(bold: true),
             ),
@@ -132,9 +132,7 @@ Future<File> generateReceiptPdf({
       textDirection: dir,
       margin: const pw.EdgeInsets.all(24),
       build: (context) => pw.Column(
-        crossAxisAlignment: isAr
-            ? pw.CrossAxisAlignment.end
-            : pw.CrossAxisAlignment.start,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           // Header
           pw.Row(
@@ -147,6 +145,7 @@ Future<File> generateReceiptPdf({
                   pw.Text(_pdfText(l.appName),
                       style: base(bold: true, size: 14, color: _kNavy)),
                   pw.Text(_pdfText(l.receiptTitle),
+                      textDirection: _dir(l.receiptTitle),
                       style: base(size: 11, color: _kNavy)),
                 ],
               ),
@@ -159,9 +158,7 @@ Future<File> generateReceiptPdf({
             padding: const pw.EdgeInsets.all(10),
             decoration: const pw.BoxDecoration(color: _kBg),
             child: pw.Column(
-              crossAxisAlignment: isAr
-                  ? pw.CrossAxisAlignment.end
-                  : pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 labelValue(l.receiptNo, payment.receiptNumber),
                 labelValue(l.date, dateLabel),
@@ -209,14 +206,16 @@ Future<File> generateReceiptPdf({
               children: isAr
                   ? [
                       // AR locale: Arabic label (RTL) + English value (LTR).
-                      // In RTL page, Row lays children right→left: label on right, value on left.
+                      // Colon is appended to the Arabic label so it stays
+                      // adjacent — placing it at the start of the LTR widget
+                      // caused it to appear at the far-left end of the RTL row.
                       pw.Text(
-                        _pdfText(secondLabel),
+                        _pdfText('$secondLabel: '),
                         textDirection: pw.TextDirection.rtl,
                         style: base(size: 9, color: _kMuted),
                       ),
                       pw.Text(
-                        ': $secondWords',
+                        secondWords,
                         textDirection: pw.TextDirection.ltr,
                         style: base(size: 9, color: _kMuted),
                       ),

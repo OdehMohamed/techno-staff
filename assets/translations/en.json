@@ -623,5 +623,9 @@
   "settlement_payment": "Settlement Payment",
   "verified_this_month": "Verified This Month",
   "load_more": "Load more",
-  "loading_more": "Loading..."
+  "loading_more": "Loading...",
+  "collector_discrepancies": "Collector Discrepancy Liabilities",
+  "total_discrepancy_balance": "Total Outstanding Discrepancy",
+  "collectors_with_discrepancy": "Collectors with Outstanding Discrepancy",
+  "discrepancy_col": "Discrepancy"
 }

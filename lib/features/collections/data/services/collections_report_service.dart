@@ -266,15 +266,15 @@ Future<File> generateHandoverReconciliationPdf({
             pw.TableRow(
               decoration: const pw.BoxDecoration(color: _kHeaderRow),
               children: [
-                _cell(l.receiptNo, bold, bold: true, boldFont: bold),
-                _cell(l.customer, bold, bold: true, boldFont: bold,
-                    rtl: isAr),
+                _cell(l.receiptNo, bold, bold: true, boldFont: bold, rtl: isAr),
+                _cell(l.customer, bold, bold: true, boldFont: bold, rtl: isAr),
                 _cell(l.amount, bold,
                     bold: true,
                     boldFont: bold,
-                    align: pw.TextAlign.right),
-                _cell(l.method, bold, bold: true, boldFont: bold),
-                _cell(l.collectedDate, bold, bold: true, boldFont: bold),
+                    align: pw.TextAlign.right,
+                    rtl: isAr),
+                _cell(l.method, bold, bold: true, boldFont: bold, rtl: isAr),
+                _cell(l.collectedDate, bold, bold: true, boldFont: bold, rtl: isAr),
               ],
             ),
             ...sorted.map(
@@ -289,7 +289,7 @@ Future<File> generateHandoverReconciliationPdf({
                   ),
                   _cell(_fmt(p.amount), regular,
                       align: pw.TextAlign.right),
-                  _cell(l.methodLabel(p.paymentMethod), regular),
+                  _cell(l.methodLabel(p.paymentMethod), regular, rtl: isAr),
                   _cell(_fmtDate(p.collectedAt, locale), regular),
                 ],
               ),
@@ -299,7 +299,7 @@ Future<File> generateHandoverReconciliationPdf({
               decoration: const pw.BoxDecoration(color: _kHeaderRow),
               children: [
                 pw.SizedBox(),
-                _cell(l.total, bold, bold: true, boldFont: bold),
+                _cell(l.total, bold, bold: true, boldFont: bold, rtl: isAr),
                 _cell(
                   _fmt(sorted.fold<int>(0, (s, p) => s + p.amount)),
                   bold,
