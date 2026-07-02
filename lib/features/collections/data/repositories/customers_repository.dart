@@ -18,6 +18,22 @@ class CustomersRepository {
     return list;
   }
 
+  Future<({List<CustomerModel> items, DocumentSnapshot? lastDoc, bool hasMore})>
+      getPaged(int limit, {DocumentSnapshot? startAfter}) async {
+    var query = _firestore
+        .collection(FirebasePaths.customers)
+        .orderBy('createdAt', descending: true)
+        .limit(limit);
+    if (startAfter != null) query = query.startAfterDocument(startAfter);
+    final snap = await query.get(const GetOptions(source: Source.server));
+    final items = snap.docs.map((d) => CustomerModel.fromMap(d.data(), d.id)).toList();
+    return (
+      items: items,
+      lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null,
+      hasMore: snap.docs.length == limit,
+    );
+  }
+
   Future<String> create(CustomerModel customer) async {
     final ref = _firestore.collection(FirebasePaths.customers).doc();
     await ref.set(customer.toCreateMap());

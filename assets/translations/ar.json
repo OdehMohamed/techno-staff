@@ -616,5 +616,12 @@
   "reject_reason_hint": "سبب الرفض (اختياري)",
   "search_hint": "بحث...",
   "reason_required": "السبب مطلوب",
-  "debt_not_found": "الدين غير موجود"
+  "debt_not_found": "الدين غير موجود",
+  "filter_all": "الكل",
+  "original_remaining": "الرصيد الأصلي المتبقي",
+  "forgiven_amount": "المبلغ المتنازل عنه",
+  "settlement_payment": "دفعة التسوية",
+  "verified_this_month": "تم التحقق هذا الشهر",
+  "load_more": "تحميل المزيد",
+  "loading_more": "جاري التحميل..."
 }

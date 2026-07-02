@@ -36,7 +36,6 @@ class RouteNames {
   static const String addCustomer = '/add-customer';
   static const String editCustomer = '/edit-customer';
   static const String customerDetail = '/customer-detail';
-  static const String debtList = '/debts';
   static const String addDebt = '/add-debt';
   static const String editDebt = '/edit-debt';
   static const String debtDetail = '/debt-detail';
@@ -45,7 +44,6 @@ class RouteNames {
   static const String handoverList = '/handovers';
   static const String handoverInit = '/handover-init';
   static const String handoverVerification = '/handover-verification';
-  static const String visitLog = '/visit-log';
   static const String logVisit = '/log-visit';
   static const String installmentPlanDetail = '/installment-plan';
   static const String createInstallmentPlan = '/installment-plan/create';

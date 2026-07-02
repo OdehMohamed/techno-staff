@@ -46,6 +46,10 @@ class PaymentModel {
   // Admin-recorded: verified immediately, no cashOnHand increment, no handover
   final bool isAdminPayment;
 
+  // Settlement payment created by approveCollectorSettlementRequest callable.
+  // All balance math was already handled by the callable; CF only assigns receipt number.
+  final bool isSettlementPayment;
+
   bool get isReceiptPending => receiptNumber.isEmpty;
   bool get isVerified => status == 'verified';
   // handoverId is stamped at handover creation, so a non-null value means the
@@ -83,6 +87,7 @@ class PaymentModel {
     this.isCorrection = false,
     this.originalPaymentId,
     this.isAdminPayment = false,
+    this.isSettlementPayment = false,
   });
 
   factory PaymentModel.fromMap(Map<String, dynamic> map, String id) {
@@ -113,6 +118,7 @@ class PaymentModel {
       isCorrection: map['isCorrection'] as bool? ?? false,
       originalPaymentId: map['originalPaymentId'] as String?,
       isAdminPayment: map['isAdminPayment'] as bool? ?? false,
+      isSettlementPayment: map['isSettlementPayment'] as bool? ?? false,
     );
   }
 
@@ -139,6 +145,7 @@ class PaymentModel {
       'isCancelled': false,
       'isCorrection': false,
       if (isAdminPayment) 'isAdminPayment': true,
+      if (isSettlementPayment) 'isSettlementPayment': true,
     };
   }
 
@@ -178,6 +185,7 @@ class PaymentModel {
     String? originalPaymentId,
     bool clearOriginalPaymentId = false,
     bool? isAdminPayment,
+    bool? isSettlementPayment,
   }) {
     return PaymentModel(
       id: id ?? this.id,
@@ -206,6 +214,7 @@ class PaymentModel {
       isCorrection: isCorrection ?? this.isCorrection,
       originalPaymentId: clearOriginalPaymentId ? null : (originalPaymentId ?? this.originalPaymentId),
       isAdminPayment: isAdminPayment ?? this.isAdminPayment,
+      isSettlementPayment: isSettlementPayment ?? this.isSettlementPayment,
     );
   }
 }

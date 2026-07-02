@@ -93,6 +93,36 @@ exports.onPaymentCreated = onDocumentCreated("payments/{paymentId}", async (even
   if (payment.receiptNumber && payment.receiptNumber !== "") return;
 
   const db = admin.firestore();
+
+  // Settlement payments: approveCollectorSettlementRequest already handled all
+  // balance math (debt status, cashOnHand, customer balance). Only assign a
+  // real receipt number here so the payment has a printable receipt.
+  if (payment.isSettlementPayment) {
+    try {
+      await db.runTransaction(async (tx) => {
+        const paymentRef = db.collection("payments").doc(paymentId);
+        const paymentSnap = await tx.get(paymentRef);
+        const pData = paymentSnap.data();
+        if (!pData || (pData.receiptNumber && pData.receiptNumber !== "")) return;
+        const counterRef = db.collection("config").doc("counters");
+        const counterSnap = await tx.get(counterRef);
+        const counters = counterSnap.exists ? counterSnap.data() : {};
+        let receipts = counters.receipts || {"year": 0, "lastNumber": 0, "prefix": "RCPT"};
+        const currentYear = currentYearJerusalem();
+        if (receipts.year !== currentYear) {
+          receipts = {"year": currentYear, "lastNumber": 0, "prefix": receipts.prefix || "RCPT"};
+        }
+        receipts.lastNumber += 1;
+        const rn = formatReceiptNumber(receipts.prefix, currentYear, receipts.lastNumber);
+        tx.set(counterRef, {"receipts": receipts}, {"merge": true});
+        tx.update(paymentRef, {"receiptNumber": rn});
+      });
+    } catch (err) {
+      console.error("onPaymentCreated (settlement): receipt assignment failed:", err);
+    }
+    return;
+  }
+
   let receiptNumber = "";
   let paymentData;
   let installmentPlanId = null; // captured inside tx for post-tx FIFO allocation

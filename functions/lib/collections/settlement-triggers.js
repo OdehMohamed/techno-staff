@@ -271,8 +271,9 @@ exports.approveCollectorSettlementRequest = onCall(async (request) => {
     });
 
     // 2. Create a pending_handover payment for the settled amount.
-    //    receiptNumber: 'SETTLEMENT' causes onPaymentCreated to exit early (idempotency guard).
-    //    cashOnHand and customer balance are handled here instead.
+    //    isSettlementPayment: true tells onPaymentCreated to assign a real receipt number
+    //    and skip all balance math (debt, cashOnHand, customer balance already handled here).
+    //    receiptNumber is left empty so onPaymentCreated's idempotency guard allows it to run.
     tx.set(paymentRef, {
       debtId,
       customerId,
@@ -285,7 +286,7 @@ exports.approveCollectorSettlementRequest = onCall(async (request) => {
       paymentMethod: "cash",
       collectedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      receiptNumber: "SETTLEMENT",
+      receiptNumber: "",
       status: "pending_handover",
       notes: "settlement_approved",
       isCancelled: false,

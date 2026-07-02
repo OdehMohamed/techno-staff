@@ -28,6 +28,7 @@ class AdminCustomerDetailScreen extends StatefulWidget {
 
 class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
   late CustomerModel _customer;
+  String? _debtStatusFilter;
 
   @override
   void initState() {
@@ -122,6 +123,32 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
             const SizedBox(height: AppSizes.md),
             Text('debts'.tr(), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSizes.sm),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final entry in <MapEntry<String?, String>>[
+                    MapEntry(null, 'filter_all'.tr()),
+                    MapEntry('active', 'debt_status_active'.tr()),
+                    MapEntry('overdue', 'debt_status_overdue'.tr()),
+                    MapEntry('partial', 'debt_status_partial'.tr()),
+                    MapEntry('settled', 'debt_status_settled'.tr()),
+                    MapEntry('written_off', 'debt_status_written_off'.tr()),
+                    MapEntry('cancelled', 'debt_status_cancelled'.tr()),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSizes.xs),
+                      child: FilterChip(
+                        label: Text(entry.value),
+                        selected: _debtStatusFilter == entry.key,
+                        onSelected: (_) => setState(
+                            () => _debtStatusFilter = entry.key),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSizes.sm),
             BlocBuilder<DebtsAdminCubit, DebtsState>(
               builder: (context, state) {
                 if (state.status == CollectionsStatus.loading) {
@@ -133,7 +160,12 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
                     titleKey: state.error ?? 'unknown_error',
                   );
                 }
-                if (state.debts.isEmpty) {
+                final visibleDebts = _debtStatusFilter == null
+                    ? state.debts
+                    : state.debts
+                        .where((d) => d.status == _debtStatusFilter)
+                        .toList();
+                if (visibleDebts.isEmpty) {
                   return const EmptyStateWidget(
                     icon: Icons.receipt_long_outlined,
                     titleKey: 'no_debts_found',
@@ -142,10 +174,10 @@ class _AdminCustomerDetailScreenState extends State<AdminCustomerDetailScreen> {
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: state.debts.length,
+                  itemCount: visibleDebts.length,
                   separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
                   itemBuilder: (context, index) {
-                    final debt = state.debts[index];
+                    final debt = visibleDebts[index];
                     return InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () => Navigator.pushNamed(

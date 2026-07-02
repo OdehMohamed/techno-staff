@@ -32,6 +32,10 @@ class CollectionsDashboardState {
   final int overdueDebtCount;
   final int overdueDebtTotalAgorot;
 
+  // Cash flow breakdown for current month
+  final int verifiedThisMonthAgorot;
+  final int pendingHandoverThisMonthAgorot;
+
   // Aging breakdown: bucket → total remaining balance
   final Map<String, int> agingTotals;
   final Map<String, int> agingCounts;
@@ -52,6 +56,8 @@ class CollectionsDashboardState {
     this.totalCashWithCollectorsAgorot = 0,
     this.overdueDebtCount = 0,
     this.overdueDebtTotalAgorot = 0,
+    this.verifiedThisMonthAgorot = 0,
+    this.pendingHandoverThisMonthAgorot = 0,
     this.agingTotals = const {},
     this.agingCounts = const {},
     this.collectorSummaries = const [],
@@ -69,6 +75,8 @@ class CollectionsDashboardState {
     int? totalCashWithCollectorsAgorot,
     int? overdueDebtCount,
     int? overdueDebtTotalAgorot,
+    int? verifiedThisMonthAgorot,
+    int? pendingHandoverThisMonthAgorot,
     Map<String, int>? agingTotals,
     Map<String, int>? agingCounts,
     List<CollectorSummary>? collectorSummaries,
@@ -89,6 +97,10 @@ class CollectionsDashboardState {
       overdueDebtCount: overdueDebtCount ?? this.overdueDebtCount,
       overdueDebtTotalAgorot:
           overdueDebtTotalAgorot ?? this.overdueDebtTotalAgorot,
+      verifiedThisMonthAgorot:
+          verifiedThisMonthAgorot ?? this.verifiedThisMonthAgorot,
+      pendingHandoverThisMonthAgorot:
+          pendingHandoverThisMonthAgorot ?? this.pendingHandoverThisMonthAgorot,
       agingTotals: agingTotals ?? this.agingTotals,
       agingCounts: agingCounts ?? this.agingCounts,
       collectorSummaries: collectorSummaries ?? this.collectorSummaries,

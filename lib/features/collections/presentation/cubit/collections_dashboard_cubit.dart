@@ -123,11 +123,19 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
       // Build month-level per-collector map at the same time
       final collectorMtd = <String, int>{}; // collectorId → agorot
       int collectedMonth = 0;
+      int verifiedThisMonth = 0;
+      int pendingHandoverThisMonth = 0;
       for (final d in monthSnap.docs) {
         if (d.data()['isCancelled'] == true) continue;
         final data = d.data();
         final amt = (data['amount'] as num?)?.toInt() ?? 0;
         collectedMonth += amt;
+        final payStatus = data['status'] as String? ?? '';
+        if (payStatus == 'verified') {
+          verifiedThisMonth += amt;
+        } else if (payStatus == 'pending_handover') {
+          pendingHandoverThisMonth += amt;
+        }
         final cid = data['collectorId'] as String? ?? '';
         if (cid.isNotEmpty) {
           collectorMtd[cid] = (collectorMtd[cid] ?? 0) + amt;
@@ -170,6 +178,8 @@ class CollectionsDashboardCubit extends Cubit<CollectionsDashboardState> {
         totalCashWithCollectorsAgorot: totalCash,
         overdueDebtCount: overdueCount,
         overdueDebtTotalAgorot: overdueTotal,
+        verifiedThisMonthAgorot: verifiedThisMonth,
+        pendingHandoverThisMonthAgorot: pendingHandoverThisMonth,
         agingTotals: agingTotals,
         agingCounts: agingCounts,
         collectorSummaries: summaries,

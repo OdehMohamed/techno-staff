@@ -111,6 +111,40 @@ class _CollectionsDashboardScreenState
                 ]),
                 const SizedBox(height: AppSizes.lg),
 
+                // Cash flow this month breakdown
+                _SectionHeader('collected_this_month'.tr()),
+                const SizedBox(height: AppSizes.sm),
+                AppCard(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        dense: true,
+                        title: Text('verified_this_month'.tr()),
+                        trailing: Text(
+                          DebtModel.formatAmountIls(state.verifiedThisMonthAgorot),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        dense: true,
+                        title: Text('pending_handover'.tr()),
+                        trailing: Text(
+                          DebtModel.formatAmountIls(state.pendingHandoverThisMonthAgorot),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSizes.lg),
+
                 // Aging breakdown
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

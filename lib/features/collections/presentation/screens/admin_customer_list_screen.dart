@@ -6,6 +6,7 @@ import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_drawer.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../data/models/debt_model.dart';
 import '../cubit/customers_cubit.dart';
 import '../cubit/customers_state.dart';
 
@@ -18,6 +19,7 @@ class AdminCustomerListScreen extends StatefulWidget {
 
 class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
   String _searchQuery = '';
 
   @override
@@ -27,11 +29,20 @@ class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
     _searchCtrl.addListener(() {
       setState(() => _searchQuery = _searchCtrl.text.toLowerCase().trim());
     });
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      context.read<CustomersCubit>().loadMore();
+    }
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -140,76 +151,112 @@ class _AdminCustomerListScreenState extends State<AdminCustomerListScreen> {
                   onRefresh: () =>
                       context.read<CustomersCubit>().loadCustomers(silent: true),
                   child: ListView.separated(
+                    controller: _scrollCtrl,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(AppSizes.md).copyWith(bottom: 96),
-                    itemCount: customers.length,
+                    itemCount: customers.length + (state.hasMore ? 1 : 0),
                     separatorBuilder: (_, __) => const SizedBox(height: AppSizes.sm),
                     itemBuilder: (context, index) {
+                      if (index == customers.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
+                          child: Center(
+                            child: Text('loading_more'.tr(),
+                                style: Theme.of(context).textTheme.bodySmall),
+                          ),
+                        );
+                      }
                       final customer = customers[index];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    RouteNames.customerDetail,
-                    arguments: customer,
-                  ),
-                  child: AppCard(
-                    child: Row(
-                      children: [
-                      CircleAvatar(
-                        child: Text(
-                          customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?',
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          RouteNames.customerDetail,
+                          arguments: customer,
                         ),
-                      ),
-                      const SizedBox(width: AppSizes.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              customer.name,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(customer.phone, style: Theme.of(context).textTheme.bodySmall),
-                            const SizedBox(height: 2),
-                            Text(
-                              customer.assignedCollectorName,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
+                        child: AppCard(
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                child: Text(
+                                  customer.name.isNotEmpty
+                                      ? customer.name[0].toUpperCase()
+                                      : '?',
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _statusColor(_accountStatusColor(customer.accountStatus))
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'account_status_${customer.accountStatus}'.tr(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _statusColor(customer.accountStatus),
+                              const SizedBox(width: AppSizes.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      customer.name,
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(customer.phone,
+                                        style: Theme.of(context).textTheme.bodySmall),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      customer.assignedCollectorName,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                    ),
+                                    if (customer.totalOutstandingBalance > 0) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        DebtModel.formatAmountIls(
+                                            customer.totalOutstandingBalance),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(
+                                          _accountStatusColor(customer.accountStatus))
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  'account_status_${customer.accountStatus}'.tr(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _statusColor(customer.accountStatus),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                    ),
+                      );
+                    },
                   ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
-    ),
-  ],
-),
     );
   }
 }

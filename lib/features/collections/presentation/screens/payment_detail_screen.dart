@@ -199,6 +199,8 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
                       _InfoRow('collector_role'.tr(), _payment.collectorName),
                       if (_payment.isAdminPayment)
                         _InfoRow('payment_type'.tr(), 'admin_payment'.tr()),
+                      if (_payment.isSettlementPayment)
+                        _InfoRow('payment_type'.tr(), 'settlement_payment'.tr()),
                       if (_payment.notes != null)
                         _InfoRow('notes'.tr(), _payment.notes!),
                     ],

@@ -402,15 +402,6 @@ class AppRouter {
           settings: settings,
         );
 
-      case RouteNames.debtList:
-      case RouteNames.visitLog:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: Text(settings.name ?? '')),
-            body: const Center(child: Text('Coming soon')),
-          ),
-          settings: settings,
-        );
 
       default:
         return MaterialPageRoute(

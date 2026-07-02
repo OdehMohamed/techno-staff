@@ -22,7 +22,8 @@ class DebtModel {
   final String? cancellationReason;
   final String? writeOffReason;
   final String? disputeReason;
-  final int? settlementAmount; // agorot
+  final int? settlementAmount; // agorot — what was collected
+  final int? forgivenAmount;  // agorot — original remaining minus settled
   final String? settlementNotes;
   // Installment plan (CF-maintained after plan creation)
   final bool hasInstallmentPlan;
@@ -61,6 +62,7 @@ class DebtModel {
     this.writeOffReason,
     this.disputeReason,
     this.settlementAmount,
+    this.forgivenAmount,
     this.settlementNotes,
     this.hasInstallmentPlan = false,
     this.installmentPlanId,
@@ -115,6 +117,9 @@ class DebtModel {
           ? (map['dispute'] as Map)['reason'] as String?
           : null,
       settlementAmount: (map['settlementAmount'] as num?)?.toInt(),
+      forgivenAmount: (map['settlement'] is Map)
+          ? ((map['settlement'] as Map)['forgivenAmount'] as num?)?.toInt()
+          : null,
       settlementNotes: map['settlementNotes'] as String?,
       hasInstallmentPlan: map['hasInstallmentPlan'] as bool? ?? false,
       installmentPlanId: map['installmentPlanId'] as String?,
@@ -196,6 +201,7 @@ class DebtModel {
     String? writeOffReason,
     String? disputeReason,
     int? settlementAmount,
+    int? forgivenAmount,
     String? settlementNotes,
     bool? hasInstallmentPlan,
     String? installmentPlanId,
@@ -233,6 +239,7 @@ class DebtModel {
       writeOffReason: writeOffReason ?? this.writeOffReason,
       disputeReason: disputeReason ?? this.disputeReason,
       settlementAmount: settlementAmount ?? this.settlementAmount,
+      forgivenAmount: forgivenAmount ?? this.forgivenAmount,
       settlementNotes: settlementNotes ?? this.settlementNotes,
       hasInstallmentPlan: hasInstallmentPlan ?? this.hasInstallmentPlan,
       installmentPlanId: clearInstallmentPlanId ? null : (installmentPlanId ?? this.installmentPlanId),

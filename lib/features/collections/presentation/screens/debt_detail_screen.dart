@@ -505,7 +505,20 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('settle_for_less'.tr(), style: Theme.of(context).textTheme.titleSmall),
+                        if (_debt.forgivenAmount != null && _debt.forgivenAmount! > 0) ...[
+                          _InfoRow(
+                            'original_remaining'.tr(),
+                            DebtModel.formatAmountIls(
+                              _debt.settlementAmount! + _debt.forgivenAmount!,
+                            ),
+                          ),
+                        ],
                         _InfoRow('settlement_amount'.tr(), DebtModel.formatAmountIls(_debt.settlementAmount!)),
+                        if (_debt.forgivenAmount != null && _debt.forgivenAmount! > 0)
+                          _InfoRow(
+                            'forgiven_amount'.tr(),
+                            DebtModel.formatAmountIls(_debt.forgivenAmount!),
+                          ),
                         if (_debt.settlementNotes != null)
                           _InfoRow('settlement_notes'.tr(), _debt.settlementNotes!),
                       ],

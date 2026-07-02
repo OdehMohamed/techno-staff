@@ -10,6 +10,7 @@ class CustomersState {
   final String? error;
   final CollectionsStatus formStatus;
   final String? formError;
+  final bool hasMore;
 
   const CustomersState({
     this.status = CollectionsStatus.initial,
@@ -18,6 +19,7 @@ class CustomersState {
     this.error,
     this.formStatus = CollectionsStatus.initial,
     this.formError,
+    this.hasMore = false,
   });
 
   CustomersState copyWith({
@@ -27,6 +29,7 @@ class CustomersState {
     String? error,
     CollectionsStatus? formStatus,
     String? formError,
+    bool? hasMore,
     bool clearError = false,
     bool clearFormError = false,
   }) {
@@ -37,6 +40,7 @@ class CustomersState {
       error: clearError ? null : (error ?? this.error),
       formStatus: formStatus ?? this.formStatus,
       formError: clearFormError ? null : (formError ?? this.formError),
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 }

@@ -616,5 +616,12 @@
   "reject_reason_hint": "Optional reason for rejection",
   "search_hint": "Search...",
   "reason_required": "Reason is required",
-  "debt_not_found": "Debt not found"
+  "debt_not_found": "Debt not found",
+  "filter_all": "All",
+  "original_remaining": "Original Remaining",
+  "forgiven_amount": "Forgiven Amount",
+  "settlement_payment": "Settlement Payment",
+  "verified_this_month": "Verified This Month",
+  "load_more": "Load more",
+  "loading_more": "Loading..."
 }
