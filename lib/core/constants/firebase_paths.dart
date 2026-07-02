@@ -17,6 +17,18 @@ class FirebasePaths {
   static const String messages = 'messages';
   static const String taskAttachments = 'attachments';
 
+  // Collections subsystem (v2.0.0)
+  static const String customers = 'customers';
+  static const String debts = 'debts';
+  static const String installmentPlans = 'installment_plans';
+  static const String installments = 'installments';
+  static const String payments = 'payments';
+  static const String handovers = 'handovers';
+  static const String visits = 'visits';
+  static const String collectionLogs = 'collection_logs';
+  static const String collectionSettings = 'collection_settings';
+  static const String counters = 'counters';
+
   // Fields (اختياري بس مهم لقدام)
   static const String createdAt = 'createdAt';
   static const String assignedTo = 'assignedTo';

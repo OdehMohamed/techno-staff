@@ -142,161 +142,191 @@ class _SettingsScreenState extends State<SettingsScreen> {
           setState(() => _isDeleting = false);
         }
 
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          RouteNames.login,
-          (_) => false,
-        );
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil(RouteNames.login, (_) => false);
       },
       child: Scaffold(
         appBar: AppBar(title: Text('settings'.tr())),
         body: ListView(
           padding: const EdgeInsets.all(AppSizes.md),
           children: [
-          Text('language'.tr(), style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSizes.sm),
-          Card(
-            child: RadioGroup<String>(
-              groupValue: currentLanguageCode,
-              onChanged: (value) async {
-                if (value == null) return;
+            Text(
+              'language'.tr(),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: AppSizes.sm),
+            Card(
+              child: RadioGroup<String>(
+                groupValue: currentLanguageCode,
+                onChanged: (value) async {
+                  if (value == null) return;
 
-                if (value == 'en') {
-                  await context.setLocale(const Locale('en'));
-                  if (!context.mounted) return;
-                  await _persistLanguageCode('en');
-                  if (!context.mounted) return;
-                } else if (value == 'ar') {
-                  await context.setLocale(const Locale('ar'));
-                  if (!context.mounted) return;
-                  await _persistLanguageCode('ar');
-                  if (!context.mounted) return;
-                }
+                  if (value == 'en') {
+                    await context.setLocale(const Locale('en'));
+                    if (!context.mounted) return;
+                    await _persistLanguageCode('en');
+                    if (!context.mounted) return;
+                  } else if (value == 'ar') {
+                    await context.setLocale(const Locale('ar'));
+                    if (!context.mounted) return;
+                    await _persistLanguageCode('ar');
+                    if (!context.mounted) return;
+                  }
+                },
+                child: Column(
+                  children: const [
+                    RadioListTile<String>(value: 'en', title: Text('English')),
+                    RadioListTile<String>(value: 'ar', title: Text('العربية')),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSizes.lg),
+            Text(
+              'appearance'.tr(),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: AppSizes.sm),
+            BlocBuilder<ThemeCubit, AppThemeMode>(
+              builder: (context, themeMode) {
+                return Card(
+                  child: RadioGroup<AppThemeMode>(
+                    groupValue: themeMode,
+                    onChanged: (value) {
+                      if (value == null) return;
+
+                      switch (value) {
+                        case AppThemeMode.system:
+                          context.read<ThemeCubit>().setSystemTheme();
+                          break;
+                        case AppThemeMode.light:
+                          context.read<ThemeCubit>().setLightTheme();
+                          break;
+                        case AppThemeMode.dark:
+                          context.read<ThemeCubit>().setDarkTheme();
+                          break;
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        RadioListTile<AppThemeMode>(
+                          value: AppThemeMode.system,
+                          title: Text('system_default'.tr()),
+                        ),
+                        RadioListTile<AppThemeMode>(
+                          value: AppThemeMode.light,
+                          title: Text('light_mode'.tr()),
+                        ),
+                        RadioListTile<AppThemeMode>(
+                          value: AppThemeMode.dark,
+                          title: Text('dark_mode'.tr()),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               },
+            ),
+            const SizedBox(height: AppSizes.lg),
+            Text('account'.tr(), style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: AppSizes.sm),
+            Card(
               child: Column(
-                children: const [
-                  RadioListTile<String>(value: 'en', title: Text('English')),
-                  RadioListTile<String>(value: 'ar', title: Text('العربية')),
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text('about'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(RouteNames.about),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: Text('edit_profile'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(RouteNames.editProfile),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.lock_outline),
+                    title: Text('change_password'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pushNamed(RouteNames.changePassword),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.devices_outlined),
+                    title: Text('sign_out_other_devices'.tr()),
+                    trailing: _isSigningOutOtherDevices
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    enabled: !_isSigningOutOtherDevices,
+                    onTap: _isSigningOutOtherDevices
+                        ? null
+                        : _handleSignOutOtherDevices,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: Text('logout'.tr()),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text('logout'.tr()),
+                          content: Text('logout_confirm_message'.tr()),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: Text('cancel'.tr()),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: Text('logout'.tr()),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && context.mounted) {
+                        context.read<AuthCubit>().signOut();
+                      }
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(
+                      Icons.delete_forever,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      'delete_account'.tr(),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    trailing: _isDeleting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : null,
+                    enabled: !_isDeleting,
+                    onTap: _isDeleting ? null : _handleDeleteAccount,
+                  ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: AppSizes.lg),
-          Text(
-            'appearance'.tr(),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSizes.sm),
-          BlocBuilder<ThemeCubit, AppThemeMode>(
-            builder: (context, themeMode) {
-              return Card(
-                child: RadioGroup<AppThemeMode>(
-                  groupValue: themeMode,
-                  onChanged: (value) {
-                    if (value == null) return;
-
-                    switch (value) {
-                      case AppThemeMode.system:
-                        context.read<ThemeCubit>().setSystemTheme();
-                        break;
-                      case AppThemeMode.light:
-                        context.read<ThemeCubit>().setLightTheme();
-                        break;
-                      case AppThemeMode.dark:
-                        context.read<ThemeCubit>().setDarkTheme();
-                        break;
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.system,
-                        title: Text('system_default'.tr()),
-                      ),
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.light,
-                        title: Text('light_mode'.tr()),
-                      ),
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.dark,
-                        title: Text('dark_mode'.tr()),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: AppSizes.lg),
-          Text('account'.tr(), style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSizes.sm),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: Text('about'.tr()),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      Navigator.of(context).pushNamed(RouteNames.about),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text('edit_profile'.tr()),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      Navigator.of(context).pushNamed(RouteNames.editProfile),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title: Text('change_password'.tr()),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      Navigator.of(context)
-                          .pushNamed(RouteNames.changePassword),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.devices_outlined),
-                  title: Text('sign_out_other_devices'.tr()),
-                  trailing: _isSigningOutOtherDevices
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.chevron_right),
-                  enabled: !_isSigningOutOtherDevices,
-                  onTap: _isSigningOutOtherDevices
-                      ? null
-                      : _handleSignOutOtherDevices,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Icon(
-                    Icons.delete_forever,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  title: Text(
-                    'delete_account'.tr(),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  trailing: _isDeleting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : null,
-                  enabled: !_isDeleting,
-                  onTap: _isDeleting ? null : _handleDeleteAccount,
-                ),
-              ],
-            ),
-          ),
           ],
         ),
       ),

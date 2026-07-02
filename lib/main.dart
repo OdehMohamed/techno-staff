@@ -43,6 +43,20 @@ import 'features/tasks/data/repositories/templates_repository.dart';
 import 'features/tasks/presentation/cubit/task_attachments_cubit.dart';
 import 'features/tasks/presentation/cubit/tasks_cubit.dart';
 import 'features/tasks/presentation/cubit/templates_cubit.dart';
+import 'features/collections/data/repositories/customers_repository.dart';
+import 'features/collections/data/repositories/debts_repository.dart';
+import 'features/collections/data/repositories/payments_repository.dart';
+import 'features/collections/data/repositories/handovers_repository.dart';
+import 'features/collections/data/repositories/installments_repository.dart';
+import 'features/collections/data/repositories/visits_repository.dart';
+import 'features/collections/presentation/cubit/customers_cubit.dart';
+import 'features/collections/presentation/cubit/debts_admin_cubit.dart';
+import 'features/collections/presentation/cubit/collector_debts_cubit.dart';
+import 'features/collections/presentation/cubit/payments_cubit.dart';
+import 'features/collections/presentation/cubit/handover_cubit.dart';
+import 'features/collections/presentation/cubit/installment_cubit.dart';
+import 'features/collections/presentation/cubit/collections_dashboard_cubit.dart';
+import 'features/collections/presentation/cubit/visit_cubit.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
@@ -95,12 +109,24 @@ Future<void> main() async {
 
   await NotificationService.initialize(
     onNotificationTap: (payload) {
-      // Payload format: 'conv:<conversationId>' for chat, raw taskId for tasks.
+      // Payload format: 'conv:<id>' for chat, 'pay:<id>' for payments, raw taskId otherwise.
       if (payload.startsWith('conv:')) {
         final conversationId = payload.substring(5);
         AppNavigator.navigatorKey.currentState?.pushNamed(
           RouteNames.conversation,
           arguments: conversationId,
+        );
+      } else if (payload.startsWith('pay:')) {
+        final paymentId = payload.substring(4);
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.paymentDetailLoader,
+          arguments: paymentId,
+        );
+      } else if (payload.startsWith('debt:')) {
+        final debtId = payload.substring(5);
+        AppNavigator.navigatorKey.currentState?.pushNamed(
+          RouteNames.debtDetailLoader,
+          arguments: debtId,
         );
       } else {
         AppNavigator.navigatorKey.currentState?.pushNamed(
@@ -129,6 +155,7 @@ Future<void> main() async {
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     final conversationId = message.data['conversationId'];
     final taskId = message.data['taskId'];
+    final notifType = message.data['type'] as String?;
 
     if (conversationId != null) {
       AppNavigator.navigatorKey.currentState?.pushNamed(
@@ -140,6 +167,8 @@ Future<void> main() async {
         RouteNames.taskDetails,
         arguments: taskId,
       );
+    } else if (notifType != null) {
+      _routeCollectionsNotification(notifType, data: message.data);
     }
   });
 
@@ -148,6 +177,7 @@ Future<void> main() async {
   if (initialMessage != null) {
     final conversationId = initialMessage.data['conversationId'];
     final taskId = initialMessage.data['taskId'];
+    final notifType = initialMessage.data['type'] as String?;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (conversationId != null) {
@@ -160,6 +190,8 @@ Future<void> main() async {
           RouteNames.taskDetails,
           arguments: taskId,
         );
+      } else if (notifType != null) {
+        _routeCollectionsNotification(notifType, data: initialMessage.data);
       }
     });
   }
@@ -178,6 +210,12 @@ Future<void> main() async {
     FirebaseFirestore.instance,
     FirebaseStorage.instance,
   );
+  final customersRepository = CustomersRepository();
+  final debtsRepository = DebtsRepository();
+  final paymentsRepository = PaymentsRepository();
+  final handoversRepository = HandoversRepository();
+  final installmentsRepository = InstallmentsRepository();
+  final visitsRepository = VisitsRepository();
 
   runApp(
     EasyLocalization(
@@ -245,9 +283,71 @@ Future<void> main() async {
           // Pre-created instance — shared with the FCM onMessage suppression
           // logic above so no BuildContext is needed in the listener.
           BlocProvider.value(value: conversationCubit),
+          BlocProvider(
+            create: (_) => CustomersCubit(customersRepository: customersRepository),
+          ),
+          BlocProvider(
+            create: (_) => DebtsAdminCubit(debtsRepository: debtsRepository),
+          ),
+          BlocProvider(
+            create: (_) => CollectorDebtsCubit(debtsRepository: debtsRepository),
+          ),
+          BlocProvider(
+            create: (_) => PaymentsCubit(paymentsRepository),
+          ),
+          BlocProvider(
+            create: (_) => HandoverCubit(handoversRepository),
+          ),
+          BlocProvider(
+            create: (_) => InstallmentCubit(installmentsRepository),
+          ),
+          BlocProvider(
+            create: (_) => VisitCubit(visitsRepository),
+          ),
+          BlocProvider(
+            create: (_) => CollectionsDashboardCubit(),
+          ),
         ],
         child: const TechnoStaffApp(),
       ),
     ),
   );
+}
+
+void _routeCollectionsNotification(
+  String type, {
+  Map<String, dynamic>? data,
+}) {
+  final nav = AppNavigator.navigatorKey.currentState;
+  if (nav == null) return;
+  switch (type) {
+    case 'handover_pending':
+    case 'handover_verified':
+    case 'handover_discrepancy':
+      nav.pushNamed(RouteNames.handoverList);
+    case 'debt_overdue':
+    case 'broken_ptps':
+    case 'stale_cash':
+      nav.pushNamed(RouteNames.collectorHome);
+    case 'payment_recorded':
+      final paymentId = (data?['paymentId'] ?? '').toString();
+      if (paymentId.isNotEmpty) {
+        nav.pushNamed(RouteNames.paymentDetailLoader, arguments: paymentId);
+      } else {
+        nav.pushNamed(RouteNames.collectionsDashboard);
+      }
+    case 'debt_overdue_escalation':
+    case 'broken_ptps_admin':
+    case 'stale_cash_admin':
+      nav.pushNamed(RouteNames.collectionsDashboard);
+    case 'settlement_requested':
+    case 'settlement_approved':
+    case 'settlement_rejected':
+      final debtId = (data != null && data['debtId'] != null)
+          ? data['debtId'].toString()
+          : '';
+      if (debtId.isNotEmpty) {
+        nav.pushNamed(RouteNames.debtDetailLoader, arguments: debtId);
+      }
+  }
 }

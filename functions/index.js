@@ -7,6 +7,13 @@ const attendance = require("./lib/attendance");
 const users = require("./lib/users");
 const chat = require("./lib/chat");
 const notifications = require("./lib/notifications");
+const paymentTriggers = require("./lib/collections/payment-triggers");
+const handoverTriggers = require("./lib/collections/handover-triggers");
+const installmentTriggers = require("./lib/collections/installment-triggers");
+const visitTriggers = require("./lib/collections/visit-triggers");
+const debtTriggers = require("./lib/collections/debt-triggers");
+const settlementTriggers = require("./lib/collections/settlement-triggers");
+const schedulers = require("./lib/collections/schedulers");
 
 exports.generateRecurringTaskInstances = tasks.generateRecurringTaskInstances;
 exports.cleanupTaskAttachments = tasks.cleanupTaskAttachments;
@@ -30,3 +37,27 @@ exports.revokeUserSessions = users.revokeUserSessions;
 exports.onNewChatMessage = chat.onNewChatMessage;
 
 exports.cleanupExpiredNotifications = notifications.cleanupExpiredNotifications;
+
+exports.onPaymentCreated = paymentTriggers.onPaymentCreated;
+exports.onPaymentCancelled = paymentTriggers.onPaymentCancelled;
+exports.onHandoverCreated = handoverTriggers.onHandoverCreated;
+exports.onHandoverUpdated = handoverTriggers.onHandoverUpdated;
+exports.settleDiscrepancy = handoverTriggers.settleDiscrepancy;
+
+exports.onInstallmentPlanCreated = installmentTriggers.onInstallmentPlanCreated;
+exports.sendInstallmentDueReminders = installmentTriggers.sendInstallmentDueReminders;
+
+exports.onVisitCreated = visitTriggers.onVisitCreated;
+exports.onDebtCreated = debtTriggers.onDebtCreated;
+exports.onDebtStatusChanged = debtTriggers.onDebtStatusChanged;
+exports.onSettlementRequested = settlementTriggers.onSettlementRequested;
+exports.approveCollectorSettlementRequest = settlementTriggers.approveCollectorSettlementRequest;
+
+exports.updateDebtAgingBuckets = schedulers.updateDebtAgingBuckets;
+exports.checkBrokenPtps = schedulers.checkBrokenPtps;
+exports.sendOverdueDebtEscalations = schedulers.sendOverdueDebtEscalations;
+exports.sendStaleCashWarnings = schedulers.sendStaleCashWarnings;
+exports.testUpdateDebtAgingBuckets = schedulers.testUpdateDebtAgingBuckets;
+exports.testSendStaleCashWarnings = schedulers.testSendStaleCashWarnings;
+exports.testCheckBrokenPtps = schedulers.testCheckBrokenPtps;
+exports.testSendOverdueDebtEscalations = schedulers.testSendOverdueDebtEscalations;

@@ -124,6 +124,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'task_overdue_reminder':
       case 'task_overdue_escalation':
         return Icons.warning_amber_rounded;
+      case 'payment_recorded':
+        return Icons.payments_outlined;
+      case 'handover_pending':
+        return Icons.move_to_inbox_outlined;
+      case 'handover_verified':
+        return Icons.verified_outlined;
+      case 'handover_discrepancy':
+        return Icons.difference_outlined;
+      case 'debt_overdue':
+      case 'debt_overdue_escalation':
+        return Icons.credit_card_off_outlined;
+      case 'installment_due':
+        return Icons.event_outlined;
+      case 'broken_ptps':
+      case 'broken_ptps_admin':
+        return Icons.handshake_outlined;
+      case 'stale_cash':
+      case 'stale_cash_admin':
+        return Icons.account_balance_wallet_outlined;
+      case 'settlement_requested':
+        return Icons.pending_actions_outlined;
+      case 'settlement_approved':
+        return Icons.price_check_outlined;
+      case 'settlement_rejected':
+        return Icons.cancel_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -212,6 +237,71 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 }
                 break;
 
+              // Collections — handover types → handover list
+              case 'handover_pending':
+              case 'handover_verified':
+              case 'handover_discrepancy':
+                Navigator.pushNamed(context, RouteNames.handoverList);
+                break;
+
+              // Collections — collector-only alerts → collector home
+              case 'debt_overdue':
+              case 'broken_ptps':
+              case 'stale_cash':
+                Navigator.pushNamed(context, RouteNames.collectorHome);
+                break;
+
+              // installment_due is sent to both roles — route by role
+              case 'installment_due':
+                final role =
+                    context.read<AuthCubit>().state.user?.role;
+                if (role == 'admin') {
+                  Navigator.pushNamed(
+                      context, RouteNames.collectionsDashboard);
+                } else {
+                  Navigator.pushNamed(context, RouteNames.collectorHome);
+                }
+                break;
+
+              // payment_recorded → open the specific payment
+              case 'payment_recorded':
+                final paymentId =
+                    (notification.data?['paymentId'] ?? '').toString();
+                if (paymentId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.paymentDetailLoader,
+                    arguments: paymentId,
+                  );
+                } else {
+                  Navigator.pushNamed(
+                      context, RouteNames.collectionsDashboard);
+                }
+                break;
+
+              // Collections — admin-level alerts → collections dashboard
+              case 'debt_overdue_escalation':
+              case 'broken_ptps_admin':
+              case 'stale_cash_admin':
+                Navigator.pushNamed(
+                    context, RouteNames.collectionsDashboard);
+                break;
+
+              // Settlement request/approval/rejection → debt detail
+              case 'settlement_requested':
+              case 'settlement_approved':
+              case 'settlement_rejected':
+                final debtId =
+                    (notification.data?['debtId'] ?? '').toString();
+                if (debtId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.debtDetailLoader,
+                    arguments: debtId,
+                  );
+                }
+                break;
+
               default:
                 break;
             }
@@ -296,6 +386,31 @@ String _buildNotificationTitle(InAppNotificationModel notification) {
       return 'task_overdue_reminder_title'.tr();
     case 'task_overdue_escalation':
       return 'task_overdue_escalation_title'.tr();
+    case 'payment_recorded':
+      return 'payment_details'.tr();
+    case 'handover_pending':
+      return 'hand_over_cash'.tr();
+    case 'handover_verified':
+      return 'handover_status_verified'.tr();
+    case 'handover_discrepancy':
+      return 'handover_discrepancy'.tr();
+    case 'debt_overdue':
+    case 'debt_overdue_escalation':
+      return 'overdue_debts'.tr();
+    case 'installment_due':
+      return 'next_installment_due'.tr();
+    case 'broken_ptps':
+    case 'broken_ptps_admin':
+      return 'broken_ptps'.tr();
+    case 'stale_cash':
+    case 'stale_cash_admin':
+      return 'cash_on_hand'.tr();
+    case 'settlement_requested':
+      return 'settlement_request_pending'.tr();
+    case 'settlement_approved':
+      return 'settlement_approved_title'.tr();
+    case 'settlement_rejected':
+      return 'settlement_rejected_title'.tr();
     default:
       return 'notifications'.tr();
   }
@@ -334,6 +449,60 @@ String _buildNotificationBody(InAppNotificationModel notification) {
           'task': (data['taskTitle'] ?? '').toString(),
         },
       );
+    case 'payment_recorded':
+      // amountFormatted is now included in the CF payload.
+      return '${data['collectorName'] ?? ''} · ${data['customerName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
+    case 'handover_pending':
+      // amountFormatted is now included in the CF payload.
+      return '${data['collectorName'] ?? ''} · ${data['amountFormatted'] ?? ''}';
+    case 'handover_verified':
+    case 'handover_discrepancy':
+      final admin = (data['adminName'] ?? '').toString();
+      final settled = data['settledAmount'];
+      final amt = settled != null
+          ? '₪${((settled as num).toInt() / 100).toStringAsFixed(2)}'
+          : '';
+      return [admin, amt].where((s) => s.isNotEmpty).join(' · ');
+    case 'debt_overdue':
+    case 'debt_overdue_escalation':
+      final customer = (data['customerName'] ?? '').toString();
+      final days = data['daysPastDue']?.toString() ?? '';
+      return days.isNotEmpty ? '$customer · ${days}d' : customer;
+    case 'installment_due':
+      final amt = (data['amountFormatted'] ?? '').toString();
+      final due = (data['dueDate'] ?? '').toString();
+      return [amt, due].where((s) => s.isNotEmpty).join(' · ');
+    case 'broken_ptps':
+      final count = data['count']?.toString() ?? '';
+      return count.isNotEmpty ? '×$count' : '';
+    case 'broken_ptps_admin':
+      final cnt = data['count']?.toString() ?? '';
+      return cnt.isNotEmpty ? '×$cnt' : '';
+    case 'stale_cash':
+      final ds = data['daysSince']?.toString() ?? '';
+      return ds.isNotEmpty ? '${data['amountFormatted'] ?? ''} · ${ds}d' : '';
+    case 'stale_cash_admin':
+      // CF sends per-collector notifications (collectorName + amountFormatted).
+      final name = (data['collectorName'] ?? '').toString();
+      final cash = (data['amountFormatted'] ?? '').toString();
+      return [name, cash].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_requested':
+      // Admin receives: collectorName requested amount for customerName
+      final collector = (data['collectorName'] ?? '').toString();
+      final customer = (data['customerName'] ?? '').toString();
+      final amount = (data['amountFormatted'] ?? '').toString();
+      return [collector, customer, amount].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_approved':
+      // Collector receives: customerName · amount · adminName
+      final approvedCustomer = (data['customerName'] ?? '').toString();
+      final approvedAmount = (data['amountFormatted'] ?? '').toString();
+      final admin = (data['adminName'] ?? '').toString();
+      return [approvedCustomer, approvedAmount, admin].where((s) => s.isNotEmpty).join(' · ');
+    case 'settlement_rejected':
+      // Collector receives: customerName (+ optional rejection reason)
+      final rejectedCustomer = (data['customerName'] ?? '').toString();
+      final rejectionReason = (data['rejectionReason'] ?? '').toString();
+      return [rejectedCustomer, rejectionReason].where((s) => s.isNotEmpty).join(' · ');
     default:
       return '';
   }

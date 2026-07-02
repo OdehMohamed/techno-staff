@@ -1,3 +1,424 @@
+## 2026-07-01 (session 9) — Claude Sonnet 4.6 — post-owner-testing fixes (4 issues)
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Fix four issues found during owner testing of the collector settlement request flow.
+- **Outcome**: ✅ All 4 fixes applied. `flutter analyze` and `npm run lint` both clean. Requires `firebase deploy --only functions` and `firestore:rules` before re-test.
+
+### Fixes applied
+
+| Issue | Fix |
+|-------|-----|
+| 1 — Reason validation UX | `_showRequestSettlementDialog()` now shows inline `errorText` on the reason field instead of silently blocking submission. Added `reason_required` translation key (en + ar). |
+| 2 — cashOnHand not updated on approval | New CF callable `approveCollectorSettlementRequest` atomically: settles debt, creates a `pending_handover` payment (receiptNumber=`SETTLEMENT` bypasses `onPaymentCreated`), increments collector `cashOnHand`, decrements customer balance, sets `_customerBalanceSynced=true` so `onDebtStatusChanged` skips duplicate balance update. |
+| 3 — Admin amount as source of truth | The callable receives `settledAmount` from the Flutter dialog (admin's final entered value) and uses it for all financial writes. |
+| 4 — Settlement request notifications | New CF trigger `onSettlementRequested` on debts collection: (A) `hasPendingSettlementRequest: false→true` → FCM + in-app to all admins; (C) `true→false + rejected + not settled` → FCM + in-app to collector. (B) Admin approval notification sent inside the callable. Full FCM deep-link routing: `debt:<debtId>` payload → `DebtDetailLoaderScreen`. |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `functions/lib/collections/settlement-triggers.js` | **NEW** — `onSettlementRequested` trigger + `approveCollectorSettlementRequest` callable |
+| `functions/index.js` | Export both new functions |
+| `lib/features/collections/data/repositories/debts_repository.dart` | `getById()` added; `approveSettlementRequest()` now calls CF callable instead of direct Firestore write |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | `approveSettlementRequest()` updated signature (dropped `originalBalance`/`adminId`, added `collectorId`/`collectorName`/`customerName`) |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Issue 1: reason inline error; Issue 2/3: pass extra fields to cubit |
+| `lib/features/collections/presentation/screens/debt_detail_loader_screen.dart` | **NEW** — fetches debt by ID for FCM deep-link navigation |
+| `lib/core/routes/route_names.dart` | Add `debtDetailLoader` |
+| `lib/core/routes/app_router.dart` | Add `debtDetailLoader` route handler |
+| `lib/core/services/notification_service.dart` | Handle `debt:` payload prefix for settlement notifications |
+| `lib/main.dart` | `debt:` tap routing + settlement cases in `_routeCollectionsNotification` |
+| `assets/translations/en.json` | Add `reason_required`, `debt_not_found` |
+| `assets/translations/ar.json` | Add `reason_required`, `debt_not_found` |
+
+### Deploy steps required
+
+1. `firebase deploy --only functions` — deploys `onSettlementRequested` + `approveCollectorSettlementRequest`
+2. No Firestore rules change needed (callable uses Admin SDK)
+3. No new Firestore indexes needed
+
+---
+
+## 2026-06-29 (session 8) — Claude Sonnet 4.6 — v2.0.0 third audit fixes + full deploy
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Close remaining findings from third audit (F1, F2) and complete all deploys before owner verification pass.
+- **Outcome**: ✅ All fixes applied. All deploys complete. `flutter analyze` clean. Ready for owner final verification pass.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| HIGH | F1 | Added missing composite index `users: [role ASC, isActive ASC, cashOnHand ASC]` — `sendStaleCashWarnings` outer query was throwing FAILED_PRECONDITION on every daily run (range + equality on different fields) |
+| HIGH | F1 | Added missing composite index `payments: [collectorId ASC, status ASC, isCancelled ASC, collectedAt ASC]` — `sendStaleCashWarnings` inner payment query failed inside try/catch, so stale cash was never sent to collectors |
+| LOW | F2 | `installment_due` notification routing now checks user role: admin → `collectionsDashboard`; collector → `collectorHome` (previously always routed to `collectorHome`, sending admins into CollectorApp) |
+
+### Deploys
+
+| Deploy | Result |
+|--------|--------|
+| `firebase deploy --only firestore:indexes --force` | ✅ Deployed (2 new indexes live) |
+| `firebase deploy --only functions` | ✅ All 33 functions updated (2 created: `testCheckBrokenPtps`, `testSendOverdueDebtEscalations`; 31 updated) |
+
+---
+
+## 2026-06-29 (session 7) — Claude Sonnet 4.6 — v2.0.0 second audit fixes + index deploy
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Apply all findings from the second pre-merge audit (after commit `c443be8`) and deploy missing Firestore indexes.
+- **Outcome**: ✅ All fixes applied, indexes deployed. `flutter analyze` clean. Awaiting owner final verification pass before merge.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| MEDIUM | N1 | `handover_verified`/`handover_discrepancy` in-app body now shows `adminName · settledAmount` (was showing collector's own name — useless to the recipient) |
+| HIGH | P1 | Added missing composite index `visits: [promiseToPay.status ASC, promiseToPay.promisedDate ASC]` — `checkBrokenPtps` cron was silently failing every day since PR 5 |
+| HIGH | P2 | Added missing collection-group index `installments: [status ASC, dueDate ASC]` — `sendInstallmentDueReminders` cron was silently failing every day since PR 4 |
+| LOW | P3 | `HandoverInitScreen` now filters out payments where `handoverId != null`, preventing a collector from including an already-in-handover payment in a second handover |
+| — | — | Reconciled 6 production indexes that existed in remote Firestore but were missing from local `firestore.indexes.json` (`notifications`, `task_logs`, three `tasks` compound indexes, `tasks: [dueDate, status]`) — they are now in the local file and were preserved by the deploy |
+
+### Deploy
+- `firebase deploy --only firestore:indexes --force` — ✅ deployed successfully (local binary `functions/node_modules/.bin/firebase`; global install broken due to missing template file)
+
+---
+
+## 2026-06-29 (session 6) — Claude Sonnet 4.6 — v2.0.0 pre-merge audit fixes
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Apply all findings from the pre-merge audit (13 issues across 9 files) before merging to `main`.
+- **Outcome**: ✅ All fixes applied. `flutter analyze` clean, ESLint clean. Committed `c443be8`. Awaiting owner verification pass before final merge approval.
+
+### Fixes applied
+
+| Severity | ID | Fix |
+|----------|----|-----|
+| CRITICAL | C1 | `cashOnHand` decrement now uses `claimedAmount` always, not `actualAmount` on discrepancy |
+| CRITICAL | C2 | `handoverId` stamped at handover creation; `onPaymentCancelled` blocks for any handover, not just verified |
+| HIGH | H1 | Removed `agingBucket != 'current'` filter (missing composite index → cron silently failed every day) |
+| HIGH | H2 | `amountFormatted` added to `payment_recorded`/`handover_pending` payloads; `collectorName` added to `handover_verified`/`handover_discrepancy` |
+| MEDIUM | M1 | `installment_due` notification routed, titled, bodied in `NotificationsScreen` |
+| MEDIUM | M2 | Admin Firestore query hoisted outside installment loop |
+| MEDIUM | M3 | HandoverInitScreen success SnackBar now says "handover_initiated" |
+| MEDIUM | M4 | `checkBrokenPtps` batch chunked to 200 to stay under Firestore 500-op limit |
+| LOW | — | `PaymentModel.isCancelable` checks `handoverId == null`; `stale_cash_admin` body fixed; dead ternary in `receipt_pdf_service.dart` removed; dead repo methods removed; lifecycle comment corrected; `handover_initiated` translation key added (EN + AR); test callables for `checkBrokenPtps` and `sendOverdueDebtEscalations` added |
+
+---
+
+## 2026-06-29 (session 5) — Claude Sonnet 4.6 — v2.0.0 PR 7: Collector Experience Polish and Settings
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 7 of 7 — cash limit progress bar, payment blocking, per-collector settings, deactivation guard, notification routing.
+- **Outcome**: ✅ All PR 7 items complete. `flutter analyze` clean. Committed `412174b`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/auth/domain/models/app_user.dart` | Added `maxCashOnHand` field + `clearMaxCashOnHand` copyWith flag |
+| `lib/features/collections/presentation/cubit/payments_state.dart` | Added `maxCashOnHand`; computed getters `isAtCashLimit`, `isApproachingCashLimit`, `cashLimitFraction` |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | `loadCollectorPendingPayments` parallel-reads user doc to hydrate `maxCashOnHand` |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand card replaced with color-coded progress bar (green/orange/red at 80 %/100 % of limit) |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | `_save()` blocks if `cashOnHand + amount > maxCashOnHand` |
+| `lib/features/collections/presentation/screens/collector_settings_screen.dart` | **NEW** — admin sets/clears per-collector `maxCashOnHand`; reads live from Firestore |
+| `lib/features/employees/data/repositories/employees_repository.dart` | Added `setMaxCashOnHand` + `getCashOnHand` |
+| `lib/features/employees/presentation/screens/employees_screen.dart` | Tune icon → CollectorSettingsScreen; deactivation guard warns when collector has cash on hand |
+| `lib/features/notifications/presentation/screens/notifications_screen.dart` | Tap routing + icons + titles/bodies for all 10 collections notification types |
+| `lib/main.dart` | FCM tap routing for collections types via `_routeCollectionsNotification` |
+| `assets/translations/en.json` | 4 new keys: `collector_settings`, `no_limit`, `max_cash_on_hand_hint`, `collector_deactivate_cash_warning` |
+| `assets/translations/ar.json` | 4 matching AR translations |
+
+---
+
+## 2026-06-29 (session 4) — Claude Sonnet 4.6 — v2.0.0 PR 6: PDF Receipts, Reports, Admin Dashboard
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 6 of 7 — Amount-in-words utility, receipt PDF, reconciliation/aging PDFs, collections dashboard, aging report screen.
+- **Outcome**: ✅ All PR 6 items complete. `flutter analyze` clean, 37/37 unit tests pass. Committed `43b160f`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/services/amount_in_words.dart` | **NEW** — bilingual EN/AR currency-to-words; handles MSA grammatical gender rules for شيكل |
+| `lib/features/collections/data/services/receipt_pdf_service.dart` | **NEW** — A5 receipt PDF; Cairo font; bilingual amount-in-words always shown; disclaimer note |
+| `lib/features/collections/data/services/collections_report_service.dart` | **NEW** — A4 handover reconciliation PDF + aging report PDF; bucket order `90+→current` |
+| `lib/features/collections/presentation/cubit/collections_dashboard_state.dart` | **NEW** — `CollectorSummary` + `CollectionsDashboardState` (portfolio totals, aging maps, collector summaries) |
+| `lib/features/collections/presentation/cubit/collections_dashboard_cubit.dart` | **NEW** — parallel Firestore queries; debt aging aggregation; per-collector MTD + cash on hand |
+| `lib/features/collections/presentation/screens/collections_dashboard_screen.dart` | **NEW** — admin portfolio view; stat grid, aging breakdown bars, per-collector table; pull-to-refresh |
+| `lib/features/collections/presentation/screens/aging_report_screen.dart` | **NEW** — debts grouped by aging bucket (sorted remaining desc); PDF export in AppBar |
+| `lib/features/collections/data/repositories/payments_repository.dart` | Added `getByIds` (parallel doc reads for handover reconciliation) |
+| `lib/features/collections/presentation/screens/payment_detail_screen.dart` | Added Share Receipt button; fetches customer phone + current debt balance at tap time |
+| `lib/features/collections/presentation/screens/handover_verification_screen.dart` | Added Export Reconciliation PDF button in AppBar; fetches payment objects via `getByIds` |
+| `lib/core/routes/route_names.dart` | Added `collectionsDashboard`, `agingReport` |
+| `lib/core/routes/app_router.dart` | Wired `collectionsDashboard` → `CollectionsDashboardScreen`, `agingReport` → `AgingReportScreen` |
+| `lib/shared/widgets/app_drawer.dart` | Added Collections Dashboard drawer entry for admins |
+| `lib/main.dart` | Added `CollectionsDashboardCubit` to `MultiBlocProvider` |
+| `assets/translations/en.json` | 11 new keys: `collections_dashboard`, `cash_with_collectors`, `collected_this_week`, `aging_breakdown`, `collector_summary`, `no_overdue_debts`, `no_collectors`, `assigned_debts`, `failed_to_generate_pdf`, `retry` |
+| `assets/translations/ar.json` | 11 matching AR translations |
+| `test/features/collections/amount_in_words_test.dart` | **NEW** — 37 tests covering all denominations and edge cases in EN + AR |
+
+### PR 5 round-2 fixes (also in this session, committed earlier)
+- `DebtModel`: added `disputeReason` (reads `dispute.reason` sub-map) + fixed `writeOffReason` (reads `writeOff.reason`)
+- `debt_detail_screen.dart`: dispute reason card added
+- `functions/lib/collections/schedulers.js`: extracted cron bodies → named async functions; added admin-only `testUpdateDebtAgingBuckets` + `testSendStaleCashWarnings` callables
+- `functions/index.js`: exported both test callables
+- `app_drawer.dart`: refactored from `Column` → `Expanded + ListView` to fix overflow; added Collections Settings + Collections Dashboard entries
+- `collections_settings_screen.dart`: cleaned to production version (no dev testing section)
+
+---
+
+## 2026-06-28 (session 3) — Claude Sonnet 4.6 — v2.0.0 PR 5: Visit Logs, PTP, Admin Debt Actions, Automation Crons
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 5 of 7 — Visit logs, PTP tracking, admin debt actions (dispute/write-off/settle), 4 automation crons.
+- **Outcome**: ✅ All PR 5 items complete. `flutter analyze` clean, `npm run lint` clean. Committed `c480e77`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/visit_model.dart` | **NEW** — `PtpData` (amount, promisedDate, status helpers) + `VisitModel` (contactType, outcome, paymentId, promiseToPay, notes); `toCreateMap` uses `serverTimestamp()` |
+| `lib/features/collections/data/repositories/visits_repository.dart` | **NEW** — `create`, `getByDebt(forCollectorId?)`, `getByCustomer`; `Source.server` on all reads |
+| `lib/features/collections/presentation/cubit/visit_state.dart` | **NEW** — separate `formStatus`/`formError` alongside `status`/`visits`/`error` |
+| `lib/features/collections/presentation/cubit/visit_cubit.dart` | **NEW** — `loadDebtVisits`, `loadCustomerVisits`, `createVisit`, `clearFormStatus`; clears `visits: []` on loading/error |
+| `lib/features/collections/presentation/screens/log_visit_screen.dart` | **NEW** — contactType dropdown, 7 outcomes, visitedAt date picker, conditional PTP fields, notes; pops with `true` on success |
+| `lib/features/collections/presentation/screens/collections_settings_screen.dart` | **NEW** — `staleCashWarningDays` setting; direct Firestore read/write (no cubit); default 3 |
+| `lib/features/collections/data/models/debt_model.dart` | Added `daysPastDue`, `agingBucket`, `lastOverdueEscalationAt` (CF-maintained) |
+| `lib/features/collections/data/repositories/debts_repository.dart` | Added `markDisputed`, `writeOff`, `settleForLess` with embedded sub-objects |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | Added `markDisputed`, `writeOff`, `settleForLess` methods |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Visit history section + `_VisitRow`; Log Visit button for all roles; admin actions upgraded to use embedded objects + read user from `AuthCubit` |
+| `lib/features/collections/presentation/screens/admin_customer_detail_screen.dart` | Visit summary section + `_VisitSummaryRow`; `initState` loads customer visits |
+| `lib/core/routes/route_names.dart` | Added `logVisit = '/log-visit'` |
+| `lib/core/routes/app_router.dart` | Wired `logVisit` → `LogVisitScreen`, `collectionsSettings` → `CollectionsSettingsScreen` |
+| `lib/main.dart` | Added `VisitsRepository` + `VisitCubit` to `MultiBlocProvider` |
+| `functions/lib/collections/visit-triggers.js` | **NEW** — `onVisitCreated`: updates `customer.lastContactAt`, writes `visit.logged` + `ptp.created` logs |
+| `functions/lib/collections/debt-triggers.js` | **NEW** — `onDebtStatusChanged`: maps status transitions to `collection_log` entries; no `?.` (Google ESLint) |
+| `functions/lib/collections/schedulers.js` | **NEW** — 4 crons: `updateDebtAgingBuckets` (08:00), `checkBrokenPtps` (08:30), `sendOverdueDebtEscalations` (10:00), `sendStaleCashWarnings` (11:00) |
+| `functions/lib/collections/payment-triggers.js` | PTP "kept" marking after valid payment: marks pending PTPs as `kept` if payment arrived on or before `promisedDate` |
+| `functions/index.js` | Export 6 new CF symbols |
+| `assets/translations/en.json` + `ar.json` | +8 keys: `outcome_wrong_contact`, `dispute_reason`, `broken_ptps`, `stale_cash_warning_days`, `collection_settings`, `days`, `delinquent`, `visit_date` (568/568 parity) |
+
+### Key decisions
+
+- `?.` optional chaining rejected by project's Google ESLint config — all CF files use explicit `&&` guards.
+- `catch (_) {}` (empty block) rejected by `no-empty` rule — replaced with `console.error(...)`.
+- Visits are immutable after create (Firestore rule `allow update: if false`) — only CF can mark PTP status.
+- `CollectionsSettingsScreen` is a direct-Firestore exception: single config value, no cubit needed.
+- `ternary ?/:` operators must be at end of line per `operator-linebreak` ESLint rule.
+
+---
+
+## 2026-06-28 (session 2) — Claude Sonnet 4.6 — v2.0.0 PR 4: Installment Plans
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 4 of 7 — Installment plan creation, FIFO payment allocation, schedule view.
+- **Outcome**: ✅ All PR 4 items complete. `flutter analyze` clean, ESLint clean.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/installment_plan_model.dart` | **NEW** — `toCreateMap`; frequency: weekly/biweekly/monthly |
+| `lib/features/collections/data/models/installment_model.dart` | **NEW** — status helpers (`isPaid`, `isPartial`, `isOverdue`, `isPending`); `paymentIds` list |
+| `lib/features/collections/data/models/debt_model.dart` | Added `hasInstallmentPlan`, `installmentPlanId`, `nextInstallmentDueDate` (CF-maintained) |
+| `lib/features/collections/data/repositories/installments_repository.dart` | **NEW** — `createPlan`, `getPlanForDebt`, `getInstallments` (sub-collection, sorted by number) |
+| `lib/features/collections/presentation/cubit/installment_state.dart` | **NEW** — `plan`, `installments`, `formStatus`, `formError`; separate form status for non-disruptive save UX |
+| `lib/features/collections/presentation/cubit/installment_cubit.dart` | **NEW** — `loadPlanForDebt`, `createPlan`, `clearFormStatus` |
+| `lib/features/collections/presentation/screens/installment_plan_form_screen.dart` | **NEW** — n installments + auto-fill amount + frequency dropdown (`initialValue:`) + date picker; admin-only |
+| `lib/features/collections/presentation/screens/installment_plan_detail_screen.dart` | **NEW** — plan summary card + installment schedule list; `withValues(alpha:)` status badges; skips re-load if plan already in cubit |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Installment plan section: summary card + "View Schedule" / "Create Plan" buttons; `initState` triggers `loadPlanForDebt` |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | Next-installment hint card (date + amount from `InstallmentCubit`) shown when plan exists |
+| `lib/core/routes/route_names.dart` | Added `createInstallmentPlan = '/installment-plan/create'` |
+| `lib/core/routes/app_router.dart` | Wire `installmentPlanDetail` + `createInstallmentPlan` routes; remove from "Coming soon" stub |
+| `lib/main.dart` | Add `InstallmentsRepository`, `InstallmentCubit` to `MultiBlocProvider` |
+| `functions/lib/collections/installment-triggers.js` | **NEW** — `onInstallmentPlanCreated` (batch sub-docs + debt stamp); `applyPaymentToInstallments` (FIFO exported helper); `sendInstallmentDueReminders` (cron 09:00 Jerusalem, collection group query) |
+| `functions/lib/collections/payment-triggers.js` | After TX: call `applyPaymentToInstallments` if `debt.installmentPlanId` is set |
+| `functions/index.js` | Export `onInstallmentPlanCreated`, `sendInstallmentDueReminders` |
+| `assets/translations/en.json` + `ar.json` | +11 keys: `create_installment_plan`, `no_installment_plan`, `view_installment_schedule`, `installment_schedule`, `next_installment`, `installment_status_*` (4 variants), `failed_to_load_installments`, `failed_to_create_plan` |
+
+### Key decisions
+
+- `applyPaymentToInstallments` is a separate named export from `installment-triggers.js` (not inlined in `payment-triggers.js`) to keep it unit-testable and avoid circular dependency issues.
+- Installment sub-docs denormalize `collectorId` (fetched from debt in the trigger) so `sendInstallmentDueReminders` can use a collection group query without extra lookups.
+- `onInstallmentPlanCreated` uses a `WriteBatch` (not TX) because sub-doc creation is idempotent write-only — no conditional reads required.
+- `RecordPaymentScreen` reads `InstallmentCubit.state.plan` (already loaded by `DebtDetailScreen.initState`) — no extra load call needed.
+- `DropdownButtonFormField` uses `initialValue:` (not deprecated `value:`) per Flutter v3.33.0+.
+
+---
+
+## 2026-06-28 — Claude Sonnet 4.6 — v2.0.0 PR 3 smoke-test fixes + PR 4 start
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Close out PR 3 with bug fixes from smoke test; begin PR 4 (Installment Plans).
+
+### PR 3 smoke-test outcome
+
+Owner completed all 15 tests — PASS. Three observations:
+1. **Pre-emptive overpayment warning** (UX) — the amount field showed the validation error string as a hint before any input. Removed; remaining-balance helper text already conveys the max.
+2. **Cash-on-hand banner contrast** (UI) — fixed by applying `onPrimaryContainer` to icon + text in the banner.
+3. **Negative cashOnHand on discrepancy** (accounting edge case) — when admin verifies an actualAmount > claimedAmount the CF decrements cashOnHand by actualAmount, pushing it negative. Deferred to DECISIONS_LOG pending owner accounting decision. Fix is `Math.min(claimed, actual)` in `handover-triggers.js` once decided.
+
+### Bug fixed in this session (from prior context)
+
+**Payment history cross-contamination** (blocking): all debt detail screens showed the same payment list because:
+- `getByDebt(debtId)` without a `collectorId` filter is rejected by Firestore security rules for collectors (rule requires `collectorId == uid` on collection queries).
+- `loadDebtPayments` preserved stale `state.payments` on error; BlocBuilder had no error branch.
+- Fix: `PaymentsRepository.getByDebt(forCollectorId?)` adds the filter for collectors; `loadDebtPayments` clears `payments: []` on both loading and error emits; `DebtDetailScreen` captures `_forCollectorId` in `initState` and passes it to all three call sites; BlocBuilder error branch added.
+
+### Files changed this session
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/repositories/payments_repository.dart` | `getByDebt` accepts `forCollectorId?`; adds `where('collectorId')` for collectors |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | `loadDebtPayments` clears `payments: []` on loading + error; forwards `forCollectorId` |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | `_forCollectorId` field; pass to all 3 `loadDebtPayments` calls; capture cubit before await; BlocBuilder error branch |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | Remove confusing pre-emptive overpayment warning text |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand banner: apply `onPrimaryContainer` to icon + text |
+| `docs/ai-workflow/DECISIONS_LOG.md` | Handover discrepancy cashOnHand edge case documented |
+
+---
+
+## 2026-06-27 — Claude Sonnet 4.6 — v2.0.0 PR 3: Payment Recording & Cash Handover
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 3 of 7 — Core financial layer: payment recording, receipt numbering, cash handover flow.
+- **Outcome**: ✅ All PR 3 items complete. `flutter analyze` clean, 27 Jest CF unit tests passing.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `lib/features/collections/data/models/payment_model.dart` | **NEW** — agorot-integer amounts; `toCreateMap` writes `receiptNumber: ''`; `isCancelable`, `isReceiptPending`, `isVerified` getters |
+| `lib/features/collections/data/models/handover_model.dart` | **NEW** — `toVerifyMap` computes `hasDiscrepancy`/`discrepancyAmount`; `isPending`/`isVerified`/`hasDiscrepancy` getters |
+| `lib/features/collections/data/repositories/payments_repository.dart` | **NEW** — client-generated doc ID for offline idempotency; `getByDebt` (client-sort); `getCollectorPending`; `create`; `cancel` |
+| `lib/features/collections/data/repositories/handovers_repository.dart` | **NEW** — `getByCollector`, `getAll`, `create`, `verify` |
+| `lib/features/collections/presentation/cubit/payments_state.dart` | **NEW** — `cashOnHand` preserved across `loadDebtPayments` calls |
+| `lib/features/collections/presentation/cubit/payments_cubit.dart` | **NEW** — `loadDebtPayments`, `loadCollectorPendingPayments`, `createPayment`, `cancelPayment` |
+| `lib/features/collections/presentation/cubit/handover_state.dart` | **NEW** |
+| `lib/features/collections/presentation/cubit/handover_cubit.dart` | **NEW** — `loadCollectorHandovers`, `loadAllHandovers`, `initiateHandover`, `verifyHandover` |
+| `lib/features/collections/presentation/screens/record_payment_screen.dart` | **NEW** — amount formatter, overpayment guard, method dropdown, date+time pickers |
+| `lib/features/collections/presentation/screens/payment_detail_screen.dart` | **NEW** — receipt display, admin cancel with verified-handover guard; `withValues(alpha:)` throughout |
+| `lib/features/collections/presentation/screens/handover_init_screen.dart` | **NEW** — multi-select pending payments, claimed amount sum, Set<String> checkbox state |
+| `lib/features/collections/presentation/screens/handover_verification_screen.dart` | **NEW** — actual amount vs claimed, discrepancy notes required when amounts differ |
+| `lib/features/collections/presentation/screens/handover_list_screen.dart` | **NEW** — role-aware: admin loads all, collector loads own |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | Payment history section + Record Payment CTA; `_DebtPaymentRow` widget; async-gap-safe navigation |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Cash-on-hand banner + Hand Over Cash button; async-gap-safe `.then()` pattern |
+| `functions/lib/collections/payment-triggers.js` | **NEW** — `onPaymentCreated` (idempotency guard, TX: receipt numbering + balance update + cashOnHand), `onPaymentCancelled` (verified-handover block, balance reversal); 5 pure helpers exported for Jest |
+| `functions/lib/collections/handover-triggers.js` | **NEW** — `onHandoverCreated` (admin FCM + in-app), `onHandoverUpdated` (batch payment→verified, cashOnHand decrement, collector notification) |
+| `functions/__tests__/collections/payment-triggers.test.js` | **NEW** — 27 Jest unit tests for pure CF helpers |
+| `functions/index.js` | Export `onPaymentCreated`, `onPaymentCancelled`, `onHandoverCreated`, `onHandoverUpdated` |
+| `functions/package.json` | Add `jest ^29.0.0` devDependency; add `"test": "jest"` script |
+| `lib/core/routes/app_router.dart` | Wire `recordPayment`, `paymentDetail`, `handoverList`, `handoverInit`, `handoverVerification` routes |
+| `lib/main.dart` | Add `PaymentsRepository`, `HandoversRepository`, `PaymentsCubit`, `HandoverCubit` providers |
+| `lib/shared/widgets/app_drawer.dart` | Add Handovers tile for admin |
+| `assets/translations/en.json` + `ar.json` | +12 missing keys: `payment_status_*`, `verified_by`, `cancel_payment_warn_verified`, `no_pending_payments`, `select_at_least_one_payment`, `deselect_all`, `discrepancy_notes_required/hint` |
+
+### Key decisions
+
+- `cashOnHand` in `PaymentsState` is computed as sum of `pending_handover` payments — avoids requiring a real-time listener on the user doc.
+- CF `onPaymentCreated` double-checked idempotency: outside the TX (early exit) and inside the TX (guard against concurrent calls).
+- Firestore TX read-before-write: all `tx.get()` calls for payment/debt/counter/collector/customer precede any `tx.update()`.
+- `onPaymentCancelled` reverts `isCancelled: false` if the payment is in a verified handover — prevents retroactive balance corruption.
+- `onHandoverUpdated` uses a `WriteBatch` (not TX) for the payment status updates because it only writes, never conditionally reads.
+- Pure CF helpers (`recalculateDebtStatus`, `formatReceiptNumber`, etc.) are named functions added to `module.exports` for Jest testing without a Firestore emulator.
+
+---
+
+## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 2: Customer & Debt Management
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: PR 2 of 7 — Customer and Debt management layer (models, repositories, cubits, admin screens, collector home).
+- **Outcome**: ✅ All PR 2 items complete. `flutter analyze` clean, zero errors.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `assets/translations/en.json` + `ar.json` | +6 missing keys (`failed_to_save_customer`, `failed_to_save_debt`, `phone_required`, `amount_required`, `collector_required`, `settlement_notes`) |
+| `lib/features/collections/data/models/customer_model.dart` | **NEW** — CustomerModel with `toCreateMap`/`toUpdateMap`/`copyWith` |
+| `lib/features/collections/data/models/debt_model.dart` | **NEW** — DebtModel; agorot-integer amounts; `formatAmountIls`/`parseAmountIls` static helpers |
+| `lib/features/collections/data/repositories/customers_repository.dart` | **NEW** — `getAll`, `create`, `update`, `getCollectors` |
+| `lib/features/collections/data/repositories/debts_repository.dart` | **NEW** — `getByCustomer`, `getByCollector`, `create`, `update`, `updateStatus` |
+| `lib/features/collections/presentation/cubit/customers_state.dart` | **NEW** — `CollectionsStatus` enum + `CustomersState` |
+| `lib/features/collections/presentation/cubit/customers_cubit.dart` | **NEW** — `loadCustomers`, `createCustomer`, `updateCustomer`, `clearFormStatus` |
+| `lib/features/collections/presentation/cubit/debts_state.dart` | **NEW** — `DebtsState` (shared by admin and collector cubits) |
+| `lib/features/collections/presentation/cubit/debts_admin_cubit.dart` | **NEW** — `loadCustomerDebts`, `createDebt`, `updateDebt`, `updateDebtStatus`, `clearFormStatus` |
+| `lib/features/collections/presentation/cubit/collector_debts_cubit.dart` | **NEW** — `loadCollectorDebts` only |
+| `lib/features/collections/presentation/widgets/debt_status_badge.dart` | **NEW** — status-colored badge using `debt_status_*` keys |
+| `lib/features/collections/presentation/screens/admin_customer_list_screen.dart` | **NEW** — list with FAB, account-status chip |
+| `lib/features/collections/presentation/screens/admin_customer_form_screen.dart` | **NEW** — add/edit form with collector dropdown |
+| `lib/features/collections/presentation/screens/admin_customer_detail_screen.dart` | **NEW** — info card + debt list + Add Debt FAB |
+| `lib/features/collections/presentation/screens/admin_debt_form_screen.dart` | **NEW** — amount in ILS → agorot, date picker, collector picker |
+| `lib/features/collections/presentation/screens/debt_detail_screen.dart` | **NEW** — shared admin/collector; admin popup menu (cancel/write-off/settle/dispute) |
+| `lib/features/collections/presentation/screens/collector_home_screen.dart` | Updated stub → real debt list with urgency-sorted BlocBuilder |
+| `lib/core/routes/route_names.dart` | +4 routes: `addCustomer`, `editCustomer`, `addDebt`, `editDebt` |
+| `lib/core/routes/app_router.dart` | Wire all new screens; `editDebt` reconstructs minimal CustomerModel from DebtModel |
+| `lib/shared/widgets/app_drawer.dart` | Add Collections (wallet) tile for admin |
+| `lib/main.dart` | Instantiate `CustomersRepository` + `DebtsRepository`; add 3 BlocProviders |
+
+### Key decisions
+
+- Two separate debt cubits (`DebtsAdminCubit`, `CollectorDebtsCubit`) avoid state collision — Flutter BLoC resolves by concrete type.
+- `DebtModel.formatAmountIls` / `parseAmountIls` are static; never call on instance.
+- `editDebt` route reconstructs a minimal `CustomerModel` from debt fields (only name needed for display in edit form).
+- Client never writes `paidAmount`/`remainingBalance` — CF-maintained after payment recording (PR 3).
+
+### Next session
+
+PR 3: Core Financial — Payment Recording and Cash Handover (Cloud Functions unit tests required).
+
+---
+
+## 2026-06-25 — Claude Sonnet 4.6 — v2.0.0 PR 1: Collections Foundation
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections`
+- **Goal**: Implement PR 1 of the 7-PR v2.0.0 Collections subsystem — schema, role, routing/shell, translations, Firestore rules foundation, indexes, and stub screens.
+- **Outcome**: ✅ All PR 1 items complete. `flutter analyze` clean, `npm run lint` clean, translation parity 531/531.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `functions/lib/users.js` | Accept `collector` role; initialize `cashOnHand: 0`, `maxCashOnHand: null` |
+| `lib/core/constants/firebase_paths.dart` | 10 new collection path constants |
+| `assets/translations/en.json` | 130 new keys (531 total) |
+| `assets/translations/ar.json` | 130 new keys (531 total) |
+| `firestore.indexes.json` | +13 indexes (customers ×2, debts ×3, payments ×3, handovers ×2, visits ×2, installment_plans ×1) |
+| `firestore.rules` | `isCollector()` function; rules for customers, debts, installment_plans (+sub-collection), payments, handovers, visits, collection_logs |
+| `lib/core/routes/route_names.dart` | 13 new collector route constants |
+| `lib/core/routes/app_router.dart` | `collectorHome` → `CollectorApp`; 12 stub routes |
+| `lib/features/splash/…/splash_screen.dart` | `collector` role → `RouteNames.collectorHome` |
+| `lib/app/collector_app.dart` | **NEW** — 3-tab bottom-nav shell (Collections / Attendance / Settings) |
+| `lib/features/collections/…/collector_home_screen.dart` | **NEW** — stub home screen |
+| `pubspec.yaml` | `1.10.0+13` → `2.0.0+14` |
+
+### Key decisions confirmed
+
+- All amounts: integers in agorot (no floats)
+- `collector` = new role value; gets `cashOnHand: 0` and `maxCashOnHand: null` in user doc
+- Translation keys for the full subsystem committed in PR 1 so subsequent PRs are Dart-only (Shorebird-patchable after v2.0.0 ships)
+- Firestore rules: collectors see ONLY their explicitly assigned data; employees have zero access
+- `onPaymentCreated` CF (PR 3) must be atomic, idempotent, and unit-tested before production use
+- No release until all 7 PRs are merged and smoke-tested
+
+### Next session
+
+PR 2: Customer and Debt Management (Admin) — `CustomerModel`, `DebtModel`, `CustomersRepository`, `DebtsRepository`, admin CRUD screens, collector assignment.
+
+---
+
 ## 2026-06-25 — Claude Sonnet 4.6 — v1.10.0 implementation
 
 - **Agent**: Claude Sonnet 4.6

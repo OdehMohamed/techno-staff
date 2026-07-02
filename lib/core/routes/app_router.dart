@@ -1,4 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:techno_staff/app/collector_app.dart';
+import 'package:techno_staff/features/collections/data/models/customer_model.dart';
+import 'package:techno_staff/features/collections/data/models/debt_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_form_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_customer_list_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/admin_debt_form_screen.dart';
+import 'package:techno_staff/features/collections/data/models/handover_model.dart';
+import 'package:techno_staff/features/collections/data/models/installment_plan_model.dart';
+import 'package:techno_staff/features/collections/data/models/payment_model.dart';
+import 'package:techno_staff/features/collections/presentation/screens/aging_report_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/collections_dashboard_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/collections_settings_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/installment_plan_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/installment_plan_form_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/log_visit_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/debt_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_init_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_list_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/handover_verification_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/payment_detail_loader_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/debt_detail_loader_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/payment_detail_screen.dart';
+import 'package:techno_staff/features/collections/presentation/screens/record_payment_screen.dart';
 import 'package:techno_staff/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/chat_list_screen.dart';
 import 'package:techno_staff/features/chat/presentation/screens/conversation_screen.dart';
@@ -208,6 +232,176 @@ class AppRouter {
           builder: (_) => const GroupSettingsScreen(),
           settings: settings,
         );
+
+      // Collections subsystem (v2.0.0)
+      case RouteNames.collectorHome:
+        return MaterialPageRoute(
+          builder: (_) => const CollectorApp(),
+          settings: settings,
+        );
+
+      case RouteNames.customerList:
+        return MaterialPageRoute(
+          builder: (_) => const AdminCustomerListScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.addCustomer:
+        return MaterialPageRoute(
+          builder: (_) => const AdminCustomerFormScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.editCustomer:
+        return MaterialPageRoute(
+          builder: (_) => AdminCustomerFormScreen(
+            customer: settings.arguments as CustomerModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.customerDetail:
+        return MaterialPageRoute(
+          builder: (_) => AdminCustomerDetailScreen(
+            customer: settings.arguments as CustomerModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.addDebt:
+        final addArgs = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => AdminDebtFormScreen(
+            customer: addArgs['customer'] as CustomerModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.editDebt:
+        final editArgs = settings.arguments as Map<String, dynamic>;
+        final editDebt = editArgs['debt'] as DebtModel;
+        final minimalCustomer = CustomerModel(
+          id: editDebt.customerId,
+          name: editDebt.customerName,
+          phone: '',
+          assignedCollectorId: editDebt.assignedCollectorId,
+          assignedCollectorName: editDebt.assignedCollectorName,
+          accountStatus: 'good_standing',
+          createdBy: '',
+          createdByName: '',
+          createdAt: editDebt.createdAt,
+          isActive: true,
+        );
+        return MaterialPageRoute(
+          builder: (_) => AdminDebtFormScreen(
+            customer: minimalCustomer,
+            debt: editDebt,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.debtDetail:
+        return MaterialPageRoute(
+          builder: (_) => DebtDetailScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.recordPayment:
+        return MaterialPageRoute(
+          builder: (_) => RecordPaymentScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.paymentDetail:
+        return MaterialPageRoute(
+          builder: (_) => PaymentDetailScreen(
+            payment: settings.arguments as PaymentModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.paymentDetailLoader:
+        return MaterialPageRoute(
+          builder: (_) => PaymentDetailLoaderScreen(
+            paymentId: settings.arguments as String,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.debtDetailLoader:
+        return MaterialPageRoute(
+          builder: (_) => DebtDetailLoaderScreen(
+            debtId: settings.arguments as String,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.handoverList:
+        return MaterialPageRoute(
+          builder: (_) => const HandoverListScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.handoverInit:
+        return MaterialPageRoute(
+          builder: (_) => const HandoverInitScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.handoverVerification:
+        return MaterialPageRoute(
+          builder: (_) => HandoverVerificationScreen(
+            handover: settings.arguments as HandoverModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.installmentPlanDetail:
+        return MaterialPageRoute(
+          builder: (_) => InstallmentPlanDetailScreen(
+            plan: settings.arguments as InstallmentPlanModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.createInstallmentPlan:
+        return MaterialPageRoute(
+          builder: (_) => InstallmentPlanFormScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.logVisit:
+        return MaterialPageRoute(
+          builder: (_) => LogVisitScreen(
+            debt: settings.arguments as DebtModel,
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.collectionsSettings:
+        return MaterialPageRoute(
+          builder: (_) => const CollectionsSettingsScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.collectionsDashboard:
+        return MaterialPageRoute(
+          builder: (_) => const CollectionsDashboardScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.agingReport:
+        return MaterialPageRoute(
+          builder: (_) => const AgingReportScreen(),
+          settings: settings,
+        );
+
 
       default:
         return MaterialPageRoute(
