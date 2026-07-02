@@ -290,7 +290,7 @@ Future<File> generateHandoverReconciliationPdf({
                   _cell(_fmt(p.amount), regular,
                       align: pw.TextAlign.right),
                   _cell(l.methodLabel(p.paymentMethod), regular, rtl: isAr),
-                  _cell(_fmtDate(p.collectedAt, locale), regular),
+                  _cell(_fmtDate(p.collectedAt, locale), regular, rtl: isAr),
                 ],
               ),
             ),
