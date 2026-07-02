@@ -1,3 +1,32 @@
+## 2026-07-02 (session 10) — Claude Sonnet 4.6 — pre-merge audit, PDF fixes, final merge
+
+- **Agent**: Claude Sonnet 4.6
+- **Branch**: `feat/v2-collections` → `main`
+- **Goal**: 7 pre-merge improvement tasks + PDF rendering fixes + discrepancy dashboard + final merge.
+- **Outcome**: ✅ Merged to `main` (commit `fedce95`). All checks clean. Firebase deployed.
+
+### Work done
+
+| Area | Details |
+|------|---------|
+| Settlement receipts | Real receipt numbers for settlement payments via `isSettlementPayment` flag + CF fast-path in `onPaymentCreated` |
+| `forgivenAmount` | Added to `DebtModel`; settlement card shows Original Remaining / Settled / Forgiven breakdown |
+| Dashboard | `verifiedThisMonthAgorot` vs `pendingHandoverThisMonthAgorot` split; `discrepancyBalance` exposure + per-collector discrepancy warning card |
+| `AdminCustomerDetailScreen` | Debt status filter chips (All / Active / Partial / Overdue / Settled / Written Off / Cancelled) |
+| `AdminCustomerListScreen` | `totalOutstandingBalance` display in customer cards |
+| Pagination | Cursor-based Firestore pagination (`getPaged()` with Dart record return type; auto-load on scroll) |
+| Dead routes | Removed `debtList` and `visitLog` stubs from `route_names.dart` and `app_router.dart` |
+| PDF — receipt Arabic | Fixed reversed header title; fixed cramped label layout; fixed left-aligned "in words"; fixed colon placement |
+| PDF — handover Arabic | Fixed reversed headers, customer names, methods, collected dates (all needed explicit `rtl: isAr` on `_cell()`) |
+| Merge | `git merge --no-ff feat/v2-collections` → `main`; `firebase deploy --only functions,firestore:rules,firestore:indexes` (indexes updated, rules confirmed current, all 36 functions already up to date) |
+
+### Commits on this branch (last 3 relevant)
+- `8fdd4a1` feat(collections): pre-merge improvements — 7 tasks
+- `f09ce7d` fix(collections): PDF rendering + discrepancy dashboard visibility
+- `002db65` fix(collections): fix reversed Arabic month names in handover PDF collected date column
+
+---
+
 ## 2026-07-01 (session 9) — Claude Sonnet 4.6 — post-owner-testing fixes (4 issues)
 
 - **Agent**: Claude Sonnet 4.6

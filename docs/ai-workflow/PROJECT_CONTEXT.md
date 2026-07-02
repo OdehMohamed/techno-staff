@@ -1,6 +1,6 @@
 # Project Context
 
-> Last updated: 2026-06-22
+> Last updated: 2026-07-02
 > Owner: Mohamed Odeh
 > Audience: every AI agent and human developer working on this repo.
 
@@ -17,7 +17,7 @@ This file is a factual snapshot of the project. Update it whenever a fact change
 
 The app is bilingual (English + Arabic) with full RTL support and uses Firebase as the sole backend (Auth + Firestore + Cloud Functions + FCM).
 
-Current status: closed testing (Google Play Closed Testing, TestFlight). v1.8.0+11 merged to `main` and fully released (Firebase deploy, Shorebird Android + iOS, store submissions). v1.9.0+12 in progress on `feat/v1.9.0` (toolchain upgrade + 3 product features + docs).
+Current status: closed testing (Google Play Closed Testing, TestFlight). v2.0.0 Collections subsystem merged to `main` on 2026-07-02 (commit `fedce95`). Firebase (functions, rules, indexes) deployed. Next step: build + release v2.0.0 binary, then open to wider testing.
 
 ## 2. Tech Stack
 
@@ -98,6 +98,7 @@ Navigation goes through `AppRouter.onGenerateRoute` (see `lib/core/routes/`). A 
 | `notifications` | all      | In-app notification feed (server-written, client toggles `isRead`), real-time stream + unread count badge                                                                                       |
 | `chat`          | all      | DM and group conversations; real-time streaming; pagination (50/page); soft-delete (sender-only); unread counts per conversation; `ChatBadgeButton` in AppBar; FCM push per recipient via `onNewChatMessage` CF; per-conversation foreground suppression (iOS: `AppDelegate.willPresent` + `UserDefaults`; Android: Dart `onMessage` + `activeConversationId`). Phase 2 (2026-06-17): employee DM quick-action from EmployeesScreen; task-linked thread from TaskDetailsScreen (creator + assignee only; createdBy bug fixed); admin broadcast channels (`writeRestriction: 'admin_only'` — toggle in NewGroupScreen, read-only notice in ConversationScreen, megaphone icon in ConversationTile). Phase 3 (deferred): group member management (add/remove; requires rules change). |
 | `settings`      | all      | Theme (persisted), language, sign out, About (version + privacy policy + licenses), delete account, edit profile (name), change password with session revocation                               |
+| `collections`   | admin + collector | Full financial collections subsystem: customer/debt management (admin), payment recording, collector handover with verification, settle-for-less flows with discrepancy tracking, installment plans, visit logs, aging reports, PDF receipts + handover reconciliation reports (EN/AR bilingual), Collections Dashboard (portfolio analytics, aging breakdown, per-collector summary, discrepancy liabilities). Collector role has separate app shell (`CollectorApp`) with home, debt list, payment history, handover flow, and settings. |
 
 ## 5. Firestore Data Model
 
